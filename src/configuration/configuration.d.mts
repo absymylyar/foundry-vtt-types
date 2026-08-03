@@ -1,6 +1,7 @@
 import type { DeepPartial, InterfaceToObject, MaybeEmpty } from "#utils";
 import type { fields } from "../foundry/common/data/_module.d.mts";
 import type Document from "../foundry/common/abstract/document.d.mts";
+import type * as documents from "./documents.d.mts";
 
 import AVSettings = foundry.av.AVSettings;
 import Game = foundry.Game;
@@ -67,6 +68,35 @@ export interface AssumeHookRan {}
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface DocumentClassConfig {}
+
+/**
+ * Experimental: This config exists to stymy circularities.
+ */
+export interface DocumentInstanceConfig extends GetConfigured<_DocumentInstanceConfig> {}
+
+interface _DocumentInstanceConfig {
+  ActiveEffect: documents.ConfiguredActiveEffect<ActiveEffect.SubType>;
+  ActorDelta: documents.ConfiguredActorDelta<ActorDelta.SubType>;
+  Actor: documents.ConfiguredActor<Actor.SubType>;
+  Card: documents.ConfiguredCard<Card.SubType>;
+  Cards: documents.ConfiguredCards<Cards.SubType>;
+  ChatMessage: documents.ConfiguredChatMessage<ChatMessage.SubType>;
+  Combat: documents.ConfiguredCombat<Combat.SubType>;
+  Combatant: documents.ConfiguredCombatant<Combatant.SubType>;
+  CombatantGroup: documents.ConfiguredCombatantGroup<CombatantGroup.SubType>;
+  Folder: documents.ConfiguredFolder<Folder.SubType>;
+  Item: documents.ConfiguredItem<Item.SubType>;
+  JournalEntryPage: documents.ConfiguredJournalEntryPage<JournalEntryPage.SubType>;
+  Macro: documents.ConfiguredMacro<Macro.SubType>;
+  RegionBehavior: documents.ConfiguredRegionBehavior<RegionBehavior.SubType>;
+  TableResult: documents.ConfiguredTableResult<TableResult.SubType>;
+}
+
+type GetConfigured<T> = {
+  [K in keyof T as T[K] extends { document: unknown } ? K : never]: T[K] extends { document: infer Document }
+    ? Document
+    : never;
+};
 
 /**
  * This interface is used to configure the used object classes at a type
@@ -314,9 +344,9 @@ export interface SettingConfig {
       choices: InterfaceToObject<typeof CONFIG.Dice.rollModes>;
     },
     // Note(LukeAbby): This override is necessary because the `initial` wasn't removing `null`.
-    (string & keyof typeof CONFIG.Dice.rollModes) | null | undefined,
-    string & keyof typeof CONFIG.Dice.rollModes,
-    string & keyof typeof CONFIG.Dice.rollModes
+    foundry.dice.Roll.Mode | null | undefined,
+    foundry.dice.Roll.Mode,
+    foundry.dice.Roll.Mode
   >;
   "core.rtcClientSettings": typeof AVSettings.schemaFields.client;
   "core.rtcWorldSettings": typeof AVSettings.schemaFields.world;
@@ -348,3 +378,41 @@ export interface SettingConfig {
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface SystemNameConfig {}
+
+/**
+ * Controls various behaviors of `system`. By default fvtt-types forces you to account for all
+ * possible subtypes of a document. This helps make your code more robust for things like the
+ * arbitrary module subtypes that may exist. This is why if you try writing `item.system.someProp`
+ * you are going to get an error like:
+ * ```text
+ * Property 'someProp' does not exist on type 'SystemOfType<...>'.
+ *   Property 'someProp' does not exist on type 'UnknownTypeDataModel'.
+ * ```
+ *
+ * While inconvenient this is necessary for soundness. As a module subtype is designed to be
+ * completely arbitrary they could have a conflicting property with any shape. Therefore it's
+ * recommended to work around this with helpers that make it easier to actually account for module
+ * subtypes like an `isKnown` helper etc. but if you want to tweak the behavior for certain classes
+ * you can add `discriminate: "all"` which will make `item.system.someProp` be typed as
+ * `T | undefined`.
+ *
+ * Even more unsoundly, you can entirely ignore the existence of module subtypes and `"base"`
+ * entirely with `moduleSubtype: "ignore"` and `base: "ignore"`.
+ *
+ * @example
+ * ```typescript
+ * declare module "fvtt-types/configuration" {
+ *   interface SystemConfig {
+ *     Item: {
+ *       discriminate: "all";
+ *     };
+ *     Actor: {
+ *        moduleSubtype: "ignore";
+ *        base: "ignore";
+ *     };
+ *   }
+ * }
+ * ```
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface SystemConfig {}

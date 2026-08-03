@@ -101,7 +101,7 @@ declare abstract class BaseJournalEntry extends Document<"JournalEntry", BaseJou
   static override createDocuments<Temporary extends boolean | undefined = undefined>(
     data: Array<JournalEntry.Implementation | JournalEntry.CreateData> | undefined,
     operation?: Document.Database.CreateOperation<JournalEntry.Database.Create<Temporary>>,
-  ): Promise<Array<Document.TemporaryIf<JournalEntry.Implementation, Temporary>>>;
+  ): Promise<Array<JournalEntry.TemporaryIf<Temporary>>>;
 
   static override updateDocuments(
     updates: JournalEntry.UpdateData[] | undefined,
@@ -116,7 +116,7 @@ declare abstract class BaseJournalEntry extends Document<"JournalEntry", BaseJou
   static override create<Temporary extends boolean | undefined = undefined>(
     data: JournalEntry.CreateData | JournalEntry.CreateData[],
     operation?: JournalEntry.Database.CreateOperation<Temporary>,
-  ): Promise<Document.TemporaryIf<JournalEntry.Implementation, Temporary> | undefined>;
+  ): Promise<JournalEntry.TemporaryIf<Temporary> | undefined>;
 
   override update(
     data: JournalEntry.UpdateData | undefined,
@@ -147,17 +147,14 @@ declare abstract class BaseJournalEntry extends Document<"JournalEntry", BaseJou
   override createEmbeddedDocuments<EmbeddedName extends JournalEntry.Embedded.Name>(
     embeddedName: EmbeddedName,
     data: Document.CreateDataForName<EmbeddedName>[] | undefined,
-    // TODO(LukeAbby): The correct signature would be:
-    // operation?: Document.Database.CreateOperation<Document.Database.CreateForName<EmbeddedName>>,
-    // However this causes a number of errors.
-    operation?: object,
-  ): Promise<Array<Document.StoredForName<EmbeddedName>> | undefined>;
+    operation?: Document.Database.CreateOperationForName<EmbeddedName>,
+  ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
 
   override updateEmbeddedDocuments<EmbeddedName extends JournalEntry.Embedded.Name>(
     embeddedName: EmbeddedName,
     updates: Document.UpdateDataForName<EmbeddedName>[] | undefined,
     operation?: Document.Database.UpdateOperationForName<EmbeddedName>,
-  ): Promise<Array<Document.StoredForName<EmbeddedName>> | undefined>;
+  ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
 
   override deleteEmbeddedDocuments<EmbeddedName extends JournalEntry.Embedded.Name>(
     embeddedName: EmbeddedName,
@@ -173,12 +170,12 @@ declare abstract class BaseJournalEntry extends Document<"JournalEntry", BaseJou
   override getFlag<Scope extends JournalEntry.Flags.Scope, Key extends JournalEntry.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): Document.GetFlag<JournalEntry.Name, Scope, Key>;
+  ): JournalEntry.Flags.Get<Scope, Key>;
 
   override setFlag<
     Scope extends JournalEntry.Flags.Scope,
     Key extends JournalEntry.Flags.Key<Scope>,
-    Value extends Document.GetFlag<JournalEntry.Name, Scope, Key>,
+    Value extends JournalEntry.Flags.Get<Scope, Key>,
   >(scope: Scope, key: Key, value: Value): Promise<this>;
 
   override unsetFlag<Scope extends JournalEntry.Flags.Scope, Key extends JournalEntry.Flags.Key<Scope>>(
@@ -352,7 +349,8 @@ declare namespace BaseJournalEntry {
   export import InitializedData = JournalEntry.InitializedData;
   export import UpdateData = JournalEntry.UpdateData;
   export import Schema = JournalEntry.Schema;
-  export import DatabaseOperation = JournalEntry.Database;
+  export import Database = JournalEntry.Database;
+  export import TemporaryIf = JournalEntry.TemporaryIf;
   export import Flags = JournalEntry.Flags;
   export import CoreFlags = JournalEntry.CoreFlags;
 

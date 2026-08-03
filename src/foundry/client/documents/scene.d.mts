@@ -188,18 +188,18 @@ declare namespace Scene {
   /**
    * The world collection that contains `Scene`s. Will be `never` if none exists.
    */
-  type CollectionClass = foundry.documents.collections.Scenes.ConfiguredClass;
+  type CollectionClass = foundry.documents.collections.Scenes.ImplementationClass;
 
   /**
    * The world collection that contains `Scene`s. Will be `never` if none exists.
    */
-  type Collection = foundry.documents.collections.Scenes.Configured;
+  type Collection = foundry.documents.collections.Scenes.Implementation;
 
   /**
    * An instance of `Scene` that comes from the database but failed validation meaning that
    * its `system` and `_source` could theoretically be anything.
    */
-  interface Invalid extends Document.Internal.Invalid<Scene.Implementation> {}
+  type Invalid = Document.Internal.Invalid<Implementation>;
 
   /**
    * An instance of `Scene` that comes from the database.
@@ -413,13 +413,7 @@ declare namespace Scene {
      * The name of this scene
      * @defaultValue `""`
      */
-    name: fields.StringField<
-      { required: true; blank: false; textSearch: true },
-      // Note(LukeAbby): Field override because `blank: false` isn't fully accounted for or something.
-      string,
-      string,
-      string
-    >;
+    name: fields.StringField<{ required: true; blank: false; textSearch: true }>;
 
     /**
      * Is this scene currently active? Only one scene may be active at a given time
@@ -534,42 +528,7 @@ declare namespace Scene {
     /**
      * Fog-exploration settings and other data
      */
-    fog: fields.SchemaField<{
-      /**
-       * Should fog exploration progress be tracked for this Scene?
-       * @defaultValue `true`
-       */
-      exploration: fields.BooleanField<{ initial: true }>;
-
-      /**
-       * The timestamp at which fog of war was last reset for this Scene.
-       * @defaultValue `undefined`
-       */
-      reset: fields.NumberField<{ required: false; initial: undefined }>;
-
-      /**
-       * A special overlay image or video texture which is used for fog of war
-       * @defaultValue `null`
-       */
-      overlay: fields.FilePathField<{ categories: ["IMAGE", "VIDEO"]; virtual: true }>;
-
-      /**
-       * Fog-exploration coloration data
-       */
-      colors: fields.SchemaField<{
-        /**
-         * A color tint applied to explored regions of fog of war
-         * @defaultValue `null`
-         */
-        explored: fields.ColorField;
-
-        /**
-         * A color tint applied to unexplored regions of fog of war
-         * @defaultValue `null`
-         */
-        unexplored: fields.ColorField;
-      }>;
-    }>;
+    fog: fields.SchemaField<FogSchema>;
 
     /**
      * The environment data applied to the Scene.
@@ -695,6 +654,49 @@ declare namespace Scene {
     _stats: fields.DocumentStatsField;
   }
 
+  interface FogSchema extends DataSchema {
+    /**
+     * Should fog exploration progress be tracked for this Scene?
+     * @defaultValue `true`
+     */
+    exploration: fields.BooleanField<{ initial: true }>;
+
+    /**
+     * The timestamp at which fog of war was last reset for this Scene.
+     * @defaultValue `undefined`
+     */
+    reset: fields.NumberField<{ required: false; initial: undefined }>;
+
+    /**
+     * A special overlay image or video texture which is used for fog of war
+     * @defaultValue `null`
+     */
+    overlay: fields.FilePathField<{ categories: ["IMAGE", "VIDEO"]; virtual: true }>;
+
+    /**
+     * Fog-exploration coloration data
+     */
+    colors: fields.SchemaField<FogColorSchema>;
+  }
+
+  interface FogData extends fields.SchemaField.InitializedData<FogSchema> {}
+
+  interface FogColorSchema extends DataSchema {
+    /**
+     * A color tint applied to explored regions of fog of war
+     * @defaultValue `null`
+     */
+    explored: fields.ColorField;
+
+    /**
+     * A color tint applied to unexplored regions of fog of war
+     * @defaultValue `null`
+     */
+    unexplored: fields.ColorField;
+  }
+
+  interface FogColorData extends fields.SchemaField.InitializedData<FogColorSchema> {}
+
   interface EnvironmentSchema extends DataSchema {
     /**
      * The environment darkness level.
@@ -800,7 +802,7 @@ declare namespace Scene {
   interface GridSchema extends DataSchema {
     /**
      * The type of grid, a number from CONST.GRID_TYPES.
-     * @defaultValue `game.system.grid.type`
+     * @defaultValue {@linkcode foundry.packages.BaseSystem.grid | game.system.grid.type}
      */
     type: fields.NumberField<
       {
@@ -976,25 +978,32 @@ declare namespace Scene {
   }
 
   /**
+   * If `Temporary` is true then `Scene.Implementation`, otherwise `Scene.Stored`.
+   */
+  type TemporaryIf<Temporary extends boolean | undefined> = true extends Temporary
+    ? Scene.Implementation
+    : Scene.Stored;
+
+  /**
    * The flags that are available for this document in the form `{ [scope: string]: { [key: string]: unknown } }`.
    */
-  interface Flags extends Document.ConfiguredFlagsForName<Name> {}
+  interface Flags extends Document.Internal.ConfiguredFlagsForName<Name> {}
 
   namespace Flags {
     /**
      * The valid scopes for the flags on this document e.g. `"core"` or `"dnd5e"`.
      */
-    type Scope = Document.FlagKeyOf<Flags>;
+    type Scope = Document.Internal.FlagKeyOf<Flags>;
 
     /**
      * The valid keys for a certain scope for example if the scope is "core" then a valid key may be `"sheetLock"` or `"viewMode"`.
      */
-    type Key<Scope extends Flags.Scope> = Document.FlagKeyOf<Document.FlagGetKey<Flags, Scope>>;
+    type Key<Scope extends Flags.Scope> = Document.Internal.FlagKeyOf<Document.Internal.FlagGetKey<Flags, Scope>>;
 
     /**
      * Gets the type of a particular flag given a `Scope` and a `Key`.
      */
-    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.GetFlag<Name, Scope, Key>;
+    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.Internal.GetFlag<Flags, Scope, Key>;
   }
 
   interface DropData extends Document.Internal.DropData<Name> {}
@@ -1127,7 +1136,7 @@ declare namespace Scene {
   /**
    * The arguments to construct the document.
    *
-   * @deprecated - Writing the signature directly has helped reduce circularities and therefore is
+   * @deprecated Writing the signature directly has helped reduce circularities and therefore is
    * now recommended.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated

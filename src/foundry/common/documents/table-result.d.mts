@@ -12,7 +12,7 @@ import type { LogCompatibilityWarningOptions } from "../utils/logging.d.mts";
 // This pattern evolved from trying to avoid circular loops and even internal tsc errors.
 // See: https://gist.github.com/LukeAbby/0d01b6e20ef19ebc304d7d18cef9cc21
 declare abstract class BaseTableResult<
-  out _SubType extends BaseTableResult.SubType = BaseTableResult.SubType,
+  out SubType extends BaseTableResult.SubType = BaseTableResult.SubType,
 > extends Document<"TableResult", BaseTableResult.Schema, any> {
   /**
    * @param data    - Initial data from which to construct the `BaseTableResult`
@@ -87,6 +87,8 @@ declare abstract class BaseTableResult<
    * separate like this helps against circularities.
    */
 
+  type: SubType;
+
   /* Document overrides */
 
   // Same as Document for now
@@ -115,7 +117,7 @@ declare abstract class BaseTableResult<
   static override createDocuments<Temporary extends boolean | undefined = undefined>(
     data: Array<TableResult.Implementation | TableResult.CreateData> | undefined,
     operation?: Document.Database.CreateOperation<TableResult.Database.Create<Temporary>>,
-  ): Promise<Array<Document.TemporaryIf<TableResult.Implementation, Temporary>>>;
+  ): Promise<Array<TableResult.TemporaryIf<Temporary>>>;
 
   static override updateDocuments(
     updates: TableResult.UpdateData[] | undefined,
@@ -130,7 +132,7 @@ declare abstract class BaseTableResult<
   static override create<Temporary extends boolean | undefined = undefined>(
     data: TableResult.CreateData | TableResult.CreateData[],
     operation?: TableResult.Database.CreateOperation<Temporary>,
-  ): Promise<Document.TemporaryIf<TableResult.Implementation, Temporary> | undefined>;
+  ): Promise<TableResult.TemporaryIf<Temporary> | undefined>;
 
   override update(
     data: TableResult.UpdateData | undefined,
@@ -151,12 +153,12 @@ declare abstract class BaseTableResult<
   override getFlag<Scope extends TableResult.Flags.Scope, Key extends TableResult.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): Document.GetFlag<TableResult.Name, Scope, Key>;
+  ): TableResult.Flags.Get<Scope, Key>;
 
   override setFlag<
     Scope extends TableResult.Flags.Scope,
     Key extends TableResult.Flags.Key<Scope>,
-    Value extends Document.GetFlag<TableResult.Name, Scope, Key>,
+    Value extends TableResult.Flags.Get<Scope, Key>,
   >(scope: Scope, key: Key, value: Value): Promise<this>;
 
   override unsetFlag<Scope extends TableResult.Flags.Scope, Key extends TableResult.Flags.Key<Scope>>(
@@ -318,7 +320,7 @@ declare namespace BaseTableResult {
   export import Hierarchy = TableResult.Hierarchy;
   export import Metadata = TableResult.Metadata;
   export import SubType = TableResult.SubType;
-  export import ConfiguredSubTypes = TableResult.ConfiguredSubTypes;
+  export import ConfiguredSubType = TableResult.ConfiguredSubType;
   export import Known = TableResult.Known;
   export import OfType = TableResult.OfType;
   export import Parent = TableResult.Parent;
@@ -336,7 +338,8 @@ declare namespace BaseTableResult {
   export import InitializedData = TableResult.InitializedData;
   export import UpdateData = TableResult.UpdateData;
   export import Schema = TableResult.Schema;
-  export import DatabaseOperation = TableResult.Database;
+  export import Database = TableResult.Database;
+  export import TemporaryIf = TableResult.TemporaryIf;
   export import Flags = TableResult.Flags;
 
   namespace Internal {

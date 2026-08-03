@@ -14,6 +14,7 @@ import type {
   SplitString,
   ValueOf,
   AnyMutableObject,
+  ConcreteKeys,
 } from "#utils";
 import type { DataModel } from "../abstract/data.mts";
 import type Document from "../abstract/document.mts";
@@ -421,7 +422,7 @@ declare abstract class DataField<
    * @param delta  - The change delta.
    * @param model  - The model instance.
    * @param change - The original change data.
-   * @returns - The updated value.
+   * @returns The updated value.
    *
    * @remarks Returns `value + delta`. `model` and `change` are unused in `DataField`
    */
@@ -472,7 +473,7 @@ declare abstract class DataField<
    * @param delta - The change delta.
    * @param model - The model instance.
    * @param change - The original change data.
-   * @returns - The updated value.
+   * @returns The updated value.
    *
    * @remarks No-op in `DataField`, returns `undefined` unless overridden
    */
@@ -506,7 +507,7 @@ declare abstract class DataField<
    * @param delta - The change delta.
    * @param model - The model instance.
    * @param change - The original change data.
-   * @returns - The updated value.
+   * @returns The updated value.
    * @remarks Only returns a value if the target value of the change actually changed
    */
   protected _applyChangeCustom(
@@ -536,17 +537,14 @@ declare namespace DataField {
   }
 
   /**
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
-  type AssignmentTypeFor<ConcreteDataField extends Any> =
-    ConcreteDataField extends DataField<any, infer AssignmentType, any, any> ? AssignmentType : never;
+  type AssignmentTypeFor<ConcreteDataField extends Any> = ConcreteDataField[" __fvtt_types_internal_assignment_data"];
 
-  type InitializedTypeFor<ConcreteDataField extends Any> =
-    ConcreteDataField extends DataField<any, any, infer InitializedType, any> ? InitializedType : never;
+  type InitializedTypeFor<ConcreteDataField extends Any> = ConcreteDataField[" __fvtt_types_internal_initialized_data"];
 
-  type PersistedTypeFor<ConcreteDataField extends Any> =
-    ConcreteDataField extends DataField<any, any, any, infer PersistedType> ? PersistedType : never;
+  type PersistedTypeFor<ConcreteDataField extends Any> = ConcreteDataField[" __fvtt_types_internal_source_data"];
 
   /** The type of the default options for the {@linkcode DataField} class. */
   interface DefaultOptions {
@@ -644,21 +642,22 @@ declare namespace DataField {
    * @template BaseAssignmentType - the base assignment type of the DataField, without null or undefined
    * @template Options            - the options of the DataField
    *
-   * @deprecated - This type is being phased out alongside the entirety of the concept of the
+   * @deprecated This type is being phased out alongside the entirety of the concept of the
    * `Assignment` type.
    */
   type DerivedAssignmentType<BaseAssignmentType, Options extends DataField.Options.Any> =
     | Exclude<BaseAssignmentType, null | undefined> // Always include the base type
     | (Options["nullable"] extends true // determine whether null is in the union
-        ? // when nullable, null is always allowed
-          null
+        ? // when nullable, both `null` and `undefined` can safely be passed
+          null | undefined
         : never)
     | (Options["required"] extends true // determine whether undefined is in the union
         ? never
-        : // when not required, undefined can safely be passed
-          undefined)
+        : // when not required, both `null` and `undefined` can safely be passed
+          null | undefined)
     | ("initial" extends keyof Options
-        ? _Has<Options["initial"], null | undefined> extends true
+        ? // TODO(LukeAbby): This should possibly actually be distributive.
+          Options["initial"] extends undefined
           ? never
           : null | undefined // when initial is not `undefined` then `null | undefined` are valid.
         : never);
@@ -673,14 +672,25 @@ declare namespace DataField {
    */
   type DerivedInitializedType<BaseInitializedType, Options extends DataField.Options.Any> =
     | Exclude<BaseInitializedType, null | undefined>
-    | (Options["nullable"] extends true ? null : never)
-    | (Options["required"] extends true ? never : undefined);
+    | _DerivedUndefined<GetKey<Options, "initial", undefined>, GetKey<Options, "required", undefined>>
+    | (Options["nullable"] extends true ? null : never);
+
+  /** @internal */
+  type _DerivedUndefined<Initial, Required extends boolean | undefined> = Required extends true
+    ? never // If `required: true` then `undefined` is not possible.
+    : Initial extends undefined
+      ? undefined // If `required: false` and `initial: undefined` then it passes through.
+      : Initial extends (...args: never) => infer Result
+        ? Result extends undefined
+          ? undefined // Passes through `undefined` if the function returns `undefined`. Should this match the case of `() => unknown`?
+          : never
+        : never;
 
   /**
    * A shorthand for the assignment type of a DataField class.
    * @template Options - the options overriding the defaults
    *
-   * @deprecated - AssignmentData is being phased out. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentData is being phased out. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
@@ -881,15 +891,12 @@ declare abstract class AnyDataField extends DataField<any, any, any, any> {
  * - PersistedType: `SchemaField.PersistedType<Fields>`
  */
 declare class SchemaField<
-    Fields extends DataSchema,
-    Options extends SchemaField.Options<Fields> = SchemaField.DefaultOptions,
+    const Fields extends DataSchema,
+    const Options extends SchemaField.Options<Fields> = SchemaField.DefaultOptions,
     // eslint-disable-next-line @typescript-eslint/no-deprecated
-    AssignmentType = SchemaField.Internal.AssignmentType<Fields, SimpleMerge<Options, SchemaField.DefaultOptions>>,
-    InitializedType = SchemaField.Internal.InitializedType<Fields, SimpleMerge<Options, SchemaField.DefaultOptions>>,
-    PersistedType extends AnyObject | null | undefined = SchemaField.Internal.PersistedType<
-      Fields,
-      SimpleMerge<Options, SchemaField.DefaultOptions>
-    >,
+    const AssignmentType = SchemaField.Internal.AssignmentType<Fields, Options>,
+    const InitializedType = SchemaField.Internal.InitializedType<Fields, Options>,
+    const PersistedType extends AnyObject | null | undefined = SchemaField.Internal.PersistedType<Fields, Options>,
   >
   extends DataField<Options, AssignmentType, InitializedType, PersistedType>
   implements DataField.Internal.NestedFieldImplementation
@@ -1087,7 +1094,8 @@ declare namespace SchemaField {
    */
   type AssignmentData<Fields extends DataSchema> = PrettifyType<
     RemoveIndexSignatures<{
-      [Key in keyof Fields]?: Fields[Key][" __fvtt_types_internal_assignment_data"];
+      // Note(LukeAbby): Simply stripping off `readonly` may eventually need to be revisited.
+      -readonly [Key in keyof Fields]?: Fields[Key][" __fvtt_types_internal_assignment_data"];
     }>
   >;
 
@@ -1095,10 +1103,24 @@ declare namespace SchemaField {
    * The required type of data used when updating a document.
    * @template Fields - the DataSchema fields of the SchemaField
    */
-  // Note(LukeAbby): Currently this is identical to `AssignmentData` but the intent is to make it
+  // Note(LukeAbby): Currently this is too close to `AssignmentData` but the intent is to make it
   // more accurate in the future.
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  type UpdateData<Fields extends DataSchema> = AssignmentData<Fields>;
+  type UpdateData<Fields extends DataSchema> = _AddUpdateKeys<
+    RemoveIndexSignatures<{
+      -readonly [Key in keyof Fields]?: Fields[Key][" __fvtt_types_internal_assignment_data"];
+    }>
+  >;
+
+  /** @internal */
+  type _AddUpdateKeys<T> = PrettifyType<
+    T & {
+      [K in keyof T as K extends string ? (T[K] extends undefined ? `-=${K}` : never) : never]?: null;
+    } & {
+      // Note(LukeAbby): There's more work to be done here. For example `type` and `==system` must
+      // go together. This will be added once a performant validator type is created.
+      [K in keyof T as K extends string ? `==${K}` : never]?: T[K];
+    }
+  >;
 
   /**
    * Gets the initialized version of a schema. This means a
@@ -1106,7 +1128,7 @@ declare namespace SchemaField {
    */
   type InitializedData<Fields extends DataSchema> = PrettifyType<
     RemoveIndexSignatures<{
-      [Key in keyof Fields]: Fields[Key][" __fvtt_types_internal_initialized_data"];
+      -readonly [Key in keyof Fields]: Fields[Key][" __fvtt_types_internal_initialized_data"];
     }>
   >;
 
@@ -1116,13 +1138,13 @@ declare namespace SchemaField {
    */
   type SourceData<Fields extends DataSchema> = PrettifyType<
     RemoveIndexSignatures<{
-      [Key in keyof Fields]: Fields[Key][" __fvtt_types_internal_source_data"];
+      -readonly [Key in keyof Fields]: Fields[Key][" __fvtt_types_internal_source_data"];
     }>
   >;
 
   type UpdateSourceData<Fields extends DataSchema> = PrettifyType<
     RemoveIndexSignatures<{
-      [Key in keyof Fields]: Fields[Key][" __fvtt_types_internal_initialized_data"];
+      -readonly [Key in keyof Fields]: Fields[Key][" __fvtt_types_internal_initialized_data"];
     }>
   >;
 
@@ -1141,6 +1163,15 @@ declare namespace SchemaField {
    * @template Opts   - the options that override the default options
    */
   type MergedOptions<Fields extends DataSchema, Opts extends Options<Fields>> = SimpleMerge<DefaultOptions, Opts>;
+
+  /**
+   * @internal
+   */
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  type _EffectiveOptions<AssignmentData, Opts extends Options<any>> = [AssignmentData] extends [{}]
+    ? // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+      SimpleMerge<Opts, { initial: {} }> // If all fields are optional then the initial of `{}` is valid.
+    : Opts;
 
   // These exist for calculating the type of schema field with options.
   // This will be deleted once fields are refactored.
@@ -1165,7 +1196,12 @@ declare namespace SchemaField {
       Fields extends DataSchema,
       Opts extends Options<Fields> = DefaultOptions,
       // eslint-disable-next-line @typescript-eslint/no-deprecated
-    > = DataField.DerivedAssignmentType<AssignmentData<Fields>, MergedOptions<Fields, Opts>>;
+    > = DataField.DerivedAssignmentType<
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
+      AssignmentData<Fields>,
+      // eslint-disable-next-line @typescript-eslint/no-deprecated
+      _EffectiveOptions<NonNullable<AssignmentData<Fields>>, MergedOptions<Fields, Opts>>
+    >;
 
     /**
      * A shorthand for the assignment type of a SchemaField class.
@@ -1294,10 +1330,10 @@ declare namespace SchemaField {
 declare class BooleanField<
   const Options extends BooleanField.Options = BooleanField.DefaultOptions,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  const AssignmentType = BooleanField.AssignmentType<SimpleMerge<Options, BooleanField.DefaultOptions>>,
-  const InitializedType = BooleanField.InitializedType<SimpleMerge<Options, BooleanField.DefaultOptions>>,
+  const AssignmentType = BooleanField.AssignmentType<SimpleMerge<BooleanField.DefaultOptions, Options>>,
+  const InitializedType = BooleanField.InitializedType<SimpleMerge<BooleanField.DefaultOptions, Options>>,
   const PersistedType extends boolean | null | undefined = BooleanField.InitializedType<
-    SimpleMerge<Options, BooleanField.DefaultOptions>
+    SimpleMerge<BooleanField.DefaultOptions, Options>
   >,
 > extends DataField<Options, AssignmentType, InitializedType, PersistedType> {
   /** @defaultValue `true` */
@@ -1378,7 +1414,7 @@ declare namespace BooleanField {
    * A shorthand for the assignment type of a BooleanField class.
    * @template Opts - the options that override the default options
    *
-   * @deprecated - AssignmentData is being phased out. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentData is being phased out. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
@@ -1611,7 +1647,7 @@ declare namespace NumberField {
    * A shorthand for the assignment type of a NumberField class.
    * @template Options - the options that override the default options
    *
-   * @deprecated - AssignmentData is being phased out. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentData is being phased out. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
@@ -1828,37 +1864,44 @@ declare namespace StringField {
    * A helper type for the given options type merged into the default options of the StringField class.
    * @template Options - the options that override the default options
    */
-  type MergedOptions<Options extends StringField.Options<unknown>> = SimpleMerge<
-    _OptionsForInitial<_OptionsForChoices<Options["choices"]>>,
-    Options
+  type MergedOptions<Options extends StringField.Options<unknown>> = SimpleMerge<DefaultOptions, Options>;
+
+  /** @internal */
+  type _EffectiveOptions<Options extends StringField.Options<unknown>> = _OptionsForInitial<
+    SimpleMerge<_OptionsForChoices<Options["choices"]>, MergedOptions<Options>>
   >;
 
+  /** @internal */
   type _OptionsForChoices<Choices extends StringField.Options["choices"]> = undefined extends Choices
     ? DefaultOptions
     : DefaultOptionsWhenChoicesProvided;
 
-  // FIXME: `"initial" extends keyof Options` does not work for modeling `"initial" in options`.
-  type _OptionsForInitial<Options extends StringField.Options<unknown>> = "initial" extends keyof Options
-    ? Options
-    : // eslint-disable-next-line @typescript-eslint/no-deprecated
-      SimpleMerge<Options, { initial: _InitialForOptions<Options> }>;
+  /** @internal */
+  type _OptionsForInitial<Options extends StringField.Options<unknown>> = Options["initial"] extends undefined
+    ? SimpleMerge<
+        Options,
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        { initial: _InitialForOptions<Options> }
+      >
+    : Options;
 
   /**
-   * @deprecated - Foundry no longer directly modifies the options for `initial`, it uses `getInitialValue` for this purpose instead.
+   * @deprecated Foundry no longer directly modifies the options for `initial`, it uses `getInitialValue` for this purpose instead.
    * @internal
    */
-  type _InitialForOptions<Options extends StringField.Options<unknown>> = Options["required"] extends false | undefined
-    ? undefined
-    : Options["blank"] extends true
-      ? string
-      : Options["nullable"] extends true
-        ? null
-        : undefined;
+  type _InitialForOptions<Options extends StringField.Options<unknown>> = [
+    Options["blank"],
+    Options["required"],
+  ] extends [true, true]
+    ? ""
+    : undefined;
 
   type ValidChoice<Options extends StringField.Options<unknown>> = _ValidChoice<Options["choices"]>;
 
   /** @internal */
   type _ValidChoice<Choices> = Choices extends (...args: infer _1) => infer C ? FixedChoice<C> : FixedChoice<Choices>;
+
+  type _ApplyBlank<Choices, Result> = Choices extends { readonly blank: true } ? Result | "" : Result;
 
   type FixedChoice<Choices> =
     Choices extends ReadonlyArray<infer U>
@@ -1871,23 +1914,26 @@ declare namespace StringField {
    * A shorthand for the assignment type of a StringField class.
    * @template Options - the options that override the default options
    *
-   * @deprecated - AssignmentData is being phased out. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentData is being phased out. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  type AssignmentType<Options extends StringField.Options<unknown>> = DataField.DerivedAssignmentType<
-    ValidChoice<Options>,
-    MergedOptions<Options>
+  type AssignmentType<Options extends StringField.Options<unknown>> = _ApplyBlank<
+    Options,
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    DataField.DerivedAssignmentType<ValidChoice<Options>, _EffectiveOptions<Options>>
   >;
 
   /**
    * A shorthand for the initialized type of a StringField class.
    * @template Options - the options that override the default options
    */
-  type InitializedType<Options extends StringField.Options<unknown>> = DataField.DerivedInitializedType<
-    // TODO(LukeAbby): This is a workaround for how `ValidChoice` is defined ignorant of the `StringField`/`NumberField` divide.
-    ValidChoice<Options> & (string | null | undefined),
-    MergedOptions<Options>
+  type InitializedType<Options extends StringField.Options<unknown>> = _ApplyBlank<
+    Options,
+    DataField.DerivedInitializedType<
+      // TODO(LukeAbby): This is a workaround for how `ValidChoice` is defined ignorant of the `StringField`/`NumberField` divide.
+      ValidChoice<Options> & (string | null | undefined),
+      _EffectiveOptions<Options>
+    >
   >;
 
   type BaseChoices =
@@ -2003,7 +2049,7 @@ declare namespace ObjectField {
    * A shorthand for the assignment type of a ObjectField class.
    * @template Options - the options that override the default options
    *
-   * @deprecated - AssignmentData is being phased out. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentData is being phased out. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
@@ -2140,7 +2186,7 @@ declare namespace TypedObjectField {
    * A shorthand for the assignment type of a ObjectField class.
    * @template Options - the options that override the default options
    *
-   * @deprecated - AssignmentData is being phased out. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentData is being phased out. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   type AssignmentType<
@@ -2422,10 +2468,19 @@ declare namespace ArrayField {
   type MergedOptions<Opts extends AnyOptions> = SimpleMerge<DefaultOptions, Opts>;
 
   /**
+   * @internal
+   */
+  type _EffectiveOptions<Options extends AnyOptions> = Options["initial"] extends undefined
+    ? Options["min"] extends 0
+      ? SimpleMerge<Options, { initial: [] }>
+      : Options // If `min` is set to anything but `0` the effective `initial` of `[]` is invalid.
+    : Options;
+
+  /**
    * A type to infer the assignment element type of an ArrayField from its ElementFieldType.
    * @template ElementFieldType - the DataField type of the elements in the ArrayField
    *
-   * @deprecated - AssignmentData is being phased out. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentData is being phased out. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   type AssignmentElementType<ElementFieldType extends DataField.Any | Document.AnyConstructor> =
@@ -2462,13 +2517,13 @@ declare namespace ArrayField {
    * @template AssignmentElementType - the assignment type of the elements of the ArrayField
    * @template Opts                  - the options that override the default options
    *
-   * @deprecated - AssignmentData is being phased out. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentData is being phased out. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   type AssignmentType<AssignmentElementType, Opts extends AnyOptions> = DataField.DerivedAssignmentType<
     BaseAssignmentType<AssignmentElementType>,
-    MergedOptions<Opts>
+    ArrayField._EffectiveOptions<MergedOptions<Opts>>
   >;
 
   /**
@@ -2479,7 +2534,7 @@ declare namespace ArrayField {
    */
   type InitializedType<InitializedElementType, Opts extends AnyOptions> = DataField.DerivedInitializedType<
     InitializedElementType[],
-    MergedOptions<Opts>
+    ArrayField._EffectiveOptions<MergedOptions<Opts>>
   >;
 
   /**
@@ -2490,7 +2545,7 @@ declare namespace ArrayField {
    */
   type PersistedType<PersistedElementType, Opts extends AnyOptions> = DataField.DerivedInitializedType<
     PersistedElementType[],
-    MergedOptions<Opts>
+    ArrayField._EffectiveOptions<MergedOptions<Opts>>
   >;
 }
 
@@ -2513,16 +2568,16 @@ declare namespace ArrayField {
  * - InitialValue: `new Set()`
  */
 declare class SetField<
-  ElementFieldType extends DataField.Any,
-  Options extends SetField.AnyOptions = SetField.DefaultOptions,
+  const ElementFieldType extends DataField.Any,
+  const Options extends SetField.AnyOptions = SetField.DefaultOptions,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  AssignmentElementType = ArrayField.AssignmentElementType<ElementFieldType>,
-  InitializedElementType = ArrayField.InitializedElementType<ElementFieldType>,
+  const AssignmentElementType = ArrayField.AssignmentElementType<ElementFieldType>,
+  const InitializedElementType = ArrayField.InitializedElementType<ElementFieldType>,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  AssignmentType = SetField.AssignmentType<AssignmentElementType, Options>,
-  InitializedType = SetField.InitializedType<InitializedElementType, Options>,
-  PersistedElementType = ArrayField.PersistedElementType<ElementFieldType>,
-  PersistedType extends PersistedElementType[] | null | undefined = SetField.PersistedType<
+  const AssignmentType = SetField.AssignmentType<AssignmentElementType, Options>,
+  const InitializedType = SetField.InitializedType<InitializedElementType, Options>,
+  const PersistedElementType = ArrayField.PersistedElementType<ElementFieldType>,
+  const PersistedType extends PersistedElementType[] | null | undefined = SetField.PersistedType<
     PersistedElementType,
     Options
   >,
@@ -2590,7 +2645,7 @@ declare namespace SetField {
    * The base assignment type for the {@linkcode SetField} class.
    * @template AssignmentElementType - the assignment type of the elements in the array
    *
-   * @deprecated - Assignment type is being deprecated.
+   * @deprecated Assignment type is being deprecated.
    */
   type BaseAssignmentType<AssignmentElementType> = ArrayField.BaseAssignmentType<AssignmentElementType>;
 
@@ -2611,14 +2666,14 @@ declare namespace SetField {
    * @template AssignmentElementType - the assignment type of the elements of the SetField
    * @template Opts                  - the options that override the default options
    *
-   * @deprecated - AssignmentData is being phased out. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentData is being phased out. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   type AssignmentType<AssignmentElementType, Opts extends AnyOptions> = DataField.DerivedAssignmentType<
     // eslint-disable-next-line @typescript-eslint/no-deprecated
     BaseAssignmentType<AssignmentElementType>,
-    MergedOptions<Opts>
+    ArrayField._EffectiveOptions<MergedOptions<Opts>>
   >;
 
   /**
@@ -2629,7 +2684,7 @@ declare namespace SetField {
    */
   type InitializedType<InitializedElementType, Opts extends AnyOptions> = DataField.DerivedInitializedType<
     Set<InitializedElementType>,
-    MergedOptions<Opts>
+    ArrayField._EffectiveOptions<MergedOptions<Opts>>
   >;
 
   /**
@@ -2640,7 +2695,7 @@ declare namespace SetField {
    */
   type PersistedType<PersistedElementType, Opts extends AnyOptions> = DataField.DerivedInitializedType<
     PersistedElementType[],
-    MergedOptions<Opts>
+    ArrayField._EffectiveOptions<MergedOptions<Opts>>
   >;
 
   type ToInputConfig<ElementFieldType extends DataField.Any, InitializedType> = ElementFieldType extends {
@@ -2745,18 +2800,14 @@ declare namespace EmbeddedDataField {
    * @template ModelType - the DataModel for the embedded data
    * @template Opts      - the options that override the default options
    *
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   type AssignmentType<
     ModelType extends DataModel.AnyConstructor,
     Opts extends Options<ModelType>,
     // eslint-disable-next-line @typescript-eslint/no-deprecated
-  > = DataField.DerivedAssignmentType<
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    SchemaField.AssignmentData<DataModel.SchemaOfClass<ModelType>>,
-    MergedOptions<ModelType, Opts>
-  >;
+  > = SchemaField.Internal.AssignmentType<DataModel.SchemaOfClass<ModelType>, MergedOptions<ModelType, Opts>>;
 
   /**
    * A shorthand for the initialized type of an EmbeddedDataField class.
@@ -2802,24 +2853,24 @@ declare namespace EmbeddedDataField {
  * - InitialValue: `[]`
  */
 declare class EmbeddedCollectionField<
-  ElementFieldType extends Document.AnyConstructor,
+  const ElementFieldType extends Document.AnyConstructor,
   // TODO(LukeAbby): See if `ParentDataModel` can be made redundant by automatically inferring.
-  ParentDataModel extends Document.Any,
-  Options extends EmbeddedCollectionField.Options<any> = EmbeddedCollectionField.DefaultOptions,
+  const ParentDataModel extends Document.Any,
+  const Options extends EmbeddedCollectionField.Options<any> = EmbeddedCollectionField.DefaultOptions,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  AssignmentElementType = EmbeddedCollectionField.AssignmentElementType<ElementFieldType>,
-  InitializedElementType extends
+  const AssignmentElementType = EmbeddedCollectionField.AssignmentElementType<ElementFieldType>,
+  const InitializedElementType extends
     Document.Internal.Instance.Any = EmbeddedCollectionField.InitializedElementType<ElementFieldType>,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  AssignmentType = EmbeddedCollectionField.AssignmentType<AssignmentElementType, Options>,
-  InitializedType = EmbeddedCollectionField.InitializedType<
+  const AssignmentType = EmbeddedCollectionField.AssignmentType<AssignmentElementType, Options>,
+  const InitializedType = EmbeddedCollectionField.InitializedType<
     AssignmentElementType,
     InitializedElementType,
     ParentDataModel,
     Options
   >,
-  PersistedElementType = EmbeddedCollectionField.PersistedElementType<ElementFieldType>,
-  PersistedType extends PersistedElementType[] | null | undefined = EmbeddedCollectionField.PersistedType<
+  const PersistedElementType = EmbeddedCollectionField.PersistedElementType<ElementFieldType>,
+  const PersistedType extends PersistedElementType[] | null | undefined = EmbeddedCollectionField.PersistedType<
     AssignmentElementType,
     PersistedElementType,
     Options
@@ -2963,7 +3014,7 @@ declare namespace EmbeddedCollectionField {
    * A type to infer the assignment element type of an EmbeddedCollectionField from its ElementFieldType.
    * @template ElementFieldType - the DataField type of the elements in the EmbeddedCollectionField
    *
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   // Note(LukeAbby): For some reason checking `extends Document` causes issues where this doesn't.
@@ -2996,17 +3047,14 @@ declare namespace EmbeddedCollectionField {
    * @template AssignmentElementType - the assignment type of the elements of the EmbeddedCollectionField
    * @template Opts                  - the options that override the default options
    *
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   type AssignmentType<
     AssignmentElementType,
     Opts extends Options<AssignmentElementType>,
     // eslint-disable-next-line @typescript-eslint/no-deprecated
-  > = DataField.DerivedAssignmentType<
-    ArrayField.BaseAssignmentType<AssignmentElementType>,
-    MergedOptions<AssignmentElementType, Opts>
-  >;
+  > = ArrayField.AssignmentType<AssignmentElementType, MergedOptions<AssignmentElementType, Opts>>;
 
   /**
    * A shorthand for the initialized type of an ArrayField class.
@@ -3056,23 +3104,23 @@ declare namespace EmbeddedCollectionField {
  * - InitialValue: `[]`
  */
 declare class EmbeddedCollectionDeltaField<
-  ElementFieldType extends Document.AnyConstructor,
-  ParentDataModel extends Document.Any,
-  Options extends EmbeddedCollectionDeltaField.Options<any> = EmbeddedCollectionDeltaField.DefaultOptions,
+  const ElementFieldType extends Document.AnyConstructor,
+  const ParentDataModel extends Document.Any,
+  const Options extends EmbeddedCollectionDeltaField.Options<any> = EmbeddedCollectionDeltaField.DefaultOptions,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  AssignmentElementType = EmbeddedCollectionDeltaField.AssignmentElementType<ElementFieldType>,
-  InitializedElementType extends
+  const AssignmentElementType = EmbeddedCollectionDeltaField.AssignmentElementType<ElementFieldType>,
+  const InitializedElementType extends
     Document.Internal.Instance.Any = EmbeddedCollectionDeltaField.InitializedElementType<ElementFieldType>,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  AssignmentType = EmbeddedCollectionDeltaField.AssignmentType<AssignmentElementType, Options>,
-  InitializedType = EmbeddedCollectionDeltaField.InitializedType<
+  const AssignmentType = EmbeddedCollectionDeltaField.AssignmentType<AssignmentElementType, Options>,
+  const InitializedType = EmbeddedCollectionDeltaField.InitializedType<
     AssignmentElementType,
     InitializedElementType,
     ParentDataModel,
     Options
   >,
-  PersistedElementType = EmbeddedCollectionDeltaField.PersistedElementType<ElementFieldType>,
-  PersistedType extends PersistedElementType[] | null | undefined = EmbeddedCollectionDeltaField.PersistedType<
+  const PersistedElementType = EmbeddedCollectionDeltaField.PersistedElementType<ElementFieldType>,
+  const PersistedType extends PersistedElementType[] | null | undefined = EmbeddedCollectionDeltaField.PersistedType<
     AssignmentElementType,
     PersistedElementType,
     Options
@@ -3131,7 +3179,7 @@ declare namespace EmbeddedCollectionDeltaField {
    * A type to infer the assignment element type of an EmbeddedCollectionDeltaField from its ElementFieldType.
    * @template ElementFieldType - the DataField type of the elements in the EmbeddedCollectionDeltaField
    *
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   type AssignmentElementType<ElementFieldType extends Document.AnyConstructor> = ElementFieldType extends abstract new (
@@ -3163,14 +3211,14 @@ declare namespace EmbeddedCollectionDeltaField {
    * @template AssignmentElementType - the assignment type of the elements of the EmbeddedCollectionDeltaField
    * @template Opts                  - the options that override the default options
    *
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   type AssignmentType<
     AssignmentElementType,
     Opts extends Options<AssignmentElementType>,
     // eslint-disable-next-line @typescript-eslint/no-deprecated
-  > = DataField.DerivedAssignmentType<
+  > = ArrayField.AssignmentType<
     ArrayField.BaseAssignmentType<AssignmentElementType>,
     MergedOptions<AssignmentElementType, Opts>
   >;
@@ -3289,7 +3337,7 @@ declare namespace EmbeddedDocumentField {
    * @template DocumentType - the type of the embedded Document
    * @template Opts         - the options that override the default options
    *
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   type AssignmentType<
@@ -3341,11 +3389,11 @@ declare namespace EmbeddedDocumentField {
  * - InitialValue: `null`
  */
 declare class DocumentIdField<
-  Options extends DocumentIdField.Options = DocumentIdField.DefaultOptions,
+  const Options extends DocumentIdField.Options = DocumentIdField.DefaultOptions,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  AssignmentType = DocumentIdField.AssignmentType<Options>,
-  InitializedType = DocumentIdField.InitializedType<Options>,
-  PersistedType extends string | null | undefined = DocumentIdField.InitializedType<Options>,
+  const AssignmentType = DocumentIdField.AssignmentType<Options>,
+  const InitializedType = DocumentIdField.InitializedType<Options>,
+  const PersistedType extends string | null | undefined = DocumentIdField.InitializedType<Options>,
 > extends StringField<Options, AssignmentType, InitializedType, PersistedType> {
   /** @defaultValue `true` */
   override required: boolean;
@@ -3400,7 +3448,7 @@ declare namespace DocumentIdField {
    * A shorthand for the assignment type of a StringField class.
    * @template Options - the options that override the default options
    *
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
@@ -3534,12 +3582,12 @@ declare namespace DocumentUUIDField {
  * - InitialValue: `null`
  */
 declare class ForeignDocumentField<
-  DocumentType extends Document.AnyConstructor,
-  Options extends ForeignDocumentField.Options = ForeignDocumentField.DefaultOptions,
+  const DocumentType extends Document.AnyConstructor,
+  const Options extends ForeignDocumentField.Options = ForeignDocumentField.DefaultOptions,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  AssignmentType = ForeignDocumentField.AssignmentType<DocumentType, Options>,
-  InitializedType = ForeignDocumentField.InitializedType<DocumentType, Options>,
-  PersistedType extends string | null | undefined = ForeignDocumentField.PersistedType<Options>,
+  const AssignmentType = ForeignDocumentField.AssignmentType<DocumentType, Options>,
+  const InitializedType = ForeignDocumentField.InitializedType<DocumentType, Options>,
+  const PersistedType extends string | null | undefined = ForeignDocumentField.PersistedType<Options>,
 > extends DocumentIdField<Options, AssignmentType, InitializedType, PersistedType> {
   /**
    * @param model   - The foreign DataModel class definition which this field should link to.
@@ -3607,14 +3655,18 @@ declare namespace ForeignDocumentField {
    * A shorthand for the assignment type of a ForeignDocumentField class.
    * @template Opts - the options that override the default options
    *
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   type AssignmentType<
     ConcreteDocument extends Document.AnyConstructor,
     Opts extends Options,
     // eslint-disable-next-line @typescript-eslint/no-deprecated
-  > = DataField.DerivedAssignmentType<string | Document.ToConfiguredInstance<ConcreteDocument>, MergedOptions<Opts>>;
+  > = DataField.DerivedAssignmentType<
+    // TODO(LukeAbby): This should require a document uuid.
+    string | Document.StoredForName<ConcreteDocument["documentName"]>,
+    MergedOptions<Opts>
+  >;
 
   /**
    * A shorthand for the initialized type of a ForeignDocumentField class.
@@ -3624,7 +3676,7 @@ declare namespace ForeignDocumentField {
     ConcreteDocument extends Document.AnyConstructor,
     Opts extends Options,
   > = DataField.DerivedInitializedType<
-    Opts["idOnly"] extends true ? string : Document.ToConfiguredInstance<ConcreteDocument>,
+    Opts["idOnly"] extends true ? string : Document.StoredForName<ConcreteDocument["documentName"]>,
     MergedOptions<Opts>
   >;
 
@@ -3649,11 +3701,11 @@ declare namespace ForeignDocumentField {
  * - InitialValue: `null`
  */
 declare class ColorField<
-  Options extends StringField.Options = ColorField.DefaultOptions,
+  const Options extends StringField.Options = ColorField.DefaultOptions,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  AssignmentType = ColorField.AssignmentType<Options>,
-  InitializedType = ColorField.InitializedType<Options>,
-  PersistedType extends string | null | undefined = ColorField.PersistedType<Options>,
+  const AssignmentType = ColorField.AssignmentType<Options>,
+  const InitializedType = ColorField.InitializedType<Options>,
+  const PersistedType extends string | null | undefined = ColorField.PersistedType<Options>,
 > extends StringField<Options, AssignmentType, InitializedType, PersistedType> {
   /** @defaultValue `true` */
   override nullable: boolean;
@@ -3713,7 +3765,7 @@ declare namespace ColorField {
    * A shorthand for the assignment type of a ColorField class.
    * @template Options - the options that override the default options
    *
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
@@ -3755,11 +3807,11 @@ declare namespace ColorField {
  * - InitialValue: `null`
  */
 declare class FilePathField<
-  Options extends FilePathField.Options = FilePathField.DefaultOptions,
+  const Options extends FilePathField.Options = FilePathField.DefaultOptions,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  AssignmentType = FilePathField.AssignmentType<Options>,
-  InitializedType = FilePathField.InitializedType<Options>,
-  PersistedType extends string | null | undefined = FilePathField.InitializedType<Options>,
+  const AssignmentType = FilePathField.AssignmentType<Options>,
+  const InitializedType = FilePathField.InitializedType<Options>,
+  const PersistedType extends string | null | undefined = FilePathField.InitializedType<Options>,
 > extends StringField<Options, AssignmentType, InitializedType, PersistedType> {
   /**
    * @param options - Options which configure the behavior of the field
@@ -3856,7 +3908,7 @@ declare namespace FilePathField {
    * A shorthand for the assignment type of a FilePathField class.
    * @template Options - the options that override the default options
    *
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
@@ -3889,11 +3941,11 @@ declare namespace FilePathField {
  * - InitialValue: `0`
  */
 declare class AngleField<
-  Options extends AngleField.Options = AngleField.DefaultOptions,
+  const Options extends AngleField.Options = AngleField.DefaultOptions,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  AssignmentType = AngleField.AssignmentType<Options>,
-  InitializedType = AngleField.InitializedType<Options>,
-  PersistedType extends number | null | undefined = AngleField.InitializedType<Options>,
+  const AssignmentType = AngleField.AssignmentType<Options>,
+  const InitializedType = AngleField.InitializedType<Options>,
+  const PersistedType extends number | null | undefined = AngleField.InitializedType<Options>,
 > extends NumberField<Options, AssignmentType, InitializedType, PersistedType> {
   /**
    * @param options - Options which configure the behavior of the field
@@ -3970,7 +4022,7 @@ declare namespace AngleField {
    * A shorthand for the assignment type of a AngleField class.
    * @template Options - the options that override the default options
    *
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
@@ -4003,11 +4055,11 @@ declare namespace AngleField {
  * - InitialValue: `1`
  */
 declare class AlphaField<
-  Options extends NumberField.Options = AlphaField.DefaultOptions,
+  const Options extends NumberField.Options = AlphaField.DefaultOptions,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  AssignmentType = AlphaField.AssignmentType<Options>,
-  InitializedType = AlphaField.InitializedType<Options>,
-  PersistedType extends number | null | undefined = AlphaField.InitializedType<Options>,
+  const AssignmentType = AlphaField.AssignmentType<Options>,
+  const InitializedType = AlphaField.InitializedType<Options>,
+  const PersistedType extends number | null | undefined = AlphaField.InitializedType<Options>,
 > extends NumberField<Options, AssignmentType, InitializedType, PersistedType> {
   /** @defaultValue `true` */
   override required: boolean;
@@ -4054,7 +4106,7 @@ declare namespace AlphaField {
    * A shorthand for the assignment type of a AlphaField class.
    * @template Options - the options that override the default options
    *
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
@@ -4112,24 +4164,21 @@ declare namespace HueField {
  * This can only be changed later by GM users.
  */
 declare class DocumentAuthorField<
-  DocumentType extends Document.AnyConstructor,
-  Options extends DocumentAuthorField.Options = DocumentAuthorField.DefaultOptions,
+  const DocumentType extends Document.AnyConstructor,
+  const Options extends DocumentAuthorField.Options = DocumentAuthorField.DefaultOptions,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  AssignmentType = ForeignDocumentField.AssignmentType<DocumentType, Options>,
-  InitializedType = ForeignDocumentField.InitializedType<DocumentType, Options>,
-  PersistedType extends string | null | undefined = ForeignDocumentField.PersistedType<Options>,
+  const AssignmentType = ForeignDocumentField.AssignmentType<DocumentType, Options>,
+  const InitializedType = ForeignDocumentField.InitializedType<DocumentType, Options>,
+  const PersistedType extends string | null | undefined = ForeignDocumentField.PersistedType<Options>,
 > extends ForeignDocumentField<DocumentType, Options, AssignmentType, InitializedType, PersistedType> {
-  /** @defaultValue `false` */
+  /** @defaultValue `true` */
   override nullable: boolean;
 
-  /** @defaultValue `true` */
-  override gmOnly: boolean;
+  /** @defaultValue `false` */
+  override readonly: boolean;
 
-  /** @defaultValue `"Author"` */
-  override label: string;
-
-  /** @defaultValue `() => game.user?.id` */
-  override initial: DataField.Options.InitialType<InitializedType>;
+  /** @defaultValue `false` */
+  override idOnly: boolean;
 
   static override get _defaults(): DocumentAuthorField.Options;
 }
@@ -4141,10 +4190,9 @@ declare namespace DocumentAuthorField {
   type DefaultOptions = SimpleMerge<
     ForeignDocumentField.DefaultOptions,
     {
-      nullable: false;
-      gmOnly: true;
-      label: "Author";
-      initial: () => string | undefined;
+      nullable: true;
+      readonly: false;
+      idOnly: false;
     }
   >;
 }
@@ -4163,11 +4211,11 @@ declare namespace DocumentAuthorField {
  * - InitialValue: `{ default: DOCUMENT_OWNERSHIP_LEVELS.NONE }`
  */
 declare class DocumentOwnershipField<
-  Options extends DocumentOwnershipField.Options = DocumentOwnershipField.DefaultOptions,
+  const Options extends DocumentOwnershipField.Options = DocumentOwnershipField.DefaultOptions,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  AssignmentType = DocumentOwnershipField.AssignmentType<Options>,
-  InitializedType = DocumentOwnershipField.InitializedType<Options>,
-  PersistedType extends
+  const AssignmentType = DocumentOwnershipField.AssignmentType<Options>,
+  const InitializedType = DocumentOwnershipField.InitializedType<Options>,
+  const PersistedType extends
     | Record<string, DOCUMENT_OWNERSHIP_LEVELS>
     | null
     | undefined = DocumentOwnershipField.InitializedType<Options>,
@@ -4214,7 +4262,7 @@ declare namespace DocumentOwnershipField {
    * A shorthand for the assignment type of a ObjectField class.
    * @template Opts - the options that override the default options
    *
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
@@ -4248,11 +4296,11 @@ declare namespace DocumentOwnershipField {
  */
 declare class JSONField<
   // TODO(LukeAbby): Due to the unconditional setting of `blank`, `trim`, and `choices` setting them is meaningless which basically means they're removed from the options.
-  Options extends StringField.Options = JSONField.DefaultOptions,
+  const Options extends StringField.Options = JSONField.DefaultOptions,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  AssignmentType = JSONField.AssignmentType<Options>,
-  InitializedType = JSONField.InitializedType<Options>,
-  PersistedType extends string | null | undefined = JSONField.PersistedType<Options>,
+  const AssignmentType = JSONField.AssignmentType<Options>,
+  const InitializedType = JSONField.InitializedType<Options>,
+  const PersistedType extends string | null | undefined = JSONField.PersistedType<Options>,
 > extends StringField<Options, AssignmentType, InitializedType, PersistedType> {
   // options: not null (unchecked `in` operation in super), context: not null (destructured in super)
   constructor(options?: Options, context?: DataField.ConstructionContext);
@@ -4337,7 +4385,7 @@ declare namespace JSONField {
    * A shorthand for the assignment type of a JSONField class.
    * @template Options - the options that override the default options
    *
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
@@ -4405,11 +4453,11 @@ declare class AnyField extends DataField<DataField.Options.Any, unknown, unknown
  * - InitialValue: `""`
  */
 declare class HTMLField<
-  Options extends StringField.Options = HTMLField.DefaultOptions,
+  const Options extends StringField.Options = HTMLField.DefaultOptions,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  AssignmentType = HTMLField.AssignmentType<Options>,
-  InitializedType = HTMLField.InitializedType<Options>,
-  PersistedType extends string | null | undefined = HTMLField.InitializedType<Options>,
+  const AssignmentType = HTMLField.AssignmentType<Options>,
+  const InitializedType = HTMLField.InitializedType<Options>,
+  const PersistedType extends string | null | undefined = HTMLField.InitializedType<Options>,
 > extends StringField<Options, AssignmentType, InitializedType, PersistedType> {
   /** @defaultValue `true` */
   override required: boolean;
@@ -4467,23 +4515,17 @@ declare namespace HTMLField {
    * A shorthand for the assignment type of a HTMLField class.
    * @template Options - the options that override the default options
    *
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  type AssignmentType<Options extends StringField.Options> = DataField.DerivedAssignmentType<
-    string,
-    MergedOptions<Options>
-  >;
+  type AssignmentType<Options extends StringField.Options> = StringField.AssignmentType<MergedOptions<Options>>;
 
   /**
    * A shorthand for the initialized type of a HTMLField class.
    * @template Options - the options that override the default options
    */
-  type InitializedType<Options extends StringField.Options> = DataField.DerivedInitializedType<
-    string,
-    MergedOptions<Options>
-  >;
+  type InitializedType<Options extends StringField.Options> = StringField.InitializedType<MergedOptions<Options>>;
 
   // `HTMLField#toFormGroup` provides a default by way of `groupConfig.stacked ??= true`.
   interface GroupConfig extends Omit<DataField.GroupConfig, "stacked"> {
@@ -4505,11 +4547,11 @@ declare namespace HTMLField {
  * - InitialValue: `0`
  */
 declare class IntegerSortField<
-  Options extends NumberField.Options = IntegerSortField.DefaultOptions,
+  const Options extends NumberField.Options = IntegerSortField.DefaultOptions,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  AssignmentType = IntegerSortField.AssignmentType<Options>,
-  InitializedType = IntegerSortField.InitializedType<Options>,
-  PersistedType extends number | null | undefined = IntegerSortField.InitializedType<Options>,
+  const AssignmentType = IntegerSortField.AssignmentType<Options>,
+  const InitializedType = IntegerSortField.InitializedType<Options>,
+  const PersistedType extends number | null | undefined = IntegerSortField.InitializedType<Options>,
 > extends NumberField<Options, AssignmentType, InitializedType, PersistedType> {
   /** @defaultValue `true` */
   override required: boolean;
@@ -4548,7 +4590,7 @@ declare namespace IntegerSortField {
    * A shorthand for the assignment type of a IntegerSortField class.
    * @template Options - the options that override the default options
    *
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
@@ -4571,10 +4613,10 @@ declare namespace IntegerSortField {
  * A subclass of {@linkcode TypedObjectField} that is used specifically for the Document "flags" field.
  */
 declare class DocumentFlagsField<
-  Name extends Document.Type,
+  const Name extends Document.Type,
   // The type `{}` is useful here because in an intersection it reduces down to nothing unlike `EmptyObject`.
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-  ExtensionFlags extends AnyObject = {},
+  const ExtensionFlags extends AnyObject = {},
   const Options extends DocumentFlagsField.Options = DocumentFlagsField.DefaultOptions,
 > extends TypedObjectField<
   ObjectField,
@@ -4609,18 +4651,20 @@ declare namespace DocumentFlagsField {
    * @template ExtensionFlags - additional flags besides the ones configured for the class
    * @template Options        - the options that override the default options
    *
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   type AssignmentType<
     Name extends Document.Type,
     ExtensionFlags extends AnyObject,
-    Options extends DocumentFlagsField.Options,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-  > = DataField.DerivedAssignmentType<
-    _TwoLevelPartial<Document.ConfiguredFlagsForName<Name> & ExtensionFlags & InterfaceToObject<Document.CoreFlags>>,
-    MergedOptions<Options>
-  >;
+    _Options extends DocumentFlagsField.Options,
+  > =
+    // Flags are currently always optional. At some point this will change.
+    | _TwoLevelPartial<
+        Document.Internal.ConfiguredFlagsForName<Name> & ExtensionFlags & InterfaceToObject<Document.CoreFlags>
+      >
+    | null
+    | undefined;
 
   /**
    * A shorthand for the initialized type of a IntegerSortField class.
@@ -4633,7 +4677,10 @@ declare namespace DocumentFlagsField {
     ExtensionFlags extends AnyObject,
     Options extends DocumentFlagsField.Options,
   > = DataField.DerivedInitializedType<
-    _TwoLevelPartial<Document.ConfiguredFlagsForName<Name> & ExtensionFlags & InterfaceToObject<Document.CoreFlags>>,
+    // Note(LukeAbby): This needs to actually get the real flags in `[Document].Flags`. Should be something like `Document.FlagsForName<Name>`
+    _TwoLevelPartial<
+      Document.Internal.ConfiguredFlagsForName<Name> & ExtensionFlags & InterfaceToObject<Document.CoreFlags>
+    >,
     MergedOptions<Options>
   >;
 
@@ -4671,11 +4718,11 @@ declare namespace DocumentFlagsField {
  */
 // TODO: exclude everything in DocumentStatsField.managedFields from AssignmentType
 declare class DocumentStatsField<
-  Options extends DocumentStatsField.Options = DocumentStatsField.DefaultOptions,
+  const Options extends DocumentStatsField.Options = DocumentStatsField.DefaultOptions,
   // eslint-disable-next-line @typescript-eslint/no-deprecated
-  AssignmentType = DocumentStatsField.AssignmentType<Options>,
-  InitializedType = DocumentStatsField.InitializedType<Options>,
-  PersistedType extends AnyObject | null | undefined = DocumentStatsField.PersistedType<Options>,
+  const AssignmentType = DocumentStatsField.AssignmentType<Options>,
+  const InitializedType = DocumentStatsField.InitializedType<Options>,
+  const PersistedType extends AnyObject | null | undefined = DocumentStatsField.PersistedType<Options>,
 > extends SchemaField<DocumentStatsField.Schema, Options, AssignmentType, InitializedType, PersistedType> {
   /**
    * @param options - Options which configure the behavior of the field
@@ -4770,7 +4817,7 @@ declare namespace DocumentStatsField {
    * A shorthand for the assignment type of a DocumentStatsField class.
    * @template Opts - the options that override the default options
    *
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
@@ -4946,7 +4993,7 @@ declare namespace DocumentTypeField {
   >;
 
   /**
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   type AssignmentType<
@@ -5116,23 +5163,21 @@ declare namespace TypeDataField {
    * @template DocumentType - the type of the embedded Document
    * @template Options - the options that override the default options
    *
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
+  // Note(LukeAbby): Assumes `system` is always optional. This is overly optimistic.
   type AssignmentType<
     SystemDocumentConstructor extends Document.SystemConstructor,
-    Opts extends Options<SystemDocumentConstructor>,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-  > = DataField.DerivedAssignmentType<
-    _Schemas<DataModelsFor<SystemDocumentConstructor["metadata"]["name"]>>,
-    MergedOptions<SystemDocumentConstructor, Opts>
-  >;
+    _Opts extends Options<SystemDocumentConstructor>,
+  > = _Schemas<DataModelsFor<SystemDocumentConstructor["metadata"]["name"]>> | null | undefined;
 
   /** @internal */
   type _Schemas<T> = {
-    [K in keyof T]: T[K] extends (abstract new (...args: never) => infer U extends DataModel.Any)
+    // This `NonNullable` is necessary because a subtype can be optional.
+    [K in keyof T]-?: T[K] extends (abstract new (...args: never) => infer U extends DataModel.Any) | undefined
       ? // eslint-disable-next-line @typescript-eslint/no-deprecated
-        U | SchemaField.AssignmentData<U["schema"]["fields"]>
+        SchemaField.AssignmentData<U["schema"]["fields"]>
       : never;
   }[keyof T];
 
@@ -5145,13 +5190,16 @@ declare namespace TypeDataField {
     SystemDocumentConstructor extends Document.SystemConstructor,
     Opts extends Options<SystemDocumentConstructor>,
   > = DataField.DerivedInitializedType<
-    _Instances<DataModelsFor<SystemDocumentConstructor["metadata"]["name"]>> | Document.UnknownSystem,
+    | _Instances<DataModelsFor<SystemDocumentConstructor["metadata"]["name"]>>
+    | Document.Internal._ModuleSubTypeFor<SystemDocumentConstructor["metadata"]["name"]>,
     MergedOptions<SystemDocumentConstructor, Opts>
   >;
 
   /** @internal */
   type _Instances<T> = {
-    [K in keyof T]: T[K] extends (abstract new (...args: never) => infer U extends DataModel.Any) ? U : never;
+    [K in keyof T]-?: T[K] extends (abstract new (...args: never) => infer U extends DataModel.Any) | undefined
+      ? U
+      : never;
   }[keyof T];
 
   /**
@@ -5179,7 +5227,7 @@ declare namespace TypeDataField {
 
   /** @internal */
   type _Source<T> = {
-    [K in keyof T]: T[K] extends (abstract new (...args: never) => infer U extends DataModel.Any)
+    [K in keyof T]-?: T[K] extends (abstract new (...args: never) => infer U extends DataModel.Any) | undefined
       ? U["_source"]
       : never;
   }[keyof T];
@@ -5331,13 +5379,18 @@ declare namespace TypedSchemaField {
   /**
    * @internal
    */
-  type _AssignmentType<Types extends ConfiguredTypes> = {
+  type _AssignmentType<Types extends ConfiguredTypes> = ValueOf<{
     // eslint-disable-next-line @typescript-eslint/no-deprecated
-    [K in keyof Types]: DataField.AssignmentTypeFor<Types[K]> & { type: K };
-  }[keyof Types];
+    [K in ConcreteKeys<Types>]: _AddType<DataField.AssignmentTypeFor<Types[K]>, K>;
+  }>;
 
   /**
-   * @deprecated - AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
+   * @internal
+   */
+  type _AddType<T, Type extends PropertyKey> = T extends object ? T & { type: Type } : T;
+
+  /**
+   * @deprecated AssignmentType is being deprecated. See {@linkcode SchemaField.AssignmentData}
    * for more details.
    */
   type AssignmentType<
@@ -5349,9 +5402,9 @@ declare namespace TypedSchemaField {
   /**
    * @internal
    */
-  type _InitializedType<Types extends ConfiguredTypes> = {
-    [K in keyof Types]: DataField.InitializedTypeFor<Types[K]> & { type: K };
-  }[keyof Types];
+  type _InitializedType<Types extends ConfiguredTypes> = ValueOf<{
+    [K in ConcreteKeys<Types>]: _AddType<DataField.InitializedTypeFor<Types[K]>, K>;
+  }>;
 
   type InitializedType<
     Types extends TypedSchemaField.Types,
@@ -5361,9 +5414,9 @@ declare namespace TypedSchemaField {
   /**
    * @internal
    */
-  type _PersistedType<Types extends ConfiguredTypes> = {
-    [K in keyof Types]: DataField.PersistedTypeFor<Types[K]> & { type: K };
-  }[keyof Types];
+  type _PersistedType<Types extends ConfiguredTypes> = ValueOf<{
+    [K in ConcreteKeys<Types>]: _AddType<DataField.PersistedTypeFor<Types[K]>, K>;
+  }>;
 
   type PersistedType<
     Types extends TypedSchemaField.Types,

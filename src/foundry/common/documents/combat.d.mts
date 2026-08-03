@@ -89,6 +89,8 @@ declare abstract class BaseCombat<out SubType extends BaseCombat.SubType = BaseC
    * separate like this helps against circularities.
    */
 
+  type: SubType;
+
   /* Document overrides */
 
   // Same as Document for now
@@ -119,7 +121,7 @@ declare abstract class BaseCombat<out SubType extends BaseCombat.SubType = BaseC
   static override createDocuments<Temporary extends boolean | undefined = undefined>(
     data: Array<Combat.Implementation | Combat.CreateData> | undefined,
     operation?: Document.Database.CreateOperation<Combat.Database.Create<Temporary>>,
-  ): Promise<Array<Document.TemporaryIf<Combat.Implementation, Temporary>>>;
+  ): Promise<Array<Combat.TemporaryIf<Temporary>>>;
 
   static override updateDocuments(
     updates: Combat.UpdateData[] | undefined,
@@ -134,7 +136,7 @@ declare abstract class BaseCombat<out SubType extends BaseCombat.SubType = BaseC
   static override create<Temporary extends boolean | undefined = undefined>(
     data: Combat.CreateData | Combat.CreateData[],
     operation?: Combat.Database.CreateOperation<Temporary>,
-  ): Promise<Document.TemporaryIf<Combat.Implementation, Temporary> | undefined>;
+  ): Promise<Combat.TemporaryIf<Temporary> | undefined>;
 
   override update(
     data: Combat.UpdateData | undefined,
@@ -162,17 +164,14 @@ declare abstract class BaseCombat<out SubType extends BaseCombat.SubType = BaseC
   override createEmbeddedDocuments<EmbeddedName extends Combat.Embedded.Name>(
     embeddedName: EmbeddedName,
     data: Document.CreateDataForName<EmbeddedName>[] | undefined,
-    // TODO(LukeAbby): The correct signature would be:
-    // operation?: Document.Database.CreateOperation<Document.Database.CreateForName<EmbeddedName>>,
-    // However this causes a number of errors.
-    operation?: object,
-  ): Promise<Array<Document.StoredForName<EmbeddedName>> | undefined>;
+    operation?: Document.Database.CreateOperationForName<EmbeddedName>,
+  ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
 
   override updateEmbeddedDocuments<EmbeddedName extends Combat.Embedded.Name>(
     embeddedName: EmbeddedName,
     updates: Document.UpdateDataForName<EmbeddedName>[] | undefined,
     operation?: Document.Database.UpdateOperationForName<EmbeddedName>,
-  ): Promise<Array<Document.StoredForName<EmbeddedName>> | undefined>;
+  ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
 
   override deleteEmbeddedDocuments<EmbeddedName extends Combat.Embedded.Name>(
     embeddedName: EmbeddedName,
@@ -188,12 +187,12 @@ declare abstract class BaseCombat<out SubType extends BaseCombat.SubType = BaseC
   override getFlag<Scope extends Combat.Flags.Scope, Key extends Combat.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): Document.GetFlag<Combat.Name, Scope, Key>;
+  ): Combat.Flags.Get<Scope, Key>;
 
   override setFlag<
     Scope extends Combat.Flags.Scope,
     Key extends Combat.Flags.Key<Scope>,
-    Value extends Document.GetFlag<Combat.Name, Scope, Key>,
+    Value extends Combat.Flags.Get<Scope, Key>,
   >(scope: Scope, key: Key, value: Value): Promise<this>;
 
   override unsetFlag<Scope extends Combat.Flags.Scope, Key extends Combat.Flags.Key<Scope>>(
@@ -346,7 +345,7 @@ declare namespace BaseCombat {
   export import Hierarchy = Combat.Hierarchy;
   export import Metadata = Combat.Metadata;
   export import SubType = Combat.SubType;
-  export import ConfiguredSubTypes = Combat.ConfiguredSubTypes;
+  export import ConfiguredSubType = Combat.ConfiguredSubType;
   export import Known = Combat.Known;
   export import OfType = Combat.OfType;
   export import SystemOfType = Combat.SystemOfType;
@@ -365,7 +364,8 @@ declare namespace BaseCombat {
   export import InitializedData = Combat.InitializedData;
   export import UpdateData = Combat.UpdateData;
   export import Schema = Combat.Schema;
-  export import DatabaseOperation = Combat.Database;
+  export import Database = Combat.Database;
+  export import TemporaryIf = Combat.TemporaryIf;
   export import Flags = Combat.Flags;
 
   namespace Internal {

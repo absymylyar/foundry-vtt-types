@@ -1,18 +1,11 @@
 import type { Socket } from "socket.io-client";
-import type {
-  ConfiguredModule,
-  GetKey,
-  EmptyObject,
-  ValueOf,
-  FixedInstanceType,
-  InitializationHook,
-  InitializedOn,
-} from "#utils";
+import type { ValueOf, FixedInstanceType, InitializationHook, InitializedOn, EmptyObject, GetKey } from "#utils";
 import type BasePackage from "#common/packages/base-package.d.mts";
 import type { Document } from "#common/abstract/_module.d.mts";
 import type { Canvas } from "#client/canvas/_module.d.mts";
 
 import AVMaster = foundry.av.AVMaster;
+import Module = foundry.packages.Module;
 
 // Must be called with all hooks in a union.
 // Do not increase the complexity of this type. If you do Game related types may get complex enough to complain about not being statically known.
@@ -88,7 +81,7 @@ declare class InternalGame<RunEvents extends InitializationHook> {
   /**
    * A registry of document sub-types and their respective data models.
    */
-  get model(): Game.Data["model"];
+  get model(): Game.Model;
 
   /**
    * @deprecated since v12, will be removed in v14
@@ -628,15 +621,37 @@ declare global {
 }
 
 declare namespace Game {
-  interface ModuleCollection extends Collection<foundry.packages.Module> {
+  interface ModuleCollection extends Collection<foundry.packages.Module, ModuleCollectionMethods> {}
+
+  interface ModuleCollectionMethods {
     /**
-     * Gets the module requested for by ID
-     * @see {@linkcode ModuleConfig} to add custom properties to modules like APIs.
+     * @remarks Gets the module requested for by ID
+     * @see {@linkcode ModuleConfig} to add custom properties to modules, for example APIs.
      * @see {@linkcode RequiredModules} to remove `undefined` from the return type for a given module
      * @param id - The module ID to look up
      */
-    get<T extends string>(id: T): foundry.packages.Module & ConfiguredModule<T>;
+    get<T extends string, Options extends Collection.GetOptions | undefined = undefined>(
+      id: T,
+      { strict }?: Options,
+    ): _ModuleCollectionGet<T, Options>;
   }
+
+  /** @internal */
+  type _ModuleCollectionGet<
+    Name extends string,
+    Options extends Collection.GetOptions | undefined = undefined,
+  > = Name extends keyof RequiredModules ? _Module<Name> : Collection.GetReturnType<_MaybeActiveModule<Name>, Options>;
+
+  /** @internal */
+  type _Module<Name extends string> =
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    { active: true } & Module & GetKey<ModuleConfig, Name, {}>;
+
+  /** @internal */
+  type _MaybeActiveModule<Name extends string> =
+    | _Module<Name>
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    | ({ active: false } & Module & { [K in keyof GetKey<ModuleConfig, Name, {}>]?: never });
 
   namespace Model {
     /**
@@ -652,13 +667,26 @@ declare namespace Game {
 
   /** @internal */
   type _Model = {
-    [DocumentType in Document.Type]: {
-      // The `& string` is helpful even though there should never be any numeric/symbol keys.
-      // This is because when `keyof Config<...>` is deferred then TypeScript does a bunch of proofs under the assumption that `SystemTypeNames` could be a `string | number` until proven otherwise.
-      // This causes issues where there shouldn't be, for example it has been observed to obstruct the resolution of the `Actor` class.
-      [SubType in Model.TypeNames<DocumentType>]: GetKey<GetKey<SourceConfig, DocumentType>, SubType, EmptyObject>;
-    };
+    [DocumentType in Document.Type]: DocumentType extends Document.WithSystem
+      ? _ModelType<DocumentType>
+      : { base: EmptyObject };
   };
+
+  /** @internal */
+  type _ModelType<DocumentType extends Document.WithSystem> =
+    | (DocumentType extends "ActiveEffect" ? ActiveEffect._ModelMap : never)
+    | (DocumentType extends "ActorDelta" ? ActorDelta._ModelMap : never)
+    | (DocumentType extends "Actor" ? Actor._ModelMap : never)
+    | (DocumentType extends "Card" ? Card._ModelMap : never)
+    | (DocumentType extends "Cards" ? Cards._ModelMap : never)
+    | (DocumentType extends "ChatMessage" ? ChatMessage._ModelMap : never)
+    | (DocumentType extends "Combat" ? Combat._ModelMap : never)
+    | (DocumentType extends "Combatant" ? Combatant._ModelMap : never)
+    | (DocumentType extends "CombatantGroup" ? CombatantGroup._ModelMap : never)
+    | (DocumentType extends "Item" ? Item._ModelMap : never)
+    | (DocumentType extends "JournalEntryPage" ? JournalEntryPage._ModelMap : never)
+    | (DocumentType extends "RegionBehavior" ? RegionBehavior._ModelMap : never);
+
   interface Model extends _Model {}
 
   interface PackageWarning {

@@ -1,5 +1,5 @@
-import type { ConfiguredCards } from "fvtt-types/configuration";
-import type { InexactPartial, Merge, NullishProps } from "#utils";
+import type { ConfiguredCards } from "#configuration";
+import type { Identity, InexactPartial, Merge, NullishProps } from "#utils";
 import type Document from "#common/abstract/document.d.mts";
 import type { DataSchema } from "#common/data/fields.d.mts";
 import type BaseCards from "#common/documents/cards.d.mts";
@@ -84,38 +84,53 @@ declare namespace Cards {
   type SubType = foundry.Game.Model.TypeNames<"Cards">;
 
   /**
-   * `ConfiguredSubTypes` represents the subtypes a user explicitly registered. This excludes
+   * `ConfiguredSubType` represents the subtypes a user explicitly registered. This excludes
    * subtypes like the Foundry builtin subtype `"base"` and the catch-all subtype for arbitrary
    * module subtypes `${string}.${string}`.
    *
    * @see {@link SubType} for more information.
    */
-  type ConfiguredSubTypes = Document.ConfiguredSubTypesOf<"Cards">;
+  type ConfiguredSubType = Document.ConfiguredSubTypeOf<"Cards">;
 
   /**
    * `Known` represents the types of `Cards` that a user explicitly registered.
    *
-   * @see {@link ConfiguredSubTypes} for more information.
+   * @see {@link ConfiguredSubType} for more information.
    */
-  type Known = Cards.OfType<Cards.ConfiguredSubTypes>;
+  type Known = Cards.OfType<Cards.ConfiguredSubType>;
 
   /**
    * `OfType` returns an instance of `Cards` with the corresponding type. This works with both the
    * builtin `Cards` class or a custom subclass if that is set up in
    * {@link ConfiguredCards | `fvtt-types/configuration/ConfiguredCards`}.
    */
-  // eslint-disable-next-line @typescript-eslint/no-restricted-types
-  type OfType<Type extends SubType> = Document.Internal.OfType<ConfiguredCards<Type>, () => Cards<Type>>;
+  type OfType<Type extends SubType> = Document.Internal.DiscriminateSystem<Name, _OfType, Type, ConfiguredSubType>;
+
+  /** @internal */
+  interface _OfType
+    extends Identity<{
+      [Type in SubType]: Type extends unknown
+        ? ConfiguredCards<Type> extends { document: infer Document }
+          ? Document
+          : // eslint-disable-next-line @typescript-eslint/no-restricted-types
+            Cards<Type>
+        : never;
+    }> {}
 
   /**
    * `SystemOfType` returns the system property for a specific `Cards` subtype.
    */
-  type SystemOfType<Type extends SubType> = Document.Internal.SystemOfType<_SystemMap, Type>;
+  type SystemOfType<Type extends SubType> = Document.Internal.SystemOfType<Name, _SystemMap, Type, ConfiguredSubType>;
 
   /**
    * @internal
    */
-  interface _SystemMap extends Document.Internal.SystemMap<"Cards"> {}
+  interface _ModelMap extends Document.Internal.ModelMap<Name> {}
+
+  /**
+   * @internal
+   */
+  interface _SystemMap extends Document.Internal.SystemMap<Name> {}
 
   /**
    * A document's parent is something that can contain it.
@@ -217,18 +232,18 @@ declare namespace Cards {
   /**
    * The world collection that contains `Cards`s. Will be `never` if none exists.
    */
-  type CollectionClass = foundry.documents.collections.CardStacks.ConfiguredClass;
+  type CollectionClass = foundry.documents.collections.CardStacks.ImplementationClass;
 
   /**
    * The world collection that contains `Cards`s. Will be `never` if none exists.
    */
-  type Collection = foundry.documents.collections.CardStacks.Configured;
+  type Collection = foundry.documents.collections.CardStacks.Implementation;
 
   /**
    * An instance of `Cards` that comes from the database but failed validation meaning that
    * its `system` and `_source` could theoretically be anything.
    */
-  interface Invalid extends Document.Internal.Invalid<Implementation> {}
+  type Invalid = Document.Internal.Invalid<Implementation>;
 
   /**
    * An instance of `Cards` that comes from the database.
@@ -296,7 +311,7 @@ declare namespace Cards {
      * @defaultValue `BaseCards.TYPES[0]`
      */
     // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-    type: fields.DocumentTypeField<typeof BaseCards, {}, Cards.SubType, Cards.SubType, Cards.SubType>;
+    type: fields.DocumentTypeField<typeof BaseCards, {}>;
 
     /**
      * A text description of this stack
@@ -492,25 +507,32 @@ declare namespace Cards {
   }
 
   /**
+   * If `Temporary` is true then `Cards.Implementation`, otherwise `Cards.Stored`.
+   */
+  type TemporaryIf<Temporary extends boolean | undefined> = true extends Temporary
+    ? Cards.Implementation
+    : Cards.Stored;
+
+  /**
    * The flags that are available for this document in the form `{ [scope: string]: { [key: string]: unknown } }`.
    */
-  interface Flags extends Document.ConfiguredFlagsForName<Name> {}
+  interface Flags extends Document.Internal.ConfiguredFlagsForName<Name> {}
 
   namespace Flags {
     /**
      * The valid scopes for the flags on this document e.g. `"core"` or `"dnd5e"`.
      */
-    type Scope = Document.FlagKeyOf<Flags>;
+    type Scope = Document.Internal.FlagKeyOf<Flags>;
 
     /**
      * The valid keys for a certain scope for example if the scope is "core" then a valid key may be `"sheetLock"` or `"viewMode"`.
      */
-    type Key<Scope extends Flags.Scope> = Document.FlagKeyOf<Document.FlagGetKey<Flags, Scope>>;
+    type Key<Scope extends Flags.Scope> = Document.Internal.FlagKeyOf<Document.Internal.FlagGetKey<Flags, Scope>>;
 
     /**
      * Gets the type of a particular flag given a `Scope` and a `Key`.
      */
-    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.GetFlag<Name, Scope, Key>;
+    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.Internal.GetFlag<Flags, Scope, Key>;
   }
 
   type PreCreateDescendantDocumentsArgs = Document.PreCreateDescendantDocumentsArgs<
@@ -686,7 +708,13 @@ declare namespace Cards {
    * which wouldn't make sense to change, then passes that to {@link Cards.pass | `Cards#pass`}
    * @privateRemarks `action` omitted as it's already provided.
    */
-  interface DrawOptions extends _HowOption, Omit<PassOptions, "action"> {}
+  interface DrawOptions extends _HowOption, Omit<PassOptions, "action"> {
+    /**
+     * @deprecated While passing `action` is technically valid, it's unclear why this would ever be done.
+     * If you need to do this call `this.parent.pass` directly.
+     */
+    action?: never;
+  }
 
   interface ShuffleOptions extends _UpdateDataOption, _ChatNotificationOption {}
 
@@ -706,11 +734,16 @@ declare namespace Cards {
   /**
    * The arguments to construct the document.
    *
-   * @deprecated - Writing the signature directly has helped reduce circularities and therefore is
+   * @deprecated Writing the signature directly has helped reduce circularities and therefore is
    * now recommended.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   type ConstructorArgs = Document.ConstructorParameters<CreateData, Parent>;
+
+  /**
+   * @deprecated Replaced with {@linkcode Cards.ConfiguredSubType} (will be removed in v14).
+   */
+  type ConfiguredSubTypes = ConfiguredSubType;
 }
 
 /**
@@ -759,7 +792,7 @@ declare class Cards<out SubType extends Cards.SubType = Cards.SubType> extends B
   static override createDocuments<Temporary extends boolean | undefined = undefined>(
     data: Array<Cards.Implementation | Cards.CreateData> | undefined,
     operation?: Document.Database.CreateOperation<Cards.Database.Create<Temporary>>,
-  ): Promise<Array<Document.TemporaryIf<Cards.Implementation, Temporary>>>;
+  ): Promise<Array<Cards.TemporaryIf<Temporary>>>;
 
   /**
    * Deal one or more cards from this Cards document to each of a provided array of Cards destinations.

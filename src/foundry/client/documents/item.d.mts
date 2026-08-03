@@ -1,8 +1,8 @@
-import type { ConfiguredItem } from "fvtt-types/configuration";
+import type { ConfiguredItem } from "#configuration";
 import type { documents } from "#client/client.d.mts";
 import type Document from "#common/abstract/document.d.mts";
 import type { DataSchema } from "#common/data/fields.d.mts";
-import type { AnyObject, InexactPartial, Merge } from "#utils";
+import type { AnyObject, Identity, InexactPartial, Merge } from "#utils";
 import type BaseItem from "#common/documents/item.mjs";
 
 import fields = foundry.data.fields;
@@ -86,38 +86,53 @@ declare namespace Item {
   type SubType = foundry.Game.Model.TypeNames<"Item">;
 
   /**
-   * `ConfiguredSubTypes` represents the subtypes a user explicitly registered. This excludes
+   * `ConfiguredSubType` represents the subtypes a user explicitly registered. This excludes
    * subtypes like the Foundry builtin subtype `"base"` and the catch-all subtype for arbitrary
    * module subtypes `${string}.${string}`.
    *
    * @see {@link SubType} for more information.
    */
-  type ConfiguredSubTypes = Document.ConfiguredSubTypesOf<"Item">;
+  type ConfiguredSubType = Document.ConfiguredSubTypeOf<"Item">;
 
   /**
    * `Known` represents the types of `Item` that a user explicitly registered.
    *
-   * @see {@link ConfiguredSubTypes} for more information.
+   * @see {@link ConfiguredSubType} for more information.
    */
-  type Known = Item.OfType<Item.ConfiguredSubTypes>;
+  type Known = Item.OfType<Item.ConfiguredSubType>;
 
   /**
    * `OfType` returns an instance of `Item` with the corresponding type. This works with both the
    * builtin `Item` class or a custom subclass if that is set up in
    * {@link ConfiguredItem | `fvtt-types/configuration/ConfiguredItem`}.
    */
-  // eslint-disable-next-line @typescript-eslint/no-restricted-types
-  type OfType<Type extends SubType> = Document.Internal.OfType<ConfiguredItem<Type>, () => Item<Type>>;
+  type OfType<Type extends SubType> = Document.Internal.DiscriminateSystem<Name, _OfType, Type, ConfiguredSubType>;
+
+  /** @internal */
+  interface _OfType
+    extends Identity<{
+      [Type in SubType]: Type extends unknown
+        ? ConfiguredItem<Type> extends { document: infer Document }
+          ? Document
+          : // eslint-disable-next-line @typescript-eslint/no-restricted-types
+            Item<Type>
+        : never;
+    }> {}
 
   /**
    * `SystemOfType` returns the system property for a specific `Item` subtype.
    */
-  type SystemOfType<Type extends SubType> = Document.Internal.SystemOfType<_SystemMap, Type>;
+  type SystemOfType<Type extends SubType> = Document.Internal.SystemOfType<Name, _SystemMap, Type, ConfiguredSubType>;
 
   /**
    * @internal
    */
-  interface _SystemMap extends Document.Internal.SystemMap<"Item"> {}
+  interface _ModelMap extends Document.Internal.ModelMap<Name> {}
+
+  /**
+   * @internal
+   */
+  interface _SystemMap extends Document.Internal.SystemMap<Name> {}
 
   /**
    * A document's parent is something that can contain it.
@@ -219,18 +234,18 @@ declare namespace Item {
   /**
    * The world collection that contains `Item`s. Will be `never` if none exists.
    */
-  type CollectionClass = foundry.documents.collections.Items.ConfiguredClass;
+  type CollectionClass = foundry.documents.collections.Items.ImplementationClass;
 
   /**
    * The world collection that contains `Item`s. Will be `never` if none exists.
    */
-  type Collection = foundry.documents.collections.Items.Configured;
+  type Collection = foundry.documents.collections.Items.Implementation;
 
   /**
    * An instance of `Item` that comes from the database but failed validation meaning that
    * its `system` and `_source` could theoretically be anything.
    */
-  interface Invalid extends Document.Internal.Invalid<Implementation> {}
+  type Invalid = Document.Internal.Invalid<Implementation>;
 
   /**
    * An instance of `Item` that comes from the database.
@@ -291,17 +306,11 @@ declare namespace Item {
     _id: fields.DocumentIdField;
 
     /** The name of this Item */
-    name: fields.StringField<
-      { required: true; blank: false; textSearch: true },
-      // Note(LukeAbby): Field override because `blank: false` isn't fully accounted for or something.
-      string,
-      string,
-      string
-    >;
+    name: fields.StringField<{ required: true; blank: false; textSearch: true }>;
 
     /** An Item subtype which configures the system data model applied */
     // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-    type: fields.DocumentTypeField<typeof documents.BaseItem, {}, Item.SubType, Item.SubType, Item.SubType>;
+    type: fields.DocumentTypeField<typeof documents.BaseItem, {}>;
 
     /**
      * An image file path which provides the artwork for this Item
@@ -461,25 +470,30 @@ declare namespace Item {
   }
 
   /**
+   * If `Temporary` is true then `Item.Implementation`, otherwise `Item.Stored`.
+   */
+  type TemporaryIf<Temporary extends boolean | undefined> = true extends Temporary ? Item.Implementation : Item.Stored;
+
+  /**
    * The flags that are available for this document in the form `{ [scope: string]: { [key: string]: unknown } }`.
    */
-  interface Flags extends Document.ConfiguredFlagsForName<Name> {}
+  interface Flags extends Document.Internal.ConfiguredFlagsForName<Name> {}
 
   namespace Flags {
     /**
      * The valid scopes for the flags on this document e.g. `"core"` or `"dnd5e"`.
      */
-    type Scope = Document.FlagKeyOf<Flags>;
+    type Scope = Document.Internal.FlagKeyOf<Flags>;
 
     /**
      * The valid keys for a certain scope for example if the scope is "core" then a valid key may be `"sheetLock"` or `"viewMode"`.
      */
-    type Key<Scope extends Flags.Scope> = Document.FlagKeyOf<Document.FlagGetKey<Flags, Scope>>;
+    type Key<Scope extends Flags.Scope> = Document.Internal.FlagKeyOf<Document.Internal.FlagGetKey<Flags, Scope>>;
 
     /**
      * Gets the type of a particular flag given a `Scope` and a `Key`.
      */
-    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.GetFlag<Name, Scope, Key>;
+    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.Internal.GetFlag<Flags, Scope, Key>;
   }
 
   interface DropData extends Document.Internal.DropData<Name> {}
@@ -534,11 +548,16 @@ declare namespace Item {
   /**
    * The arguments to construct the document.
    *
-   * @deprecated - Writing the signature directly has helped reduce circularities and therefore is
+   * @deprecated Writing the signature directly has helped reduce circularities and therefore is
    * now recommended.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   type ConstructorArgs = Document.ConstructorParameters<CreateData, Parent>;
+
+  /**
+   * @deprecated Replaced with {@linkcode Item.ConfiguredSubType} (will be removed in v14).
+   */
+  type ConfiguredSubTypes = ConfiguredSubType;
 }
 
 /**

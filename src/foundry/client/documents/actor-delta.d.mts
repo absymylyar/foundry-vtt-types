@@ -1,8 +1,8 @@
 import type { DataSchema } from "#common/data/fields.d.mts";
 import type { BaseActorDelta } from "#common/documents/_module.d.mts";
 import type Document from "#common/abstract/document.d.mts";
-import type { ConfiguredActorDelta } from "fvtt-types/configuration";
-import type { Identity, InexactPartial, Merge, NullishProps, RequiredProps } from "#utils";
+import type { ConfiguredActorDelta } from "#configuration";
+import type { Identity, InexactPartial, Merge, NullishProps } from "#utils";
 import type DataModel from "#common/abstract/data.d.mts";
 
 import fields = foundry.data.fields;
@@ -14,9 +14,9 @@ declare namespace ActorDelta {
   type Name = "ActorDelta";
 
   /**
-   * @privateRemarks This is off-template, as `ActorDelta` requires a valid parent to validate.
+   * The context used to create a `ActorDelta`.
    */
-  interface ConstructionContext extends RequiredProps<Document.ConstructionContext<Parent>, "parent"> {}
+  interface ConstructionContext extends Document.ConstructionContext<Parent> {}
 
   /**
    * The documents embedded within `ActorDelta`.
@@ -78,44 +78,63 @@ declare namespace ActorDelta {
   type SubType = Actor.SubType;
 
   /**
-   * `ConfiguredSubTypes` represents the subtypes a user explicitly registered. This excludes
+   * `ConfiguredSubType` represents the subtypes a user explicitly registered. This excludes
    * subtypes like the Foundry builtin subtype `"base"` and the catch-all subtype for arbitrary
    * module subtypes `${string}.${string}`.
    *
    * @see {@linkcode ActorDelta.SubType} for more information.
    */
-  type ConfiguredSubTypes = Actor.SubType;
+  type ConfiguredSubType = Actor.SubType;
 
   /**
    * `Known` represents the types of `ActorDelta` that a user explicitly registered.
    *
-   * @see {@link ConfiguredSubTypes} for more information.
+   * @see {@link ConfiguredSubType} for more information.
    */
-  type Known = ActorDelta.OfType<ActorDelta.ConfiguredSubTypes>;
+  type Known = ActorDelta.OfType<ActorDelta.ConfiguredSubType>;
 
   /**
    * `OfType` returns an instance of `ActorDelta` with the corresponding type. This works with both the
    * builtin `ActorDelta` class or a custom subclass if that is set up in
    * {@link ConfiguredActorDelta | `fvtt-types/configuration/ConfiguredActorDelta`}.
    */
-  // eslint-disable-next-line @typescript-eslint/no-restricted-types
-  type OfType<Type extends SubType> = Document.Internal.OfType<ConfiguredActorDelta<Type>, () => ActorDelta<Type>>;
+  type OfType<Type extends SubType> = Document.Internal.DiscriminateSystem<Name, _OfType, Type, ConfiguredSubType>;
+
+  /** @internal */
+  interface _OfType
+    extends Identity<{
+      [Type in SubType]: Type extends unknown
+        ? ConfiguredActorDelta<Type> extends { document: infer Document }
+          ? Document
+          : // eslint-disable-next-line @typescript-eslint/no-restricted-types
+            ActorDelta<Type>
+        : never;
+    }> {}
 
   /**
    * `SystemOfType` returns the system property for a specific `ActorDelta` subtype.
    */
-  type SystemOfType<Type extends SubType> = Document.Internal.SystemOfType<_SystemMap, Type>;
+  type SystemOfType<Type extends SubType> = Document.Internal.SystemOfType<Name, _SystemMap, Type, ConfiguredSubType>;
 
   /**
    * @internal
    */
-  interface _SystemMap extends Document.Internal.SystemMap<"ActorDelta"> {}
+  // Actor and ActorDelta have the same subtype setup.
+  interface _ModelMap extends Actor._ModelMap {}
+
+  /**
+   * @internal
+   */
+  // Actor and ActorDelta have the same subtype setup.
+  interface _SystemMap extends Actor._SystemMap {}
 
   /**
    * A document's parent is something that can contain it.
    * For example an `Item` can be contained by an `Actor` which makes `Actor` one of its possible parents.
+   *
+   * `ActorDelta` requires a parent so `null` is not an option here.
    */
-  type Parent = TokenDocument.Implementation | null;
+  type Parent = TokenDocument.Implementation;
 
   /**
    * A document's direct descendants are documents that are contained directly within its schema.
@@ -222,7 +241,7 @@ declare namespace ActorDelta {
    * An instance of `ActorDelta` that comes from the database but failed validation meaning that
    * its `system` and `_source` could theoretically be anything.
    */
-  interface Invalid extends Document.Internal.Invalid<ActorDelta.Implementation> {}
+  type Invalid = Document.Internal.Invalid<Implementation>;
 
   /**
    * An instance of `ActorDelta` that comes from the database.
@@ -432,25 +451,32 @@ declare namespace ActorDelta {
   }
 
   /**
+   * If `Temporary` is true then `ActorDelta.Implementation`, otherwise `ActorDelta.Stored`.
+   */
+  type TemporaryIf<Temporary extends boolean | undefined> = true extends Temporary
+    ? ActorDelta.Implementation
+    : ActorDelta.Stored;
+
+  /**
    * The flags that are available for this document in the form `{ [scope: string]: { [key: string]: unknown } }`.
    */
-  interface Flags extends Document.ConfiguredFlagsForName<Name> {}
+  interface Flags extends Document.Internal.ConfiguredFlagsForName<Name> {}
 
   namespace Flags {
     /**
      * The valid scopes for the flags on this document e.g. `"core"` or `"dnd5e"`.
      */
-    type Scope = Document.FlagKeyOf<Flags>;
+    type Scope = Document.Internal.FlagKeyOf<Flags>;
 
     /**
      * The valid keys for a certain scope for example if the scope is "core" then a valid key may be `"sheetLock"` or `"viewMode"`.
      */
-    type Key<Scope extends Flags.Scope> = Document.FlagKeyOf<Document.FlagGetKey<Flags, Scope>>;
+    type Key<Scope extends Flags.Scope> = Document.Internal.FlagKeyOf<Document.Internal.FlagGetKey<Flags, Scope>>;
 
     /**
      * Gets the type of a particular flag given a `Scope` and a `Key`.
      */
-    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.GetFlag<Name, Scope, Key>;
+    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.Internal.GetFlag<Flags, Scope, Key>;
   }
 
   type PreCreateDescendantDocumentsArgs =
@@ -523,12 +549,17 @@ declare namespace ActorDelta {
   /**
    * The arguments to construct the document.
    *
-   * @deprecated - Writing the signature directly has helped reduce circularities and therefore is
+   * @deprecated Writing the signature directly has helped reduce circularities and therefore is
    * now recommended.
    * @privateRemarks This is off-template, as ActorDelta throws if not provided a valid TokenDocument
    * parent in the construction context for any construction, not just `.create`ion
    */
   interface ConstructorArgs extends Identity<[data: CreateData | undefined, context: ConstructionContext]> {}
+
+  /**
+   * @deprecated Replaced with {@linkcode ActorDelta.ConfiguredSubType} (will be removed in v14).
+   */
+  type ConfiguredSubTypes = ConfiguredSubType;
 }
 
 /**
@@ -549,9 +580,9 @@ declare class ActorDelta<out SubType extends ActorDelta.SubType = ActorDelta.Sub
   protected override _initialize(options?: ActorDelta.InitializeOptions): void;
 
   /** Pass-through the type from the synthetic Actor, if it exists. */
-  get type(): string;
+  get type(): SubType;
 
-  set type(type: string);
+  set type(type);
 
   protected _type: string;
 

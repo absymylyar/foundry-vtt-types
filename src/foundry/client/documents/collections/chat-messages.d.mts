@@ -34,14 +34,32 @@ declare class ChatMessages extends foundry.documents.abstract.WorldCollection<"C
 }
 
 declare namespace ChatMessages {
-  interface Any extends AnyMessages {}
-  interface AnyConstructor extends Identity<typeof AnyMessages> {}
+  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
+  type Any = Internal.Any;
 
-  interface ConfiguredClass extends Document.ConfiguredCollectionClass<"ChatMessage"> {}
-  interface Configured extends Document.ConfiguredCollection<"ChatMessage"> {}
+  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
+  type AnyConstructor = Internal.AnyConstructor;
+
+  namespace Internal {
+    interface Any extends AnyChatMessages {}
+    interface AnyConstructor extends Identity<typeof AnyChatMessages> {}
+  }
+
+  interface ImplementationClass extends Document.Internal.ConfiguredCollectionClass<"ChatMessage"> {}
+  interface Implementation extends Document.Internal.ConfiguredCollection<"ChatMessage"> {}
+
+  /**
+   * @deprecated Replaced by {@linkcode ChatMessages.ImplementationClass}.
+   */
+  type ConfiguredClass = ImplementationClass;
+
+  /**
+   * @deprecated Replaced by {@linkcode ChatMessages.Implementation}.
+   */
+  type Configured = Implementation;
 }
 
-declare abstract class AnyMessages extends ChatMessages {
+declare abstract class AnyChatMessages extends ChatMessages {
   constructor(...args: never);
 }
 

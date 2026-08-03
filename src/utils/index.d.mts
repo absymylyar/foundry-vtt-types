@@ -1,7 +1,5 @@
 import type { Document } from "../foundry/common/abstract/_module.d.mts";
 
-export {};
-
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 type ConfiguredModuleData<Name extends string> = Name extends keyof ModuleConfig ? ModuleConfig[Name] : {};
 
@@ -15,6 +13,7 @@ export type FixedInstanceType<T extends abstract new (...args: never) => any> = 
   ? R
   : never;
 
+/** @deprecated Replaced with {@linkcode foundry.packages.Module.ForName | Module.ForName}, will be removed in v14 */
 export type ConfiguredModule<Name extends string> = Name extends keyof RequiredModules
   ? ConfiguredModuleData<Name>
   :
@@ -284,11 +283,10 @@ export type MaybeEmpty<T extends AnyObject> =
 /**
  * The following uses `extends object` instead of `AnyObject` to allow `O = typeof SomeClass`
  */
-export type PropertiesOfType<O extends object, T> = {
-  [K in keyof O]: _KeyOfType<O[K], K, T>;
+export type PropertiesOfType<O extends object, V> = {
+  // This type is not distributive to avoid `O[PropertiesOfType<O, V>]` not being assignable to `V`
+  [K in keyof O]: O[K] extends V ? K : never;
 }[keyof O];
-
-type _KeyOfType<V, K, T> = V extends T ? K : never;
 
 declare class Branded<in out BrandName extends string> {
   #brand: BrandName;
@@ -682,7 +680,7 @@ interface _MergeComplexObject<T extends object, U extends object> extends _Overr
  */
 export type Override<T extends object, U extends object> = T extends unknown ? _Override<T, U> : never;
 
-// @ts-expect-error - This pattern is inherently an error.
+// @ts-expect-error This pattern is inherently an error.
 interface _Override<T extends object, U extends object> extends U, T {}
 
 /**
@@ -1317,7 +1315,7 @@ type _DeepReadonly<T> = T extends object ? DeepReadonly<T> : T;
 
 interface DeepReadonlyComplex<T extends object> extends _DeepReadonlyComplex<T> {}
 
-// @ts-expect-error - This pattern is intrinsically an error.
+// @ts-expect-error This pattern is intrinsically an error.
 // Note(LukeAbby): The two levels here, `DeepReadonlyComplex` and `_DeepReadonlyComplex`, could just be one.
 // However it gives a better type display as two levels.
 interface _DeepReadonlyComplex<T extends object, R extends object = { readonly [K in keyof T]: _DeepReadonly<T[K]> }>

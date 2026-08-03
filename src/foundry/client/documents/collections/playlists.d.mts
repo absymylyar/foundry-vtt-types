@@ -31,11 +31,29 @@ declare class Playlists extends foundry.documents.abstract.WorldCollection<"Play
 }
 
 declare namespace Playlists {
-  interface Any extends AnyPlaylists {}
-  interface AnyConstructor extends Identity<typeof AnyPlaylists> {}
+  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
+  type Any = Internal.Any;
 
-  interface ConfiguredClass extends Document.ConfiguredCollectionClass<"Playlist"> {}
-  interface Configured extends Document.ConfiguredCollection<"Playlist"> {}
+  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
+  type AnyConstructor = Internal.AnyConstructor;
+
+  namespace Internal {
+    interface Any extends AnyPlaylists {}
+    interface AnyConstructor extends Identity<typeof AnyPlaylists> {}
+  }
+
+  interface ImplementationClass extends Document.Internal.ConfiguredCollectionClass<"Playlist"> {}
+  interface Implementation extends Document.Internal.ConfiguredCollection<"Playlist"> {}
+
+  /**
+   * @deprecated Replaced by {@linkcode Playlists.ImplementationClass}.
+   */
+  type ConfiguredClass = ImplementationClass;
+
+  /**
+   * @deprecated Replaced by {@linkcode Playlists.Implementation}.
+   */
+  type Configured = Implementation;
 }
 
 declare abstract class AnyPlaylists extends Playlists {

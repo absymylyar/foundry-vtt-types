@@ -1,13 +1,5 @@
 import type { DataModel } from "../abstract/data.d.mts";
-import type {
-  AnyMutableObject,
-  EmptyObject,
-  GetKey,
-  NullishCoalesce,
-  RemoveIndexSignatures,
-  ToMethod,
-  ValueOf,
-} from "#utils";
+import type { AnyMutableObject, GetKey, NullishCoalesce, RemoveIndexSignatures, ToMethod, ValueOf } from "#utils";
 import type { SchemaField } from "./fields.d.mts";
 
 import fields = foundry.data.fields;
@@ -452,7 +444,9 @@ declare namespace TextureData {
   /** The parameter defaults for `srcOptions` in the {@link TextureData} constructor */
   interface DefaultOptions {
     categories: ["IMAGE", "VIDEO"];
-    initial: EmptyObject;
+    // Avoid using `EmptyObject` as that creates a broken index signature.
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    initial: {};
     wildcard: false;
     label: "";
   }
@@ -610,8 +604,9 @@ declare namespace TextureData {
  * A {@linkcode fields.SchemaField} subclass used to represent texture data.
  */
 declare class TextureData<
-  SrcOptions extends TextureData.SrcOptions = TextureData.DefaultOptions,
-  SchemaOptions extends fields.SchemaField.Options<TextureData.Schema<SrcOptions>> = EmptyObject,
+  const SrcOptions extends TextureData.SrcOptions = TextureData.DefaultOptions,
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  const SchemaOptions extends fields.SchemaField.Options<TextureData.Schema<SrcOptions>> = {},
 > extends fields.SchemaField<TextureData.Schema<SrcOptions>, SchemaOptions> {
   /**
    * @param options    - Options which are forwarded to the SchemaField constructor
@@ -729,7 +724,7 @@ declare class PrototypeToken extends DataModel<PrototypeToken.Schema, PrototypeT
   getFlag<Scope extends TokenDocument.Flags.Scope, Key extends TokenDocument.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): Document.GetFlag<TokenDocument.Name, Scope, Key>;
+  ): TokenDocument.Flags.Get<Scope, Key>;
 
   /**
    * @see {@link foundry.abstract.Document.setFlag | `foundry.abstract.Document#setFlag`}
@@ -737,7 +732,7 @@ declare class PrototypeToken extends DataModel<PrototypeToken.Schema, PrototypeT
   setFlag<
     Scope extends TokenDocument.Flags.Scope,
     Key extends TokenDocument.Flags.Key<Scope>,
-    Value extends Document.GetFlag<TokenDocument.Name, Scope, Key>,
+    Value extends TokenDocument.Flags.Get<Scope, Key>,
   >(scope: Scope, key: Key, value: Value): Promise<this>;
 
   /**

@@ -30,11 +30,29 @@ declare class WorldSettings extends foundry.documents.abstract.WorldCollection<"
 }
 
 declare namespace WorldSettings {
-  interface Any extends AnyWorldSettings {}
-  interface AnyConstructor extends Identity<typeof AnyWorldSettings> {}
+  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
+  type Any = Internal.Any;
 
-  interface ConfiguredClass extends Document.ConfiguredCollectionClass<"Setting"> {}
-  interface Configured extends Document.ConfiguredCollection<"Setting"> {}
+  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
+  type AnyConstructor = Internal.AnyConstructor;
+
+  namespace Internal {
+    interface Any extends AnyWorldSettings {}
+    interface AnyConstructor extends Identity<typeof AnyWorldSettings> {}
+  }
+
+  interface ImplementationClass extends Document.Internal.ConfiguredCollectionClass<"Setting"> {}
+  interface Implementation extends Document.Internal.ConfiguredCollection<"Setting"> {}
+
+  /**
+   * @deprecated Replaced by {@linkcode GlobalLightSource.ImplementationClass}.
+   */
+  type ConfiguredClass = ImplementationClass;
+
+  /**
+   * @deprecated Replaced by {@linkcode GlobalLightSource.Implementation}.
+   */
+  type Configured = Implementation;
 }
 
 declare abstract class AnyWorldSettings extends WorldSettings {

@@ -15,13 +15,16 @@ import type {
   RemoveIndexSignatures,
   FixedInstanceType,
   NullishProps,
-  DiscriminatedUnion,
   PickValue,
   Identity,
   Brand,
   AnyMutableObject,
   MaybePromise,
+  SimpleMerge,
+  PrettifyType,
+  AllKeysOf,
   Override,
+  ConcreteKeys,
 } from "#utils";
 import type * as CONST from "../constants.mts";
 import type {
@@ -45,6 +48,7 @@ import type {
 import type DataModel from "./data.mts";
 import type DocumentSocketResponse from "./socket.d.mts";
 import type EmbeddedCollection from "./embedded-collection.d.mts";
+import type { SystemConfig } from "#configuration";
 
 export default Document;
 
@@ -964,22 +968,35 @@ declare namespace Document {
     | "JournalEntryPage"
     | "RegionBehavior";
 
-  type CoreTypesForName<Name extends Type> = string &
-    GetKey<Document.MetadataFor<Name>, "coreTypes", [CONST.BASE_DOCUMENT_TYPE]>[number];
+  type CoreTypesForName<Name extends Type> = _CoreTypes<
+    Name,
+    string & GetKey<Document.MetadataFor<Name>, "coreTypes", [CONST.BASE_DOCUMENT_TYPE]>[number]
+  >;
 
-  type ConfiguredSubTypesOf<Name extends Type> = Name extends "ActorDelta"
-    ? ConfiguredSubTypesOf<"Actor">
+  /** @internal */
+  type _CoreTypes<Name extends Type, Types> = SystemConfig extends { [_ in Name]: { readonly base: "ignore" } }
+    ? Exclude<Types, "base">
+    : Types;
+
+  type ConfiguredSubTypeOf<Name extends Type> = Name extends "ActorDelta"
+    ? ConfiguredSubTypeOf<"Actor">
     : // ESLint doesn't know that `DataModelConfig` and `SourceConfig` are meant to be declaration merged into.
       // Therefore it hastily thinks the results are always `never`.
       // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-duplicate-type-constituents
       string & (keyof GetKey<DataModelConfig, Name, unknown> | keyof GetKey<SourceConfig, Name, unknown>);
 
-  type SubTypesOf<Name extends Type> = Name extends "ActorDelta"
+  type SubTypesOf<Name extends Document.Type> = Name extends "ActorDelta"
     ? SubTypesOf<"Actor">
-    :
-        | Document.CoreTypesForName<Name>
-        | ConfiguredSubTypesOf<Name>
-        | (Document.MetadataFor<Name> extends { readonly hasTypeData: true } ? Document.ModuleSubType : never);
+    : Document.CoreTypesForName<Name> | ConfiguredSubTypeOf<Name> | _ModuleSubType<Name>;
+
+  /** @internal */
+  type _ModuleSubType<Name extends Type> = SystemConfig extends {
+    [_ in Name]: { readonly moduleSubType: "ignore" };
+  }
+    ? never
+    : Document.MetadataFor<Name> extends { readonly hasTypeData: true }
+      ? Document.ModuleSubType
+      : never;
 
   type ModuleSubType = Brand<`${string}.${string}`, "Document.ModuleSubtype">;
 
@@ -1057,7 +1074,7 @@ declare namespace Document {
    * @internal
    */
   interface _WorldCollectionMap {
-    Actor: foundry.documents.collections.Actors.Configured;
+    Actor: foundry.documents.collections.Actors.Implementation;
     Cards: foundry.documents.collections.CardStacks;
     Combat: foundry.documents.collections.CombatEncounters;
     FogExploration: foundry.documents.collections.FogExplorations;
@@ -1074,18 +1091,6 @@ declare namespace Document {
   }
 
   type WorldCollectionFor<Name extends Document.WorldType> = _WorldCollectionMap[Name];
-
-  // Note(LukeAbby): Will be updated with the CONFIG revamp.
-  type ConfiguredCollectionClass<Name extends Document.Type> = CONFIG extends {
-    readonly [K in Name]: {
-      readonly documentClass?: infer DocumentClass;
-    };
-  }
-    ? DocumentClass
-    : never;
-
-  // Note(LukeAbby): Will be updated with the CONFIG revamp.
-  type ConfiguredCollection<Name extends Document.Type> = FixedInstanceType<ConfiguredCollectionClass<Name>>;
 
   type IsParentOf<
     ParentDocument extends Document.Internal.Instance.Any,
@@ -1124,58 +1129,180 @@ declare namespace Document {
       type Complete<T extends Any> = T extends Document.Any ? T : never;
     }
 
-    // Note(LukeAbby): `Configured` is not checked for validity. This means that it's easy to
-    // accidently misconfigure without warning. However it helps stymy some circularities this way.
-    // This is also why `LazyDocument` takes a callback.
-    // See: https://gist.github.com/LukeAbby/a7892327633587ba89e760b599572322
-    type OfType<Configured, LazyDocument extends () => unknown> = "document" extends keyof Configured
-      ? Configured["document"]
-      : ReturnType<LazyDocument>;
-
-    type SystemMap<Name extends Document.WithSystem> = _SystemMap<
+    type ModelMap<Name extends Document.WithSubTypes> = _ModelMap<
       Name,
-      GetKey<DataModelConfig, Name>,
-      GetKey<SourceConfig, Name>
+      // `{}` is used to avoid `keyof never` issues.
+      // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+      GetKey<DataModelConfig, Name, {}>,
+      // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+      GetKey<SourceConfig, Name, {}>
+    > &
+      // `Document.ModuleSubType` has to be accounted for specially because of its perculiar nature.
+      Record<Document.ModuleSubType, _ModuleSubTypeFor<Name>>;
+
+    type _ModuleSubTypeFor<Name extends Document.WithSubTypes> = SystemConfig extends {
+      readonly [_ in Name]: { readonly moduleSubtype: "ignore" };
+    }
+      ? never
+      : // The `Extract<..., object>` serves a dual purpose:
+        // 1) Get rid of `| undefined` for optional subtypes.
+        // 2) Make sure it's obvious to TypeScript `system` is always an object.
+        Extract<GetKey<GetKey<DataModelConfig, Name, object>, Document.ModuleSubType, Document.UnknownSystem>, object>;
+
+    // Note(LukeAbby): This is written this way to preserve any optional modifiers.
+    type _ModelMap<Name extends Document.WithSubTypes, DataModel, Config> = PrettifyType<
+      SimpleMerge<
+        {
+          [SubType in Document.CoreTypesForName<Name>]: EmptyObject;
+        },
+        SimpleMerge<
+          {
+            [SubType in keyof DataModel]: EmptyObject;
+          },
+          {
+            [SubType in keyof Config]: EmptyObject;
+          }
+        >
+      >
     >;
 
-    type _SystemMap<Name extends Document.WithSystem, DataModel, SourceData> = {
-      [SubType in SubTypesOf<Name>]: DataModel extends {
-        [K in SubType]: abstract new (...args: infer _) => infer Model;
-      }
-        ? Model
-        : SourceData extends {
-              [K in SubType]: infer Source;
-            }
-          ? Source
-          : SubType extends Document.ModuleSubType
-            ? // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-              {}
-            : UnknownSystem;
-    };
+    type SystemMap<Name extends Document.WithSubTypes> = _SystemMap<
+      Name,
+      // `{}` is used to avoid `keyof never` issues.
+      // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+      GetKey<DataModelConfig, Name, {}>,
+      // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+      GetKey<DataConfig, Name, {}>
+    > &
+      // `Document.ModuleSubType` has to be accounted for specially because of its perculiar nature.
+      Record<Document.ModuleSubType, _ModuleSubTypeFor<Name>>;
 
-    type SystemOfType<SystemMap extends Record<SubType, object>, SubType extends string> =
-      | DiscriminatedUnion<SystemMap[SubType]>
-      | (SubType extends ModuleSubType | "base" ? UnknownSystem : never);
+    // Note(LukeAbby): This is written this way to preserve any optional modifiers.
+    type _SystemMap<Name extends Document.WithSubTypes, DataModel, DataConfig> = PrettifyType<
+      SimpleMerge<
+        {
+          [SubType in Document.CoreTypesForName<Name>]: EmptyObject;
+        },
+        SimpleMerge<
+          {
+            [SubType in keyof DataModel]: DataModel[SubType] extends
+              | (abstract new (...args: never) => infer Model extends DataModel.Any)
+              | undefined
+              ? Model
+              : never;
+          },
+          {
+            [SubType in keyof DataConfig]: DataConfig[SubType];
+          }
+        >
+      >
+    >;
+
+    type SystemOfType<
+      Name extends Document.WithSystem,
+      SystemMap extends Record<SubType, object | undefined>,
+      SubType extends string,
+      ConfiguredSubType extends string,
+    > = SystemConfig extends { readonly [_ in Name]: { readonly discriminate: "all" } }
+      ? _DiscriminateUndefined<SystemMap[SubType]>
+      :
+          | ([Extract<SubType, ConfiguredSubType>] extends [never]
+              ? never
+              : _DiscriminateUndefined<SystemMap[Extract<SubType, ConfiguredSubType>]>)
+          | ([Exclude<SubType, ConfiguredSubType>] extends [never]
+              ? never
+              : SystemMap[Exclude<SubType, ConfiguredSubType>]);
+
+    /** @internal */
+    type _DiscriminateUndefined<T extends object | undefined> = _DiscriminatedUnion<
+      Exclude<T, undefined>,
+      {
+        // Avoid discriminating index signatures.
+        [K in keyof T]: ConcreteKeys<T>;
+      }[keyof T]
+    >;
+
+    /** @internal */
+    type _DiscriminatedUnion<U extends object, AllKeys extends PropertyKey> = U extends object
+      ? [Exclude<AllKeys, keyof U>] extends [never]
+        ? U
+        : U & {
+            readonly [K in Exclude<AllKeys, keyof U>]?: never;
+          }
+      : never;
 
     // TODO(LukeAbby): Improve the type display with a helper here.
+    // TODO(LukeAbby): Add `StoredSource` for a better type display there.
     type Stored<D extends Document.Any> = Override<
       D,
       {
         id: string;
         _id: string;
         _source: Override<D["_source"], { _id: string }>;
+        toJSON(): Override<D["_source"], { _id: string }>;
       }
     >;
 
-    // @ts-expect-error - This pattern is inherently an error.
-    interface Invalid<D extends Document.Any> extends _Invalid, D {}
+    type Invalid<D extends Document.Any> = D extends { system: unknown } ? _InvalidSystem<D> : _Invalid<D>;
 
     /** @internal */
-    interface _Invalid {
-      _source: object;
-      system?: object | undefined;
+    // @ts-expect-error This pattern is inherently an error.
+    interface _InvalidSystem<D extends Document.Any> extends D {
+      // `Record<string, unknown>` is used to allow arbitrary property access since `in` checks are
+      // a nuisance.
+      _source: Record<string, unknown>;
+      system: Record<string, unknown>;
       get invalid(): true;
     }
+
+    /** @internal */
+    // @ts-expect-error This pattern is inherently an error.
+    interface _Invalid<D extends Document.Any> extends D {
+      _source: Record<string, unknown>;
+      get invalid(): true;
+    }
+
+    type DiscriminateSystem<
+      Name extends Document.WithSystem,
+      TypeMap extends Record<SubType, { system: object | undefined }>,
+      SubType extends string,
+      ConfiguredSubType extends string,
+    > = SystemConfig extends { readonly [_ in Name]: { readonly discriminate: "all" } }
+      ? DiscriminateSubType<SubType, TypeMap>
+      :
+          | DiscriminateSubType<Extract<SubType, ConfiguredSubType>, TypeMap>
+          | ([Exclude<SubType, ConfiguredSubType>] extends [never]
+              ? never
+              : TypeMap[Exclude<SubType, ConfiguredSubType>]);
+
+    type DiscriminateSubType<
+      SubType extends AllSubType,
+      TypeMap extends Record<AllSubType, { system: object | undefined }>,
+      AllSubType extends string = SubType,
+    > = SubType extends unknown
+      ? [AllSubType] extends [SubType]
+        ? TypeMap[SubType] // There's only one subtype so avoid the worse type display of `OfType`.
+        : _DiscriminateSubType<SubType, TypeMap, AllSubType>
+      : never;
+
+    type _DiscriminateSubType<
+      OneSubType extends AllSubType,
+      TypeMap extends Record<AllSubType, { system: object | undefined }>,
+      AllSubType extends string,
+    > = TypeMap[OneSubType] & {
+      system: SystemDiscriminant<
+        Exclude<TypeMap[OneSubType]["system"], undefined>,
+        Exclude<TypeMap[AllSubType]["system"], undefined>
+      >;
+    };
+
+    /** @internal */
+    type SystemDiscriminant<System extends object, AllSystem extends object> = Omit<
+      {
+        [K in AllKeysOf<AllSystem>]?: never;
+      },
+      keyof System
+    >;
 
     interface DropData<DocumentType extends Document.Type> {
       /**
@@ -1191,6 +1318,52 @@ declare namespace Document {
       // TODO: Handle as part of the UUID update.
       uuid?: string;
     }
+
+    // Like `keyof` but handles properties desirable for flags:
+    // - `never` returns `never` (instead of `PropertyKey`).
+    // - `unknown` returns `string` (instead of `never`).
+    // - Allows any key in a union of objects (instead of just the common keys).
+    // - Strips out non string keys.
+    type FlagKeyOf<T> = unknown extends T
+      ? string
+      : [T] extends [never]
+        ? never
+        : T extends unknown
+          ? // Note(LukeAbby): This is a quick hack to get core flags on all documents.
+            // This should definitely be improved.
+            keyof (T & CoreFlags) & string
+          : never;
+
+    type FlagGetKey<T, K extends PropertyKey> = T extends unknown
+      ? K extends keyof (T & CoreFlags)
+        ? (T & CoreFlags)[K]
+        : never
+      : never;
+
+    // Note(LukeAbby): It's at times been very important for `GetFlag` to be covariant over `ConcreteSchema`.
+    // If it isn't then issues arise where the `Document` type ends up becoming invariant.
+    // Currently it is actually contravariant over `ConcreteSchema` and this may cause issues (because of the usage of `keyof`).
+    // Unfortunately it's not easy to avoid because the typical `GetKey` trick has issues between `never`, not defined at all, and `unknown` etc.
+    type GetFlag<Flags extends object, S extends string, K extends string> = FlagGetKey<
+      FlagGetKey<Flags & CoreFlags, S>,
+      K
+    >;
+
+    // The type `{}` is useful here because in an intersection it reduces down to nothing unlike `EmptyObject`.
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    type ConfiguredFlagsForName<Name extends Type> = GetKey<FlagConfig, Name, {}>;
+
+    // Note(LukeAbby): Will be updated with the CONFIG revamp.
+    type ConfiguredCollectionClass<Name extends Document.Type> = CONFIG extends {
+      readonly [K in Name]: {
+        readonly documentClass?: infer DocumentClass;
+      };
+    }
+      ? DocumentClass
+      : never;
+
+    // Note(LukeAbby): Will be updated with the CONFIG revamp.
+    type ConfiguredCollection<Name extends Document.Type> = FixedInstanceType<ConfiguredCollectionClass<Name>>;
   }
 
   /** Any Document, that is a child of the given parent Document. */
@@ -1308,6 +1481,42 @@ declare namespace Document {
     | (DocumentType extends "Token" ? TokenDocument.Source : never)
     | (DocumentType extends "Wall" ? WallDocument.Source : never);
 
+  type ParentForName<DocumentType extends Document.Type> =
+    | (DocumentType extends "ActiveEffect" ? ActiveEffect.Parent : never)
+    | (DocumentType extends "ActorDelta" ? ActorDelta.Parent : never)
+    | (DocumentType extends "Actor" ? Actor.Parent : never)
+    | (DocumentType extends "Adventure" ? Adventure.Parent : never)
+    | (DocumentType extends "Card" ? Card.Parent : never)
+    | (DocumentType extends "Cards" ? Cards.Parent : never)
+    | (DocumentType extends "ChatMessage" ? ChatMessage.Parent : never)
+    | (DocumentType extends "Combat" ? Combat.Parent : never)
+    | (DocumentType extends "Combatant" ? Combatant.Parent : never)
+    | (DocumentType extends "CombatantGroup" ? CombatantGroup.Parent : never)
+    | (DocumentType extends "FogExploration" ? FogExploration.Parent : never)
+    | (DocumentType extends "Folder" ? Folder.Parent : never)
+    | (DocumentType extends "Item" ? Item.Parent : never)
+    | (DocumentType extends "JournalEntryCategory" ? JournalEntryCategory.Parent : never)
+    | (DocumentType extends "JournalEntryPage" ? JournalEntryPage.Parent : never)
+    | (DocumentType extends "JournalEntry" ? JournalEntry.Parent : never)
+    | (DocumentType extends "Macro" ? Macro.Parent : never)
+    | (DocumentType extends "PlaylistSound" ? PlaylistSound.Parent : never)
+    | (DocumentType extends "Playlist" ? Playlist.Parent : never)
+    | (DocumentType extends "RegionBehavior" ? RegionBehavior.Parent : never)
+    | (DocumentType extends "RollTable" ? RollTable.Parent : never)
+    | (DocumentType extends "Scene" ? Scene.Parent : never)
+    | (DocumentType extends "Setting" ? Setting.Parent : never)
+    | (DocumentType extends "TableResult" ? TableResult.Parent : never)
+    | (DocumentType extends "User" ? User.Parent : never)
+    | (DocumentType extends "AmbientLight" ? AmbientLightDocument.Parent : never)
+    | (DocumentType extends "AmbientSound" ? AmbientSoundDocument.Parent : never)
+    | (DocumentType extends "Drawing" ? DrawingDocument.Parent : never)
+    | (DocumentType extends "MeasuredTemplate" ? MeasuredTemplateDocument.Parent : never)
+    | (DocumentType extends "Note" ? NoteDocument.Parent : never)
+    | (DocumentType extends "Region" ? NoteDocument.Parent : never)
+    | (DocumentType extends "Tile" ? TileDocument.Parent : never)
+    | (DocumentType extends "Token" ? TokenDocument.Parent : never)
+    | (DocumentType extends "Wall" ? WallDocument.Parent : never);
+
   type SystemConstructor = AnyConstructor & {
     metadata: { name: SystemType };
   };
@@ -1319,11 +1528,6 @@ declare namespace Document {
   type ToConfiguredInstance<ConcreteDocument extends Document.Internal.Constructor> = ImplementationFor<
     NameFor<ConcreteDocument>
   >;
-
-  type TemporaryIf<D extends Document.Any, Temporary extends boolean | undefined> = Temporary extends true
-    ? D
-    : // eslint-disable-next-line @typescript-eslint/no-deprecated
-      Stored<D>;
 
   type StoredForName<DocumentType extends Document.Type> =
     | (DocumentType extends "ActiveEffect" ? ActiveEffect.Stored : never)
@@ -1409,56 +1613,16 @@ declare namespace Document {
 
   type ConfiguredSourceForName<Name extends Type> = GetKey<SourceConfig, Name, EmptyObject>;
 
-  // The type `{}` is useful here because in an intersection it reduces down to nothing unlike `EmptyObject`.
-  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-  type ConfiguredFlagsForName<Name extends Type> = GetKey<FlagConfig, Name, {}>;
-
   type SchemaFor<ConcreteDocument extends Internal.Instance.Any> =
     ConcreteDocument extends Internal.Instance<infer _1, infer Schema, infer _2> ? Schema : never;
 
   type MetadataFor<Name extends Document.Type> = ConfiguredMetadata[Name];
 
   type CollectionRecord<Schema extends DataSchema> = {
-    [Key in keyof Schema]: Schema[Key] extends EmbeddedCollectionField.Any ? Schema[Key] : never;
+    [Key in keyof Schema]: Schema[Key] extends EmbeddedCollectionField.Any
+      ? NonNullable<Schema[Key][" __fvtt_types_internal_initialized_data"]>
+      : never;
   };
-
-  type Flags<ConcreteDocument extends Internal.Instance.Any> = OptionsForSchema<SchemaFor<ConcreteDocument>>;
-
-  /** @internal */
-  interface OptionsInFlags<Options extends DataField.Options.Any> {
-    readonly flags?: DataField<Options, any>;
-  }
-
-  // These types only exists to simplify solving the `Document` type. Using `Document.Flags<this>` means the constraint `this extends Document.Any` has to be proved.
-  // This is much more complex than proving the constraint for `Document.FlagsInternal<Schema>` that `Schema extends DataSchema`.
-
-  // TODO: This needs to use the derived flags not just how they're initialized.
-  type OptionsForSchema<Schema extends DataSchema> =
-    RemoveIndexSignatures<Schema> extends OptionsInFlags<infer Options> ? DataField.InitializedType<Options> : never;
-
-  // Like `keyof` but handles properties desirable for flags:
-  // - `never` returns `never` (instead of `PropertyKey`).
-  // - `unknown` returns `string` (instead of `never`).
-  // - Allows any key in a union of objects (instead of just the common keys).
-  // - Strips out non string keys.
-  type FlagKeyOf<T> = unknown extends T
-    ? string
-    : [T] extends [never]
-      ? never
-      : T extends unknown
-        ? keyof T & string
-        : never;
-
-  type FlagGetKey<T, K extends PropertyKey> = T extends unknown ? (K extends keyof T ? T[K] : never) : never;
-
-  // Note(LukeAbby): It's at times been very important for `GetFlag` to be covariant over `ConcreteSchema`.
-  // If it isn't then issues arise where the `Document` type ends up becoming invariant.
-  // Currently it is actually contravariant over `ConcreteSchema` and this may cause issues (because of the usage of `keyof`).
-  // Unfortunately it's not easy to avoid because the typical `GetKey` trick has issues between `never`, not defined at all, and `unknown` etc.
-  type GetFlag<Name extends Document.Type, S extends string, K extends string> = FlagGetKey<
-    FlagGetKey<Document.ConfiguredFlagsForName<Name>, S>,
-    K
-  >;
 
   interface CoreFlags {
     core?: {
@@ -1468,33 +1632,51 @@ declare namespace Document {
   }
 
   /** @internal */
-  type _ConstructionContext<Parent extends Document.Any | null> = NullishProps<{
-    /**
-     * The parent Document of this one, if this one is embedded
-     * @defaultValue `null`
-     */
-    parent: Parent;
+  interface _ParentContext<Parent extends Document.Any | null>
+    extends _DynamicBase<
+      Parent extends null
+        ? {
+            /**
+             * The parent Document of this one, if this one is embedded
+             * @defaultValue `null`
+             */
+            parent?: Parent | undefined;
+          }
+        : {
+            /**
+             * The parent Document of this one, if this one is embedded
+             */
+            parent: Parent;
+          }
+    > {}
 
-    /**
-     * The compendium collection ID which contains this Document, if any
-     * @defaultValue `null`
-     */
-    pack: string;
+  // @ts-expect-error This pattern is inherently an error.
+  interface _DynamicBase<T extends object> extends T {}
 
-    /**
-     * Whether to validate initial data strictly?
-     * @defaultValue `true`
-     */
-    strict: boolean;
+  /** @internal */
+  interface _ConstructionContext<Parent extends Document.Any | null>
+    extends _ParentContext<Parent>,
+      NullishProps<{
+        /**
+         * The compendium collection ID which contains this Document, if any
+         * @defaultValue `null`
+         */
+        pack: string;
 
-    /**
-     * An immutable reverse-reference to the name of the collection that this Document exists in on its parent, if any.
-     * @privateRemarks Omitted from the typedef, inferred from usage in {@link Document._configure | `Document#_configure`}
-     * (and included in the construction context rather than `ConfigureOptions` due to being passed to construction in
-     * {@link foundry.abstract.EmbeddedCollection.createDocument | `EmbeddedCollection#createDocument`})
-     */
-    parentCollection: string;
-  }>;
+        /**
+         * Whether to validate initial data strictly?
+         * @defaultValue `true`
+         */
+        strict: boolean;
+
+        /**
+         * An immutable reverse-reference to the name of the collection that this Document exists in on its parent, if any.
+         * @privateRemarks Omitted from the typedef, inferred from usage in {@link Document._configure | `Document#_configure`}
+         * (and included in the construction context rather than `ConfigureOptions` due to being passed to construction in
+         * {@link foundry.abstract.EmbeddedCollection.createDocument | `EmbeddedCollection#createDocument`})
+         */
+        parentCollection: string;
+      }> {}
 
   /**
    * Foundry does not include the properties from the DataModel construction context in `DocumentConstructionContext`,
@@ -1817,7 +1999,7 @@ declare namespace Document {
 
     type CreateOperationForName<
       DocumentType extends Document.Type,
-      Temporary extends boolean | undefined = undefined,
+      Temporary extends boolean | undefined = boolean | undefined,
     > =
       | (DocumentType extends "ActiveEffect" ? ActiveEffect.Database.CreateOperation<Temporary> : never)
       | (DocumentType extends "ActorDelta" ? ActorDelta.Database.CreateOperation<Temporary> : never)
@@ -2033,6 +2215,114 @@ declare namespace Document {
       | (DocumentType extends "Tile" ? TileDocument.Database.DeleteOptions : never)
       | (DocumentType extends "Token" ? TokenDocument.Database.DeleteOptions : never)
       | (DocumentType extends "Wall" ? WallDocument.Database.DeleteOptions : never);
+
+    type PreCreateOptionsFor<DocumentType extends Document.Type> =
+      | (DocumentType extends "ActiveEffect" ? ActiveEffect.Database.PreCreateOptions : never)
+      | (DocumentType extends "ActorDelta" ? ActorDelta.Database.PreCreateOptions : never)
+      | (DocumentType extends "Actor" ? Actor.Database.PreCreateOptions : never)
+      | (DocumentType extends "Adventure" ? Adventure.Database.PreCreateOptions : never)
+      | (DocumentType extends "Card" ? Card.Database.PreCreateOptions : never)
+      | (DocumentType extends "Cards" ? Cards.Database.PreCreateOptions : never)
+      | (DocumentType extends "ChatMessage" ? ChatMessage.Database.PreCreateOptions : never)
+      | (DocumentType extends "Combat" ? Combat.Database.PreCreateOptions : never)
+      | (DocumentType extends "Combatant" ? Combatant.Database.PreCreateOptions : never)
+      | (DocumentType extends "CombatantGroup" ? CombatantGroup.Database.PreCreateOptions : never)
+      | (DocumentType extends "FogExploration" ? FogExploration.Database.PreCreateOptions : never)
+      | (DocumentType extends "Folder" ? Folder.Database.PreCreateOptions : never)
+      | (DocumentType extends "Item" ? Item.Database.PreCreateOptions : never)
+      | (DocumentType extends "JournalEntryCategory" ? JournalEntryCategory.Database.PreCreateOptions : never)
+      | (DocumentType extends "JournalEntryPage" ? JournalEntryPage.Database.PreCreateOptions : never)
+      | (DocumentType extends "JournalEntry" ? JournalEntry.Database.PreCreateOptions : never)
+      | (DocumentType extends "Macro" ? Macro.Database.PreCreateOptions : never)
+      | (DocumentType extends "PlaylistSound" ? PlaylistSound.Database.PreCreateOptions : never)
+      | (DocumentType extends "Playlist" ? Playlist.Database.PreCreateOptions : never)
+      | (DocumentType extends "RegionBehavior" ? RegionBehavior.Database.PreCreateOptions : never)
+      | (DocumentType extends "RollTable" ? RollTable.Database.PreCreateOptions : never)
+      | (DocumentType extends "Scene" ? Scene.Database.PreCreateOptions : never)
+      | (DocumentType extends "Setting" ? Setting.Database.PreCreateOptions : never)
+      | (DocumentType extends "TableResult" ? TableResult.Database.PreCreateOptions : never)
+      | (DocumentType extends "User" ? User.Database.PreCreateOptions : never)
+      | (DocumentType extends "AmbientLight" ? AmbientLightDocument.Database.PreCreateOptions : never)
+      | (DocumentType extends "AmbientSound" ? AmbientSoundDocument.Database.PreCreateOptions : never)
+      | (DocumentType extends "Drawing" ? DrawingDocument.Database.PreCreateOptions : never)
+      | (DocumentType extends "MeasuredTemplate" ? MeasuredTemplateDocument.Database.PreCreateOptions : never)
+      | (DocumentType extends "Note" ? NoteDocument.Database.PreCreateOptions : never)
+      | (DocumentType extends "Region" ? RegionDocument.Database.PreCreateOptions : never)
+      | (DocumentType extends "Tile" ? TileDocument.Database.PreCreateOptions : never)
+      | (DocumentType extends "Token" ? TokenDocument.Database.PreCreateOptions : never)
+      | (DocumentType extends "Wall" ? WallDocument.Database.PreCreateOptions : never);
+
+    type PreUpdateOptionsFor<DocumentType extends Document.Type> =
+      | (DocumentType extends "ActiveEffect" ? ActiveEffect.Database.PreUpdateOptions : never)
+      | (DocumentType extends "ActorDelta" ? ActorDelta.Database.PreUpdateOptions : never)
+      | (DocumentType extends "Actor" ? Actor.Database.PreUpdateOptions : never)
+      | (DocumentType extends "Adventure" ? Adventure.Database.PreUpdateOptions : never)
+      | (DocumentType extends "Card" ? Card.Database.PreUpdateOptions : never)
+      | (DocumentType extends "Cards" ? Cards.Database.PreUpdateOptions : never)
+      | (DocumentType extends "ChatMessage" ? ChatMessage.Database.PreUpdateOptions : never)
+      | (DocumentType extends "Combat" ? Combat.Database.PreUpdateOptions : never)
+      | (DocumentType extends "Combatant" ? Combatant.Database.PreUpdateOptions : never)
+      | (DocumentType extends "CombatantGroup" ? CombatantGroup.Database.PreUpdateOptions : never)
+      | (DocumentType extends "FogExploration" ? FogExploration.Database.PreUpdateOptions : never)
+      | (DocumentType extends "Folder" ? Folder.Database.PreUpdateOptions : never)
+      | (DocumentType extends "Item" ? Item.Database.PreUpdateOptions : never)
+      | (DocumentType extends "JournalEntryCategory" ? JournalEntryCategory.Database.PreUpdateOptions : never)
+      | (DocumentType extends "JournalEntryPage" ? JournalEntryPage.Database.PreUpdateOptions : never)
+      | (DocumentType extends "JournalEntry" ? JournalEntry.Database.PreUpdateOptions : never)
+      | (DocumentType extends "Macro" ? Macro.Database.PreUpdateOptions : never)
+      | (DocumentType extends "PlaylistSound" ? PlaylistSound.Database.PreUpdateOptions : never)
+      | (DocumentType extends "Playlist" ? Playlist.Database.PreUpdateOptions : never)
+      | (DocumentType extends "RegionBehavior" ? RegionBehavior.Database.PreUpdateOptions : never)
+      | (DocumentType extends "RollTable" ? RollTable.Database.PreUpdateOptions : never)
+      | (DocumentType extends "Scene" ? Scene.Database.PreUpdateOptions : never)
+      | (DocumentType extends "Setting" ? Setting.Database.PreUpdateOptions : never)
+      | (DocumentType extends "TableResult" ? TableResult.Database.PreUpdateOptions : never)
+      | (DocumentType extends "User" ? User.Database.PreUpdateOptions : never)
+      | (DocumentType extends "AmbientLight" ? AmbientLightDocument.Database.PreUpdateOptions : never)
+      | (DocumentType extends "AmbientSound" ? AmbientSoundDocument.Database.PreUpdateOptions : never)
+      | (DocumentType extends "Drawing" ? DrawingDocument.Database.PreUpdateOptions : never)
+      | (DocumentType extends "MeasuredTemplate" ? MeasuredTemplateDocument.Database.PreUpdateOptions : never)
+      | (DocumentType extends "Note" ? NoteDocument.Database.PreUpdateOptions : never)
+      | (DocumentType extends "Region" ? RegionDocument.Database.PreUpdateOptions : never)
+      | (DocumentType extends "Tile" ? TileDocument.Database.PreUpdateOptions : never)
+      | (DocumentType extends "Token" ? TokenDocument.Database.PreUpdateOptions : never)
+      | (DocumentType extends "Wall" ? WallDocument.Database.PreUpdateOptions : never);
+
+    type PreDeleteOptionsFor<DocumentType extends Document.Type> =
+      | (DocumentType extends "ActiveEffect" ? ActiveEffect.Database.PreDeleteOptions : never)
+      | (DocumentType extends "ActorDelta" ? ActorDelta.Database.PreDeleteOptions : never)
+      | (DocumentType extends "Actor" ? Actor.Database.PreDeleteOptions : never)
+      | (DocumentType extends "Adventure" ? Adventure.Database.PreDeleteOptions : never)
+      | (DocumentType extends "Card" ? Card.Database.PreDeleteOptions : never)
+      | (DocumentType extends "Cards" ? Cards.Database.PreDeleteOptions : never)
+      | (DocumentType extends "ChatMessage" ? ChatMessage.Database.PreDeleteOptions : never)
+      | (DocumentType extends "Combat" ? Combat.Database.PreDeleteOptions : never)
+      | (DocumentType extends "Combatant" ? Combatant.Database.PreDeleteOptions : never)
+      | (DocumentType extends "CombatantGroup" ? CombatantGroup.Database.PreDeleteOptions : never)
+      | (DocumentType extends "FogExploration" ? FogExploration.Database.PreDeleteOptions : never)
+      | (DocumentType extends "Folder" ? Folder.Database.PreDeleteOptions : never)
+      | (DocumentType extends "Item" ? Item.Database.PreDeleteOptions : never)
+      | (DocumentType extends "JournalEntryCategory" ? JournalEntryCategory.Database.PreDeleteOptions : never)
+      | (DocumentType extends "JournalEntryPage" ? JournalEntryPage.Database.PreDeleteOptions : never)
+      | (DocumentType extends "JournalEntry" ? JournalEntry.Database.PreDeleteOptions : never)
+      | (DocumentType extends "Macro" ? Macro.Database.PreDeleteOptions : never)
+      | (DocumentType extends "PlaylistSound" ? PlaylistSound.Database.PreDeleteOptions : never)
+      | (DocumentType extends "Playlist" ? Playlist.Database.PreDeleteOptions : never)
+      | (DocumentType extends "RegionBehavior" ? RegionBehavior.Database.PreDeleteOptions : never)
+      | (DocumentType extends "RollTable" ? RollTable.Database.PreDeleteOptions : never)
+      | (DocumentType extends "Scene" ? Scene.Database.PreDeleteOptions : never)
+      | (DocumentType extends "Setting" ? Setting.Database.PreDeleteOptions : never)
+      | (DocumentType extends "TableResult" ? TableResult.Database.PreDeleteOptions : never)
+      | (DocumentType extends "User" ? User.Database.PreDeleteOptions : never)
+      | (DocumentType extends "AmbientLight" ? AmbientLightDocument.Database.PreDeleteOptions : never)
+      | (DocumentType extends "AmbientSound" ? AmbientSoundDocument.Database.PreDeleteOptions : never)
+      | (DocumentType extends "Drawing" ? DrawingDocument.Database.PreDeleteOptions : never)
+      | (DocumentType extends "MeasuredTemplate" ? MeasuredTemplateDocument.Database.PreDeleteOptions : never)
+      | (DocumentType extends "Note" ? NoteDocument.Database.PreDeleteOptions : never)
+      | (DocumentType extends "Region" ? RegionDocument.Database.PreDeleteOptions : never)
+      | (DocumentType extends "Tile" ? TileDocument.Database.PreDeleteOptions : never)
+      | (DocumentType extends "Token" ? TokenDocument.Database.PreDeleteOptions : never)
+      | (DocumentType extends "Wall" ? WallDocument.Database.PreDeleteOptions : never);
   }
 
   interface DataFieldShimOptions {
@@ -2412,13 +2702,13 @@ declare namespace Document {
 
   namespace DropData {
     /**
-     * @deprecated - This type is likely too broad to be useful. Deprecated without replacement.
+     * @deprecated This type is likely too broad to be useful. Deprecated without replacement.
      */
     // eslint-disable-next-line @typescript-eslint/no-deprecated
     type Any = DropData<any>;
 
     /**
-     * @deprecated - This type is a part of the drop data which is now gotten through
+     * @deprecated This type is a part of the drop data which is now gotten through
      * `[Document].DropData`. Use that instead.
      */
     interface Data<T extends Document.Any> {
@@ -2427,7 +2717,7 @@ declare namespace Document {
     }
 
     /**
-     * @deprecated - This type is a part of the drop data which is now gotten through
+     * @deprecated This type is a part of the drop data which is now gotten through
      * `[Document].DropData`. Use that instead.
      */
     interface UUID {
@@ -2447,4 +2737,75 @@ declare namespace Document {
     data?: CreateData,
     context?: Document.ConstructionContext<Parent>,
   ];
+
+  /**
+   * @deprecated This type has been moved to be internal. If you have a need for this type please
+   * let us know.
+   */
+  type ConfiguredFlagsForName<Name extends Type> = Internal.ConfiguredFlagsForName<Name>;
+
+  /**
+   * @deprecated This type is no longer used and will be removed.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
+  type Flags<ConcreteDocument extends Internal.Instance.Any> = OptionsForSchema<SchemaFor<ConcreteDocument>>;
+
+  /**
+   * @internal
+   * @deprecated This type is no longer used and will be removed.
+   */
+  interface OptionsInFlags<Options extends DataField.Options.Any> {
+    readonly flags?: DataField<Options, any>;
+  }
+
+  // These types only exists to simplify solving the `Document` type. Using `Document.Flags<this>` means the constraint `this extends Document.Any` has to be proved.
+  // This is much more complex than proving the constraint for `Document.FlagsInternal<Schema>` that `Schema extends DataSchema`.
+
+  /**
+   * @deprecated This type is being made internal.
+   */
+  type OptionsForSchema<Schema extends DataSchema> =
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    RemoveIndexSignatures<Schema> extends OptionsInFlags<infer Options> ? DataField.InitializedType<Options> : never;
+
+  /**
+   * @deprecated `FlagKeyOf` is being made internal. If you need this for some reason please let
+   * us know.
+   */
+  type FlagKeyOf<T> = Internal.FlagKeyOf<T>;
+
+  /**
+   * @deprecated `FlagGetKey` is being made internal. If you need this for some reason please let
+   * us know.
+   */
+  type FlagGetKey<T, K extends PropertyKey> = Internal.FlagGetKey<T, K>;
+
+  /**
+   * @deprecated `GetFlag` has been moved to be internal. Use `[Document].Flag.Get` instead.
+   * If you need this for some reason please let us know.
+   */
+  type GetFlag<Name extends Document.Type, S extends string, K extends string> = Internal.GetFlag<
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    Extract<Document.ConfiguredFlagsForName<Name>, object>,
+    S,
+    K
+  >;
+
+  /**
+   * @deprecated Use the `TemporaryIf` available on each sub-document.
+   */
+  type TemporaryIf<D extends Document.Any, Temporary extends boolean | undefined> = Temporary extends true
+    ? D
+    : // eslint-disable-next-line @typescript-eslint/no-deprecated
+      Stored<D>;
+
+  /**
+   * @deprecated This has been removed without replacement. If you have a need for it please let us know.
+   */
+  type ConfiguredCollectionClass<Name extends Document.Type> = Document.Internal.ConfiguredCollectionClass<Name>;
+
+  /**
+   * @deprecated This has been removed without replacement. If you have a need for it please let us know.
+   */
+  type ConfiguredCollection<Name extends Document.Type> = Document.Internal.ConfiguredCollection<Name>;
 }

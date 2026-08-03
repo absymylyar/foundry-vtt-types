@@ -29,11 +29,19 @@ declare class Actors extends foundry.documents.abstract.WorldCollection<"Actor",
 }
 
 declare namespace Actors {
-  interface Any extends AnyActors {}
-  interface AnyConstructor extends Identity<typeof AnyActors> {}
+  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
+  type Any = Internal.Any;
 
-  interface ConfiguredClass extends Document.ConfiguredCollectionClass<"Actor"> {}
-  interface Configured extends Document.ConfiguredCollection<"Actor"> {}
+  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
+  type AnyConstructor = Internal.AnyConstructor;
+
+  namespace Internal {
+    interface Any extends AnyActors {}
+    interface AnyConstructor extends Identity<typeof AnyActors> {}
+  }
+
+  interface ImplementationClass extends Document.Internal.ConfiguredCollectionClass<"Actor"> {}
+  interface Implementation extends Document.Internal.ConfiguredCollection<"Actor"> {}
 
   interface FromCompendiumOptions extends foundry.documents.abstract.WorldCollection.FromCompendiumOptions {
     /**
@@ -42,6 +50,16 @@ declare namespace Actors {
      */
     clearPrototypeToken: boolean;
   }
+
+  /**
+   * @deprecated Replaced by {@linkcode Actors.ImplementationClass}.
+   */
+  type ConfiguredClass = ImplementationClass;
+
+  /**
+   * @deprecated Replaced by {@linkcode Actors.Implementation}.
+   */
+  type Configured = Implementation;
 }
 
 declare abstract class AnyActors extends Actors {

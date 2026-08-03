@@ -1,5 +1,5 @@
-import type { ConfiguredFolder } from "fvtt-types/configuration";
-import type { InexactPartial, IntentionalPartial, Merge, NullishProps } from "#utils";
+import type { ConfiguredFolder } from "#configuration";
+import type { Identity, InexactPartial, IntentionalPartial, Merge, NullishProps } from "#utils";
 import type Document from "#common/abstract/document.d.mts";
 import type { DataSchema } from "#common/data/fields.d.mts";
 import type BaseFolder from "#common/documents/folder.d.mts";
@@ -73,7 +73,7 @@ declare namespace Folder {
    *
    * This type exists only to be informative.
    */
-  type ConfiguredSubTypes = never;
+  type ConfiguredSubType = never;
 
   /**
    * @deprecated `Folder` does not have `system` and therefore there is no way for a user to
@@ -91,8 +91,19 @@ declare namespace Folder {
    * Note that `Folder` does not have a `system` property and therefore there is no way for a user
    * to configure custom subtypes. See {@linkcode Folder.SubType} for more information.
    */
-  // eslint-disable-next-line @typescript-eslint/no-restricted-types
-  type OfType<Type extends SubType> = Document.Internal.OfType<ConfiguredFolder<Type>, () => Folder<Type>>;
+  // Note(LukeAbby): The lack of a `system` is why `Document.Internal.DiscriminateSystem` isn't applied.
+  type OfType<Type extends SubType> = _OfType[Type];
+
+  /** @internal */
+  interface _OfType
+    extends Identity<{
+      [Type in SubType]: Type extends unknown
+        ? ConfiguredFolder<Type> extends { document: infer Document }
+          ? Document
+          : // eslint-disable-next-line @typescript-eslint/no-restricted-types
+            Folder<Type>
+        : never;
+    }> {}
 
   /**
    * A document's parent is something that can contain it.
@@ -139,18 +150,18 @@ declare namespace Folder {
   /**
    * The world collection that contains `Folder`s. Will be `never` if none exists.
    */
-  type CollectionClass = foundry.documents.collections.Folders.ConfiguredClass;
+  type CollectionClass = foundry.documents.collections.Folders.ImplementationClass;
 
   /**
    * The world collection that contains `Folder`s. Will be `never` if none exists.
    */
-  type Collection = foundry.documents.collections.Folders.Configured;
+  type Collection = foundry.documents.collections.Folders.Implementation;
 
   /**
    * An instance of `Folder` that comes from the database but failed validation meaning that
    * its `system` and `_source` could theoretically be anything.
    */
-  interface Invalid extends Document.Internal.Invalid<Implementation> {}
+  type Invalid = Document.Internal.Invalid<Implementation>;
 
   /**
    * An instance of `Folder` that comes from the database.
@@ -211,17 +222,11 @@ declare namespace Folder {
     _id: fields.DocumentIdField;
 
     /** The name of this Folder */
-    name: fields.StringField<
-      { required: true; blank: false; textSearch: true },
-      // Note(LukeAbby): Field override because `blank: false` isn't fully accounted for or something.
-      string,
-      string,
-      string
-    >;
+    name: fields.StringField<{ required: true; blank: false; textSearch: true }>;
 
     /** The document type which this Folder contains, from {@linkcode CONST.FOLDER_DOCUMENT_TYPES} */
     // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-    type: fields.DocumentTypeField<typeof BaseFolder, {}, Folder.SubType, Folder.SubType, Folder.SubType>;
+    type: fields.DocumentTypeField<typeof BaseFolder, {}>;
 
     /**
      * An HTML description of the contents of this folder
@@ -372,25 +377,32 @@ declare namespace Folder {
   }
 
   /**
+   * If `Temporary` is true then `Folder.Implementation`, otherwise `Folder.Stored`.
+   */
+  type TemporaryIf<Temporary extends boolean | undefined> = true extends Temporary
+    ? Folder.Implementation
+    : Folder.Stored;
+
+  /**
    * The flags that are available for this document in the form `{ [scope: string]: { [key: string]: unknown } }`.
    */
-  interface Flags extends Document.ConfiguredFlagsForName<Name> {}
+  interface Flags extends Document.Internal.ConfiguredFlagsForName<Name> {}
 
   namespace Flags {
     /**
      * The valid scopes for the flags on this document e.g. `"core"` or `"dnd5e"`.
      */
-    type Scope = Document.FlagKeyOf<Flags>;
+    type Scope = Document.Internal.FlagKeyOf<Flags>;
 
     /**
      * The valid keys for a certain scope for example if the scope is "core" then a valid key may be `"sheetLock"` or `"viewMode"`.
      */
-    type Key<Scope extends Flags.Scope> = Document.FlagKeyOf<Document.FlagGetKey<Flags, Scope>>;
+    type Key<Scope extends Flags.Scope> = Document.Internal.FlagKeyOf<Document.Internal.FlagGetKey<Flags, Scope>>;
 
     /**
      * Gets the type of a particular flag given a `Scope` and a `Key`.
      */
-    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.GetFlag<Name, Scope, Key>;
+    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.Internal.GetFlag<Flags, Scope, Key>;
   }
 
   interface DropData extends Document.Internal.DropData<Name> {}
@@ -495,11 +507,17 @@ declare namespace Folder {
   /**
    * The arguments to construct the document.
    *
-   * @deprecated - Writing the signature directly has helped reduce circularities and therefore is
+   * @deprecated Writing the signature directly has helped reduce circularities and therefore is
    * now recommended.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   type ConstructorArgs = Document.ConstructorParameters<CreateData, Parent>;
+
+  /**
+   * @deprecated Replaced with {@linkcode Folder.ConfiguredSubType} (will be removed in v14).
+   */
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
+  type ConfiguredSubTypes = ConfiguredSubType;
 }
 
 /**
@@ -570,7 +588,7 @@ declare class Folder<out SubType extends Folder.SubType = Folder.SubType> extend
   /**
    * Return the list of ancestors of this folder, starting with the parent.
    */
-  get ancestors(): Folder.Implementation[];
+  get ancestors(): Folder.Stored[];
 
   override get inCompendium(): boolean;
 

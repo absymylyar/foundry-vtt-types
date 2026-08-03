@@ -104,7 +104,7 @@ declare abstract class BaseRollTable extends Document<"RollTable", BaseRollTable
   static createDocuments<Temporary extends boolean | undefined = undefined>(
     data: Array<RollTable.Implementation | RollTable.CreateData> | undefined,
     operation?: Document.Database.CreateOperation<RollTable.Database.Create<Temporary>>,
-  ): Promise<Array<Document.TemporaryIf<RollTable.Implementation, Temporary>>>;
+  ): Promise<Array<RollTable.TemporaryIf<Temporary>>>;
 
   static updateDocuments(
     updates: RollTable.UpdateData[] | undefined,
@@ -119,7 +119,7 @@ declare abstract class BaseRollTable extends Document<"RollTable", BaseRollTable
   static override create<Temporary extends boolean | undefined = undefined>(
     data: RollTable.CreateData | RollTable.CreateData[],
     operation?: RollTable.Database.CreateOperation<Temporary>,
-  ): Promise<Document.TemporaryIf<RollTable.Implementation, Temporary> | undefined>;
+  ): Promise<RollTable.TemporaryIf<Temporary> | undefined>;
 
   override update(
     data: RollTable.UpdateData | undefined,
@@ -147,17 +147,14 @@ declare abstract class BaseRollTable extends Document<"RollTable", BaseRollTable
   override createEmbeddedDocuments<EmbeddedName extends RollTable.Embedded.Name>(
     embeddedName: EmbeddedName,
     data: Document.CreateDataForName<EmbeddedName>[] | undefined,
-    // TODO(LukeAbby): The correct signature would be:
-    // operation?: Document.Database.CreateOperation<Document.Database.CreateForName<EmbeddedName>>,
-    // However this causes a number of errors.
-    operation?: object,
-  ): Promise<Array<Document.StoredForName<EmbeddedName>> | undefined>;
+    operation?: Document.Database.CreateOperationForName<EmbeddedName>,
+  ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
 
   override updateEmbeddedDocuments<EmbeddedName extends RollTable.Embedded.Name>(
     embeddedName: EmbeddedName,
     updates: Document.UpdateDataForName<EmbeddedName>[] | undefined,
     operation?: Document.Database.UpdateOperationForName<EmbeddedName>,
-  ): Promise<Array<Document.StoredForName<EmbeddedName>> | undefined>;
+  ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
 
   override deleteEmbeddedDocuments<EmbeddedName extends RollTable.Embedded.Name>(
     embeddedName: EmbeddedName,
@@ -173,12 +170,12 @@ declare abstract class BaseRollTable extends Document<"RollTable", BaseRollTable
   override getFlag<Scope extends RollTable.Flags.Scope, Key extends RollTable.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): Document.GetFlag<RollTable.Name, Scope, Key>;
+  ): RollTable.Flags.Get<Scope, Key>;
 
   override setFlag<
     Scope extends RollTable.Flags.Scope,
     Key extends RollTable.Flags.Key<Scope>,
-    Value extends Document.GetFlag<RollTable.Name, Scope, Key>,
+    Value extends RollTable.Flags.Get<Scope, Key>,
   >(scope: Scope, key: Key, value: Value): Promise<this>;
 
   override unsetFlag<Scope extends RollTable.Flags.Scope, Key extends RollTable.Flags.Key<Scope>>(
@@ -349,7 +346,8 @@ declare namespace BaseRollTable {
   export import InitializedData = RollTable.InitializedData;
   export import UpdateData = RollTable.UpdateData;
   export import Schema = RollTable.Schema;
-  export import DatabaseOperation = RollTable.Database;
+  export import Database = RollTable.Database;
+  export import TemporaryIf = RollTable.TemporaryIf;
   export import Flags = RollTable.Flags;
 
   namespace Internal {

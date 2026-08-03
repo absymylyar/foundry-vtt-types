@@ -134,13 +134,14 @@ declare class HandlebarsApplication {
  */
 declare function HandlebarsApplicationMixin<BaseClass extends HandlebarsApplicationMixin.BaseClass>(
   BaseApplication: BaseClass,
-): Mixin<typeof HandlebarsApplication, BaseClass>;
+): HandlebarsApplicationMixin.Mix<BaseClass>;
 
 declare namespace HandlebarsApplicationMixin {
   interface AnyMixedConstructor extends ReturnType<typeof HandlebarsApplicationMixin<BaseClass>> {}
   interface AnyMixed extends FixedInstanceType<AnyMixedConstructor> {}
 
   type BaseClass = ApplicationV2.Internal.Constructor;
+  type Mix<BaseClass extends HandlebarsApplicationMixin.BaseClass> = Mixin<typeof HandlebarsApplication, BaseClass>;
 
   interface PartState {
     scrollPositions: Array<[el1: HTMLElement, scrollTop: number, scrollLeft: number]>;
@@ -158,12 +159,12 @@ declare namespace HandlebarsApplicationMixin {
   }
 
   /**
-   * @deprecated - Merge {@linkcode ApplicationV2.RenderOptions} and {@linkcode HandlebarsApplicationMixin.RenderOptions} individually.
+   * @deprecated Merge {@linkcode ApplicationV2.RenderOptions} and {@linkcode HandlebarsApplicationMixin.RenderOptions} individually.
    */
   interface ApplicationV2RenderOptions extends RenderOptions, ApplicationV2.RenderOptions {}
 
   /**
-   * @deprecated - Merge {@linkcode DocumentSheetV2.RenderOptions} and {@linkcode HandlebarsApplicationMixin.RenderOptions} individually.
+   * @deprecated Merge {@linkcode DocumentSheetV2.RenderOptions} and {@linkcode HandlebarsApplicationMixin.RenderOptions} individually.
    */
   interface DocumentSheetV2RenderOptions extends RenderOptions, DocumentSheetV2.RenderOptions {}
 

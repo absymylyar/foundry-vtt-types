@@ -72,6 +72,8 @@ declare abstract class BaseCard<out SubType extends BaseCard.SubType = BaseCard.
    * separate like this helps against circularities.
    */
 
+  type: SubType;
+
   /* Document overrides */
 
   // Same as Document for now
@@ -102,7 +104,7 @@ declare abstract class BaseCard<out SubType extends BaseCard.SubType = BaseCard.
   static override createDocuments<Temporary extends boolean | undefined = undefined>(
     data: Array<Card.Implementation | Card.CreateData> | undefined,
     operation?: Document.Database.CreateOperation<Card.Database.Create<Temporary>>,
-  ): Promise<Array<Document.TemporaryIf<Card.Implementation, Temporary>>>;
+  ): Promise<Array<Card.TemporaryIf<Temporary>>>;
 
   static override updateDocuments(
     updates: Card.UpdateData[] | undefined,
@@ -117,7 +119,7 @@ declare abstract class BaseCard<out SubType extends BaseCard.SubType = BaseCard.
   static override create<Temporary extends boolean | undefined = undefined>(
     data: Card.CreateData | Card.CreateData[],
     operation?: Card.Database.CreateOperation<Temporary>,
-  ): Promise<Document.TemporaryIf<Card.Implementation, Temporary> | undefined>;
+  ): Promise<Card.TemporaryIf<Temporary> | undefined>;
 
   override update(
     data: Card.UpdateData | undefined,
@@ -138,12 +140,12 @@ declare abstract class BaseCard<out SubType extends BaseCard.SubType = BaseCard.
   override getFlag<Scope extends Card.Flags.Scope, Key extends Card.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): Document.GetFlag<Card.Name, Scope, Key>;
+  ): Card.Flags.Get<Scope, Key>;
 
   override setFlag<
     Scope extends Card.Flags.Scope,
     Key extends Card.Flags.Key<Scope>,
-    Value extends Document.GetFlag<Card.Name, Scope, Key>,
+    Value extends Card.Flags.Get<Scope, Key>,
   >(scope: Scope, key: Key, value: Value): Promise<this>;
 
   override unsetFlag<Scope extends Card.Flags.Scope, Key extends Card.Flags.Key<Scope>>(
@@ -298,7 +300,7 @@ declare namespace BaseCard {
   export import Hierarchy = Card.Hierarchy;
   export import Metadata = Card.Metadata;
   export import SubType = Card.SubType;
-  export import ConfiguredSubTypes = Card.ConfiguredSubTypes;
+  export import ConfiguredSubType = Card.ConfiguredSubType;
   export import Known = Card.Known;
   export import OfType = Card.OfType;
   export import SystemOfType = Card.SystemOfType;
@@ -317,7 +319,8 @@ declare namespace BaseCard {
   export import InitializedData = Card.InitializedData;
   export import UpdateData = Card.UpdateData;
   export import Schema = Card.Schema;
-  export import DatabaseOperation = Card.Database;
+  export import Database = Card.Database;
+  export import TemporaryIf = Card.TemporaryIf;
   export import Flags = Card.Flags;
 
   namespace Internal {

@@ -1,21 +1,20 @@
 import type { EditorState, Plugin } from "prosemirror-state";
-import type { DeepPartial, EmptyObject, ValueOf } from "#utils";
+import type { AnyMutableObject, DeepPartial, EmptyObject, ValueOf } from "#utils";
 import type Document from "#common/abstract/document.d.mts";
 import type { ProseMirrorDropDown } from "#common/prosemirror/_module.d.mts";
 import type ProseMirrorMenu from "#common/prosemirror/menu.d.mts";
-import type PointVisionSource from "#client/canvas/sources/point-vision-source.d.mts";
 import type RenderedEffectSource from "#client/canvas/sources/rendered-effect-source.d.mts";
-import type {
-  DatabaseCreateOperation,
-  DatabaseDeleteOperation,
-  DatabaseUpdateOperation,
-} from "#common/abstract/_types.d.mts";
+import type { DatabaseUpdateOperation } from "#common/abstract/_types.d.mts";
 import type CompendiumArt from "#client/helpers/media/compendium-art.d.mts";
 import type { Hooks as HookConfigs } from "#configuration";
 import type Hooks from "./helpers/hooks.d.mts";
-import type { Canvas } from "#client/canvas/_module.d.mts";
-import type { CanvasGroupMixin, CanvasVisibility, EffectsCanvasGroup } from "#client/canvas/groups/_module.d.mts";
-import type * as layers from "#client/canvas/layers/_module.d.mts";
+import type { Canvas, layers } from "#client/canvas/_module.d.mts";
+import type {
+  CanvasGroupMixin,
+  CanvasVisibility,
+  EffectsCanvasGroup,
+  EnvironmentCanvasGroup,
+} from "#client/canvas/groups/_module.d.mts";
 
 import type { Note, PlaceableObject, Token } from "#client/canvas/placeables/_module.d.mts";
 import type { TokenRingConfig } from "#client/canvas/placeables/tokens/_module.d.mts";
@@ -44,11 +43,11 @@ type RenderApplicationHooks = {
 };
 
 type GetApplicationHeaderButtonsHooks = {
-  [K in ApplicationName as `get${K}HeaderButtons`]: Hooks.RenderApplication<ApplicationConfig[K]>;
+  [K in ApplicationName as `get${K}HeaderButtons`]: Hooks.GetApplicationHeaderButtons<ApplicationConfig[K]>;
 };
 
 type CloseApplicationHooks = {
-  [K in ApplicationName as `close${K}`]: Hooks.RenderApplication<ApplicationConfig[K]>;
+  [K in ApplicationName as `close${K}`]: Hooks.CloseApplication<ApplicationConfig[K]>;
 };
 
 type GetApplicationEntryContextHooks = {
@@ -102,7 +101,7 @@ type CreateDocumentHooks = {
 };
 
 type PreUpdateDocumentHooks = {
-  [K in Document.Type as `preUpdate${K}`]: Hooks.PreCreateDocument<Document.ImplementationFor<K>>;
+  [K in Document.Type as `preUpdate${K}`]: Hooks.PreUpdateDocument<Document.ImplementationFor<K>>;
 };
 
 type UpdateDocumentHooks = {
@@ -460,12 +459,21 @@ export interface AllHooks extends DynamicHooks {
 
   /**
    * A hook event that fires when a custom active effect is applied.
-   * @param actor  - The actor the active effect is being applied to
-   * @param change - The change data being applied
+   * @param actor   - The actor the active effect is being applied to
+   * @param change  - The change data being applied
+   * @param current - The current value being modified
+   * @param delta   - The parsed value of the change object
+   * @param changes - An object which accumulates changes to be applied
    * @remarks This is called by {@linkcode Hooks.call}.
    * @see {@link ActiveEffect._applyCustom | `ActiveEffect#_applyCustom`}
    */
-  applyActiveEffect: (actor: Actor.Implementation, change: ActiveEffect.ChangeData) => boolean | void;
+  applyActiveEffect: (
+    actor: Actor.Implementation,
+    change: ActiveEffect.ChangeData,
+    current: unknown,
+    delta: unknown,
+    changes: AnyMutableObject,
+  ) => boolean | void;
 
   /** Compendium */
 
@@ -628,46 +636,72 @@ export interface AllHooks extends DynamicHooks {
     data: foundry.appv1.sheets.ActorSheet.DropData,
   ) => boolean | void;
 
+  /** EnvironmentCanvasGroup */
+
+  /**
+   * A hook event that fires at the beginning of {@linkcode EnvironmentCanvasGroup.initialize | EnvironmentCanvasGroup#initialize} which
+   * allows the environment configuration to be altered by hook functions.
+   * The provided config param should be mutated to make any desired changes.
+   * A method subscribing to this hook may return false to prevent further configuration.
+   * @remarks This is called by {@linkcode Hooks.call}.
+   */
+  configureCanvasEnvironment: (config: EnvironmentCanvasGroup.Config) => boolean | void;
+
+  /* -------------------------------------------- */
+
+  /**
+   * A hook event that fires at the end of {@linkcode EnvironmentCanvasGroup.initialize | EnvironmentCanvasGroup#initialize} which
+   * allows the environment configuration to be altered by hook functions.
+   * @remarks This is called by {@linkcode Hooks.callAll}.
+   */
+  initializeCanvasEnvironment: () => void;
+
   /** CanvasVisibility */
+
+  /**
+   * A hook event that fires when the vision mode is initialized.
+   * @param visibility - The CanvasVisibility instance
+   * @remarks This is called by {@linkcode Hooks.callAll}.
+   */
+  initializeVisionMode: (visibility: CanvasVisibility.Implementation) => void;
 
   /**
    * A hook event that fires when the set of vision sources are initialized.
    * @param sources - The collection of current vision sources
    * @remarks This is called by {@linkcode Hooks.call}.
    */
-  initializeVisionSources: (sources: Collection<PointVisionSource.Any>) => void;
+  initializeVisionSources: (sources: EffectsCanvasGroup.Implementation["visionSources"]) => void;
 
   /**
    * A hook event that fires when the LightingLayer is refreshed.
-   * @param layer - the LightingLayer
+   * @param group - The EffectsCanvasGroup instance
    * @remarks This is called by {@linkcode Hooks.callAll}.
-   * @see {@link LightingLayer.refresh | `LightingLayer#refresh`}
    */
-  lightingRefresh: (layer: layers.LightingLayer) => void;
+  lightingRefresh: (group: EffectsCanvasGroup.Implementation) => void;
 
   /**
    * A hook event that fires when visibility is refreshed.
-   * @param visibility - The CanvasVisibility instance
+   * @param visibility - The {@linkcode CanvasVisibility} instance
    * @remarks This is called by {@linkcode Hooks.callAll}.
    */
-  visibilityRefresh: (visibility: CanvasVisibility) => void;
+  visibilityRefresh: (visibility: CanvasVisibility.Implementation) => void;
 
   /**
    * A hook event that fires during light source initialization.
    * This hook can be used to add programmatic light sources to the Scene.
-   * @param source - The EffectsCanvasGroup where light sources are initialized
+   * @param source - The {@linkcode EffectsCanvasGroup} where light sources are initialized
    * @remarks This is called by {@linkcode Hooks.callAll}.
-   * @see {@link EffectsCanvasGroup.initializeLightSources | `EffectsCanvasGroup#initializeLightSources`}
+   * @see {@link EffectsCanvasGroup.Implementation.initializeLightSources | `EffectsCanvasGroup#initializeLightSources`}
    */
-  initializeLightSources: (group: EffectsCanvasGroup) => void;
+  initializeLightSources: (group: EffectsCanvasGroup.Implementation) => void;
 
   /**
-   * A hook event that fires during darkness source initialization.
-   * This hook can be used to add programmatic darkness sources to the Scene.
-   * @param group - The EffectsCanvasGroup where darkness sources are initialized
+   * A hook event that fires after priority light sources initialization.
+   * This hook can be used to add specific behaviors when for edges sources to the Scene.
+   * @param group - The {@linkcode EffectsCanvasGroup} where priority sources are initialized
    * @remarks This is called by {@linkcode Hooks.callAll}.
    */
-  initializeDarknessSources: (group: EffectsCanvasGroup) => void;
+  initializePriorityLightSources: (group: EffectsCanvasGroup.Implementation) => void;
 
   /**
    * A hook event that fires when the CanvasVisibility layer has been refreshed.
@@ -675,7 +709,7 @@ export interface AllHooks extends DynamicHooks {
    * @remarks This is called by {@linkcode Hooks.callAll}.
    * @see {@link CanvasVisibility.restrictVisibility | `CanvasVisibility#restrictVisibility`}
    */
-  sightRefresh: (visibility: CanvasVisibility) => void;
+  sightRefresh: (visibility: CanvasVisibility.Implementation) => void;
 
   /** Weather */
 
@@ -801,8 +835,11 @@ export interface AllHooks extends DynamicHooks {
       /** The new round of combat */
       round: number;
 
-      /** The new turn number */
-      turn: number;
+      /**
+       * The new turn number
+       * @remarks `combatRound`, unlike `combatTurn` and `combatStart`, can have a `null` turn.
+       */
+      turn: number | null;
     },
     updateOptions: {
       /** The amount of time in seconds that time is being advanced */
@@ -962,16 +999,37 @@ export interface AllHooks extends DynamicHooks {
   initializeDynamicTokenRingConfig: (ringConfig: TokenRingConfig) => void;
 
   /**
-   * A hook event that fires when the context menu for a PlayersList entry is constructed.
+   * A hook event that fires when the context menu for a Players entry is constructed.
    * @param app            - The Application instance that the context menu is constructed in
    * @param contextOptions - The context menu entries
-   * @remarks This is called by {@linkcode Hooks.call}.
-   * @see {@link PlayerList.activateListeners | `PlayerList#activateListeners`}
+   * @remarks This is called by {@linkcode Hooks.callAll}.
    */
   getUserContextOptions: (
     app: foundry.applications.ui.Players,
     contextOptions: ContextMenu.Entry<HTMLElement>[],
-  ) => boolean | void;
+  ) => void;
+
+  /**
+   * A hook event that fires when the context menu for a SceneNavigation entry is constructed.
+   * @param app            - The Application instance that the context menu is constructed in
+   * @param contextOptions - The context menu entries
+   * @remarks This is called by {@linkcode Hooks.callAll}.
+   */
+  getSceneContextOptions: (
+    app: foundry.applications.ui.SceneNavigation,
+    contextOptions: ContextMenu.Entry<HTMLElement>[],
+  ) => void;
+
+  /**
+   * A hook event that fires when the context menu for a Macro Hotbar entry is constructed.
+   * @param app            - The Application instance that the context menu is constructed in
+   * @param contextOptions - The context menu entries
+   * @remarks This is called by {@linkcode Hooks.callAll}.
+   */
+  getMacroContextOptions: (
+    app: foundry.applications.ui.Hotbar,
+    contextOptions: ContextMenu.Entry<HTMLElement>[],
+  ) => void;
 }
 
 declare global {
@@ -1267,8 +1325,7 @@ declare global {
     type PreCreateDocument<D extends Document.Any = Document.Any> = (
       document: D,
       data: Document.CreateDataForName<D["documentName"]>,
-      // TODO
-      options: Document.Database.PreCreateOptions<DatabaseCreateOperation>,
+      options: Document.Database.PreCreateOptionsFor<D["documentName"]>,
       userId: string,
     ) => boolean | void;
 
@@ -1314,7 +1371,7 @@ declare global {
     type PreUpdateDocument<D extends Document.Any = Document.Any> = (
       document: D,
       changed: Document.UpdateDataForName<D["documentName"]>,
-      options: Document.Database.PreUpdateOptions<DatabaseUpdateOperation>,
+      options: Document.Database.PreUpdateOptionsFor<D["documentName"]>,
       userId: string,
     ) => boolean | void;
 
@@ -1360,7 +1417,7 @@ declare global {
      */
     type PreDeleteDocument<D extends Document.Any = Document.Any> = (
       document: D,
-      options: Document.Database.PreDeleteOperationInstance<DatabaseDeleteOperation>,
+      options: Document.Database.PreDeleteOptionsFor<D["documentName"]>,
       userId: string,
     ) => boolean | void;
 

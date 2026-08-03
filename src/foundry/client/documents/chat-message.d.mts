@@ -1,5 +1,5 @@
-import type { ConfiguredChatMessage } from "fvtt-types/configuration";
-import type { AnyObject, InexactPartial, InterfaceToObject, Merge, NullishProps } from "#utils";
+import type { ConfiguredChatMessage } from "#configuration";
+import type { AnyObject, Identity, InexactPartial, InterfaceToObject, Merge, NullishProps } from "#utils";
 import type { documents } from "#client/client.d.mts";
 import type Document from "#common/abstract/document.d.mts";
 import type { DataSchema, SchemaField } from "#common/data/fields.d.mts";
@@ -78,38 +78,53 @@ declare namespace ChatMessage {
   type SubType = foundry.Game.Model.TypeNames<"ChatMessage">;
 
   /**
-   * `ConfiguredSubTypes` represents the subtypes a user explicitly registered. This excludes
+   * `ConfiguredSubType` represents the subtypes a user explicitly registered. This excludes
    * subtypes like the Foundry builtin subtype `"base"` and the catch-all subtype for arbitrary
    * module subtypes `${string}.${string}`.
    *
    * @see {@link SubType} for more information.
    */
-  type ConfiguredSubTypes = Document.ConfiguredSubTypesOf<"ChatMessage">;
+  type ConfiguredSubType = Document.ConfiguredSubTypeOf<"ChatMessage">;
 
   /**
    * `Known` represents the types of `ChatMessage` that a user explicitly registered.
    *
-   * @see {@link ConfiguredSubTypes} for more information.
+   * @see {@link ConfiguredSubType} for more information.
    */
-  type Known = ChatMessage.OfType<ChatMessage.ConfiguredSubTypes>;
+  type Known = ChatMessage.OfType<ChatMessage.ConfiguredSubType>;
 
   /**
    * `OfType` returns an instance of `ChatMessage` with the corresponding type. This works with both the
    * builtin `ChatMessage` class or a custom subclass if that is set up in
    * {@link ConfiguredChatMessage | `fvtt-types/configuration/ConfiguredChatMessage`}.
    */
-  // eslint-disable-next-line @typescript-eslint/no-restricted-types
-  type OfType<Type extends SubType> = Document.Internal.OfType<ConfiguredChatMessage<Type>, () => ChatMessage<Type>>;
+  type OfType<Type extends SubType> = Document.Internal.DiscriminateSystem<Name, _OfType, Type, ConfiguredSubType>;
+
+  /** @internal */
+  interface _OfType
+    extends Identity<{
+      [Type in SubType]: Type extends unknown
+        ? ConfiguredChatMessage<Type> extends { document: infer Document }
+          ? Document
+          : // eslint-disable-next-line @typescript-eslint/no-restricted-types
+            ChatMessage<Type>
+        : never;
+    }> {}
 
   /**
    * `SystemOfType` returns the system property for a specific `ChatMessage` subtype.
    */
-  type SystemOfType<Type extends SubType> = Document.Internal.SystemOfType<_SystemMap, Type>;
+  type SystemOfType<Type extends SubType> = Document.Internal.SystemOfType<Name, _SystemMap, Type, ConfiguredSubType>;
 
   /**
    * @internal
    */
-  interface _SystemMap extends Document.Internal.SystemMap<"ChatMessage"> {}
+  interface _ModelMap extends Document.Internal.ModelMap<Name> {}
+
+  /**
+   * @internal
+   */
+  interface _SystemMap extends Document.Internal.SystemMap<Name> {}
 
   /**
    * A document's parent is something that can contain it.
@@ -156,18 +171,18 @@ declare namespace ChatMessage {
   /**
    * The world collection that contains `ChatMessage`s. Will be `never` if none exists.
    */
-  type CollectionClass = foundry.documents.collections.ChatMessages.ConfiguredClass;
+  type CollectionClass = foundry.documents.collections.ChatMessages.ImplementationClass;
 
   /**
    * The world collection that contains `ChatMessage`s. Will be `never` if none exists.
    */
-  type Collection = foundry.documents.collections.ChatMessages.Configured;
+  type Collection = foundry.documents.collections.ChatMessages.Implementation;
 
   /**
    * An instance of `ChatMessage` that comes from the database but failed validation meaning that
    * its `system` and `_source` could theoretically be anything.
    */
-  interface Invalid extends Document.Internal.Invalid<Implementation> {}
+  type Invalid = Document.Internal.Invalid<Implementation>;
 
   /**
    * An instance of `ChatMessage` that comes from the database.
@@ -363,7 +378,7 @@ declare namespace ChatMessage {
     /** Options passed along in Create operations for ChatMessages */
     interface Create<Temporary extends boolean | undefined = boolean | undefined>
       extends foundry.abstract.types.DatabaseCreateOperation<ChatMessage.CreateData, ChatMessage.Parent, Temporary> {
-      rollMode?: foundry.dice.Roll.ConfiguredRollModes;
+      rollMode?: foundry.dice.Roll.Mode;
       chatBubble?: boolean;
     }
 
@@ -468,25 +483,32 @@ declare namespace ChatMessage {
   }
 
   /**
+   * If `Temporary` is true then `ChatMessage.Implementation`, otherwise `ChatMessage.Stored`.
+   */
+  type TemporaryIf<Temporary extends boolean | undefined> = true extends Temporary
+    ? ChatMessage.Implementation
+    : ChatMessage.Stored;
+
+  /**
    * The flags that are available for this document in the form `{ [scope: string]: { [key: string]: unknown } }`.
    */
-  interface Flags extends Document.ConfiguredFlagsForName<Name> {}
+  interface Flags extends Document.Internal.ConfiguredFlagsForName<Name>, CoreFlags {}
 
   namespace Flags {
     /**
      * The valid scopes for the flags on this document e.g. `"core"` or `"dnd5e"`.
      */
-    type Scope = Document.FlagKeyOf<Flags>;
+    type Scope = Document.Internal.FlagKeyOf<Flags>;
 
     /**
      * The valid keys for a certain scope for example if the scope is "core" then a valid key may be `"sheetLock"` or `"viewMode"`.
      */
-    type Key<Scope extends Flags.Scope> = Document.FlagKeyOf<Document.FlagGetKey<Flags, Scope>>;
+    type Key<Scope extends Flags.Scope> = Document.Internal.FlagKeyOf<Document.Internal.FlagGetKey<Flags, Scope>>;
 
     /**
      * Gets the type of a particular flag given a `Scope` and a `Key`.
      */
-    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.GetFlag<Name, Scope, Key>;
+    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.Internal.GetFlag<Flags, Scope, Key>;
   }
 
   interface CoreFlags {
@@ -524,17 +546,17 @@ declare namespace ChatMessage {
   interface GetSpeakerOptions extends NullishProps<_BaseSpeakerOptions> {}
 
   /**
-   * @deprecated - The associated function was made private without deprecation or direct replacement.
+   * @deprecated The associated function was made private without deprecation or direct replacement.
    */
   interface GetSpeakerFromTokenOptions extends NullishProps<Pick<_BaseSpeakerOptions, "token" | "alias">> {}
 
   /**
-   * @deprecated - The associated function was made private without deprecation or direct replacement.
+   * @deprecated The associated function was made private without deprecation or direct replacement.
    */
   interface GetSpeakerFromActorOptions extends NullishProps<Pick<_BaseSpeakerOptions, "scene" | "actor" | "alias">> {}
 
   /**
-   *@deprecated - The associated function was made private without deprecation or direct replacement.
+   *@deprecated The associated function was made private without deprecation or direct replacement.
    */
   interface GetSpeakerFromUserOptions extends NullishProps<Pick<_BaseSpeakerOptions, "scene" | "alias">> {
     /** The User who is speaking */
@@ -599,7 +621,7 @@ declare namespace ChatMessage {
   }
 
   /** @remarks `"roll"` means "use the current rollMode" */
-  type PassableRollMode = foundry.dice.Roll.ConfiguredRollModes | "roll";
+  type PassableRollMode = foundry.dice.Roll.Mode | "roll";
 
   /**
    * These keys are overridden in `ChatMessage#renderHTML`
@@ -630,11 +652,16 @@ declare namespace ChatMessage {
   /**
    * The arguments to construct the document.
    *
-   * @deprecated - Writing the signature directly has helped reduce circularities and therefore is
+   * @deprecated Writing the signature directly has helped reduce circularities and therefore is
    * now recommended.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   type ConstructorArgs = Document.ConstructorParameters<CreateData, Parent>;
+
+  /**
+   * @deprecated Replaced with {@linkcode ChatMessage.ConfiguredSubType} (will be removed in v14).
+   */
+  type ConfiguredSubTypes = ConfiguredSubType;
 }
 
 /**

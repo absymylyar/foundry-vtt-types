@@ -35,11 +35,29 @@ declare class Folders extends foundry.documents.abstract.WorldCollection<"Folder
 }
 
 declare namespace Folders {
-  interface Any extends AnyFolders {}
-  interface AnyConstructor extends Identity<typeof AnyFolders> {}
+  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
+  type Any = Internal.Any;
 
-  interface ConfiguredClass extends Document.ConfiguredCollectionClass<"Folder"> {}
-  interface Configured extends Document.ConfiguredCollection<"Folder"> {}
+  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
+  type AnyConstructor = Internal.AnyConstructor;
+
+  namespace Internal {
+    interface Any extends AnyFolders {}
+    interface AnyConstructor extends Identity<typeof AnyFolders> {}
+  }
+
+  interface ImplementationClass extends Document.Internal.ConfiguredCollectionClass<"Folder"> {}
+  interface Implementation extends Document.Internal.ConfiguredCollection<"Folder"> {}
+
+  /**
+   * @deprecated Replaced by {@linkcode Folders.ImplementationClass}.
+   */
+  type ConfiguredClass = ImplementationClass;
+
+  /**
+   * @deprecated Replaced by {@linkcode Folders.Implementation}.
+   */
+  type Configured = Implementation;
 }
 
 declare abstract class AnyFolders extends Folders {

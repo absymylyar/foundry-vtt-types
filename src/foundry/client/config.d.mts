@@ -18,8 +18,9 @@ import type * as canvasLayers from "#client/canvas/layers/_module.d.mts";
 import type * as canvasGroups from "#client/canvas/groups/_module.d.mts";
 import type * as perception from "#client/canvas/perception/_module.d.mts";
 import type * as placeables from "#client/canvas/placeables/_module.d.mts";
-import type { DoorControl } from "#client/canvas/containers/_module.d.mts";
+import type { DoorControl, DoorMesh } from "#client/canvas/containers/_module.d.mts";
 import type * as geometry from "#client/canvas/geometry/_module.d.mts";
+import type { CanvasAnimation } from "#client/canvas/animation/_module.d.mts";
 
 import SimplePeerAVClient = foundry.av.clients.SimplePeerAVClient;
 
@@ -110,9 +111,9 @@ declare global {
 
       /**
        * Configured Roll class definitions
-       * @defaultValue `[Roll]`
+       * @defaultValue `[`{@linkcode foundry.dice.Roll}`]`
        */
-      rolls: Array<foundry.dice.Roll.AnyConstructor>;
+      rolls: Array<foundry.dice.Roll.Internal.AnyConstructor>;
 
       /**
        * Configured DiceTerm class definitions
@@ -325,8 +326,11 @@ declare global {
       /** @defaultValue `Actor` */
       documentClass: Document.ImplementationClassFor<"Actor">;
 
-      /** @defaultValue `Actors` */
-      collection: foundry.documents.collections.Actors.AnyConstructor;
+      /**
+       * @defaultValue {@linkcode foundry.documents.collections.Actors}
+       * @remarks `typeof` instead of `AnyConstructor` because it's instantiated via `new` in {@linkcode Game.initializeDocuments | Game#initializeDocuments}
+       */
+      collection: typeof foundry.documents.collections.Actors;
 
       /** @defaultValue `[]` */
       compendiumIndexFields: string[];
@@ -394,8 +398,11 @@ declare global {
      * Configuration for the Cards primary Document type
      */
     Cards: {
-      /** @defaultValue `CardStacks` */
-      collection: foundry.documents.collections.CardStacks.AnyConstructor;
+      /**
+       * @defaultValue {@linkcode foundry.documents.collections.CardStacks}
+       * @remarks `typeof` instead of `AnyConstructor` because it's instantiated via `new` in {@linkcode Game.initializeDocuments | Game#initializeDocuments}
+       */
+      collection: typeof foundry.documents.collections.CardStacks;
 
       /** @defaultValue `[]` */
       compendiumIndexFields: string[];
@@ -452,7 +459,7 @@ declare global {
         /** @defaultValue `"fa-duotone fa-layer-group"` */
         pile: string;
 
-        [x: string]: string;
+        [type: Brand<string, "CONFIG.Cards.typeIcons">]: string;
       };
     };
 
@@ -463,8 +470,11 @@ declare global {
       /** @defaultValue `ChatMessage` */
       documentClass: Document.ImplementationClassFor<"ChatMessage">;
 
-      /** @defaultValue `Messages` */
-      collection: foundry.documents.collections.ChatMessages.AnyConstructor;
+      /**
+       * @defaultValue {@linkcode foundry.documents.collections.ChatMessages}
+       * @remarks `typeof` instead of `AnyConstructor` because it's instantiated via `new` in {@linkcode Game.initializeDocuments | Game#initializeDocuments}
+       */
+      collection: typeof foundry.documents.collections.ChatMessages;
 
       /** @defaultValue `"templates/sidebar/chat-message.html"` */
       template: string;
@@ -503,8 +513,11 @@ declare global {
       /** @defaultValue `Combat` */
       documentClass: Document.ImplementationClassFor<"Combat">;
 
-      /** @defaultValue `CombatEncounters` */
-      collection: foundry.documents.collections.CombatEncounters.AnyConstructor;
+      /**
+       * @defaultValue {@linkcode foundry.documents.collections.CombatEncounters}
+       * @remarks `typeof` instead of `AnyConstructor` because it's instantiated via `new` in {@linkcode Game.initializeDocuments | Game#initializeDocuments}
+       */
+      collection: typeof foundry.documents.collections.CombatEncounters;
 
       /** @defaultValue `"fas fa-swords"` */
       sidebarIcon: string;
@@ -584,8 +597,11 @@ declare global {
        */
       typeLabels?: Record<"base", string>;
 
-      /** @defaultValue `FogExplorations` */
-      collection: foundry.documents.collections.FogExplorations.AnyConstructor;
+      /**
+       * @defaultValue {@linkcode foundry.documents.collections.FogExplorations}
+       * @remarks `typeof` instead of `AnyConstructor` because it's instantiated via `new` in {@linkcode Game.initializeDocuments | Game#initializeDocuments}
+       */
+      collection: typeof foundry.documents.collections.FogExplorations;
     };
 
     /**
@@ -595,8 +611,11 @@ declare global {
       /** @defaultValue `Folder` */
       documentClass: Document.ImplementationClassFor<"Folder">;
 
-      /** @defaultValue `Folders` */
-      collection: foundry.documents.collections.Folders.AnyConstructor;
+      /**
+       * @defaultValue {@linkcode foundry.documents.collections.Folders}
+       * @remarks `typeof` instead of `AnyConstructor` because it's instantiated via `new` in {@linkcode Game.initializeDocuments | Game#initializeDocuments}
+       */
+      collection: typeof foundry.documents.collections.Folders;
 
       /** @defaultValue `"fas fa-folder"` */
       sidebarIcon: string;
@@ -619,8 +638,11 @@ declare global {
       /** @defaultValue `Item` */
       documentClass: Document.ImplementationClassFor<"Item">;
 
-      /** @defaultValue `Items` */
-      collection: foundry.documents.collections.Items.AnyConstructor;
+      /**
+       * @defaultValue {@linkcode foundry.documents.collections.Items}
+       * @remarks `typeof` instead of `AnyConstructor` because it's instantiated via `new` in {@linkcode Game.initializeDocuments | Game#initializeDocuments}
+       */
+      collection: typeof foundry.documents.collections.Items;
 
       /** @defaultValue `[]` */
       compendiumIndexFields: string[];
@@ -666,8 +688,11 @@ declare global {
        */
       typeLabels?: Record<"base", string>;
 
-      /** @defaultValue `Journal` */
-      collection: foundry.documents.collections.Journal.AnyConstructor;
+      /**
+       * @defaultValue {@linkcode foundry.documents.collections.Journal}
+       * @remarks `typeof` instead of `AnyConstructor` because it's instantiated via `new` in {@linkcode Game.initializeDocuments | Game#initializeDocuments}
+       */
+      collection: typeof foundry.documents.collections.Journal;
 
       /** @defaultValue `[]` */
       compendiumIndexFields: string[];
@@ -779,8 +804,11 @@ declare global {
        */
       typeLabels?: Record<foundry.documents.BaseMacro.SubType, string>;
 
-      /** @defaultValue `Macros` */
-      collection: foundry.documents.collections.Macros.AnyConstructor;
+      /**
+       * @defaultValue {@linkcode foundry.documents.collections.Macros}
+       * @remarks `typeof` instead of `AnyConstructor` because it's instantiated via `new` in {@linkcode Game.initializeDocuments | Game#initializeDocuments}
+       */
+      collection: typeof foundry.documents.collections.Macros;
 
       /** @defaultValue `[]` */
       compendiumIndexFields: string[];
@@ -809,8 +837,11 @@ declare global {
        */
       typeLabels?: Record<"base", string>;
 
-      /** @defaultValue `Playlists` */
-      collection: foundry.documents.collections.Playlists.AnyConstructor;
+      /**
+       * @defaultValue {@linkcode foundry.documents.collections.Playlists}
+       * @remarks `typeof` instead of `AnyConstructor` because it's instantiated via `new` in {@linkcode Game.initializeDocuments | Game#initializeDocuments}
+       */
+      collection: typeof foundry.documents.collections.Playlists;
 
       /** @defaultValue `[]` */
       compendiumIndexFields: string[];
@@ -842,8 +873,11 @@ declare global {
        */
       typeLabels?: Record<"base", string>;
 
-      /** @defaultValue `RollTables` */
-      collection: foundry.documents.collections.RollTables.AnyConstructor;
+      /**
+       * @defaultValue {@linkcode foundry.documents.collections.RollTables}
+       * @remarks `typeof` instead of `AnyConstructor` because it's instantiated via `new` in {@linkcode Game.initializeDocuments | Game#initializeDocuments}
+       */
+      collection: typeof foundry.documents.collections.RollTables;
 
       /** @defaultValue `["formula"]` */
       compendiumIndexFields: string[];
@@ -878,8 +912,11 @@ declare global {
        */
       typeLabels?: Record<"base", string>;
 
-      /** @defaultValue `Scenes` */
-      collection: foundry.documents.collections.Scenes.AnyConstructor;
+      /**
+       * @defaultValue {@linkcode foundry.documents.collections.Scenes}
+       * @remarks `typeof` instead of `AnyConstructor` because it's instantiated via `new` in {@linkcode Game.initializeDocuments | Game#initializeDocuments}
+       */
+      collection: typeof foundry.documents.collections.Scenes;
 
       /** @defaultValue `[]` */
       compendiumIndexFields: string[];
@@ -905,8 +942,13 @@ declare global {
        */
       typeLabels?: Record<"base", string>;
 
-      /** @defaultValue `WorldSettings` */
-      collection: foundry.documents.collections.WorldSettings.AnyConstructor;
+      /**
+       * @defaultValue {@linkcode foundry.documents.collections.WorldSettings}
+       * @remarks {@linkcode foundry.helpers.ClientSettings | ClientSettings#constructor} instantiates `WorldSettings` by name, without referring to this property.
+       * It's only purpose seems to be allowing a {@linkcode WorldCollection.instance | CONFIG[primaryType]?.collection?.instance} reference in
+       * {@linkcode foundry.utils.parseUuid} to work.
+       */
+      collection: foundry.documents.collections.WorldSettings.Internal.AnyConstructor;
     };
 
     /**
@@ -926,8 +968,11 @@ declare global {
        */
       typeLabels?: Record<"base", string>;
 
-      /** @defaultValue `Users` */
-      collection: foundry.documents.collections.Users.AnyConstructor;
+      /**
+       * @defaultValue {@linkcode foundry.documents.collections.Users}
+       * @remarks `typeof` instead of `AnyConstructor` because it's instantiated via `new` in {@linkcode Game.initializeDocuments | Game#initializeDocuments}
+       */
+      collection: typeof foundry.documents.collections.Users;
     };
 
     /**
@@ -962,7 +1007,7 @@ declare global {
      * Available Weather Effects implementations
      */
     weatherEffects: {
-      [key: string]: canvasLayers.WeatherEffects.AmbienceConfiguration;
+      [weatherEffectID: Brand<string, "CONFIG.weatherEffects">]: canvasLayers.WeatherEffects.AmbienceConfiguration;
 
       /**
        * @defaultValue
@@ -1580,18 +1625,18 @@ declare global {
       dataModels: Record<string, typeof DataModel<any, JournalEntryPage.Implementation>>;
 
       /**
-       * @remarks Added by `DocumentSheetConfig._registerDefaultSheets` in `tail.js`
+       * @remarks Added by {@linkcode foundry.applications.sheets._registerDefaultSheets} in {@linkcode Game | Game#constructor}
        */
       sheetClasses: Record<foundry.documents.BaseJournalEntryPage.SubType, Record<string, SheetClassConfig>>;
 
       /**
        * @defaultValue `{}`
-       * @remarks Initialized by `Localization#initialize`, is an empty object until `i18nInit`
+       * @remarks Initialized by {@linkcode foundry.helpers.Localization | Localization#initialize}, is an empty object until `i18nInit`
        */
       typeLabels: Record<foundry.documents.BaseJournalEntryPage.SubType, string>;
 
       typeIcons: {
-        [type: string]: string;
+        [type: Brand<string, "CONFIG.JournalEntryPage">]: string;
 
         /** @defaultValue `"fas fa-file-image"` */
         image: string;
@@ -1941,7 +1986,7 @@ declare global {
       hudClass: foundry.applications.hud.TokenHUD.AnyConstructor;
 
       /** @defaultValue `typeof TokenRuler` */
-      rulerClass: foundry.canvas.placeables.tokens.TokenRuler;
+      rulerClass: foundry.canvas.placeables.tokens.TokenRuler.AnyConstructor;
 
       movement: {
         /** @defaultValue `data.TerrainData` */
@@ -2068,279 +2113,9 @@ declare global {
       /** @defaultValue `1` */
       thresholdAttenuationMultiplier: number;
 
-      doorSounds: {
-        [sound: string]: CONFIG.WallDoorSound;
+      doorSounds: InterfaceToObject<CONFIG.Wall.DoorSounds>;
 
-        /**
-         * @defaultValue
-         * ```ts
-         * {
-         *   label: "WALLS.DoorSound.FuturisticFast",
-         *   close: "sounds/doors/futuristic/close-fast.ogg",
-         *   lock: "sounds/doors/futuristic/lock.ogg",
-         *   open: "sounds/doors/futuristic/open-fast.ogg",
-         *   test: "sounds/doors/futuristic/test.ogg",
-         *   unlock: "sounds/doors/futuristic/unlock.ogg"
-         * }
-         * ```
-         */
-        futuristicFast: CONFIG.WallDoorSound;
-
-        /**
-         * @defaultValue
-         * ```ts
-         * {
-         *   label: "WALLS.DoorSound.FuturisticHydraulic",
-         *   close: "sounds/doors/futuristic/close-hydraulic.ogg",
-         *   lock: "sounds/doors/futuristic/lock.ogg",
-         *   open: "sounds/doors/futuristic/open-hydraulic.ogg",
-         *   test: "sounds/doors/futuristic/test.ogg",
-         *   unlock: "sounds/doors/futuristic/unlock.ogg"
-         * }
-         * ```
-         */
-        futuristicHydraulic: CONFIG.WallDoorSound;
-
-        /**
-         * @defaultValue
-         * ```ts
-         * {
-         *   label: "WALLS.DoorSound.FuturisticForcefield",
-         *   close: "sounds/doors/futuristic/close-forcefield.ogg",
-         *   lock: "sounds/doors/futuristic/lock.ogg",
-         *   open: "sounds/doors/futuristic/open-forcefield.ogg",
-         *   test: "sounds/doors/futuristic/test-forcefield.ogg",
-         *   unlock: "sounds/doors/futuristic/unlock.ogg"
-         * }
-         * ```
-         */
-        futuristicForcefield: CONFIG.WallDoorSound;
-
-        /**
-         * @defaultValue
-         * ```ts
-         * {
-         *   label: "WALLS.DoorSound.Industrial",
-         *   close: "sounds/doors/industrial/close.ogg",
-         *   lock: "sounds/doors/industrial/lock.ogg",
-         *   open: "sounds/doors/industrial/open.ogg",
-         *   test: "sounds/doors/industrial/test.ogg",
-         *   unlock: "sounds/doors/industrial/unlock.ogg"
-         * }
-         * ```
-         */
-        industrial: CONFIG.WallDoorSound;
-
-        /**
-         * @defaultValue
-         * ```ts
-         * {
-         *   label: "WALLS.DoorSound.IndustrialCreaky",
-         *   close: "sounds/doors/industrial/close-creaky.ogg",
-         *   lock: "sounds/doors/industrial/lock.ogg",
-         *   open: "sounds/doors/industrial/open-creaky.ogg",
-         *   test: "sounds/doors/industrial/test.ogg",
-         *   unlock: "sounds/doors/industrial/unlock.ogg"
-         * }
-         * ```
-         */
-        industrialCreaky: CONFIG.WallDoorSound;
-
-        /**
-         * @defaultValue
-         * ```ts
-         * {
-         *   label: "WALLS.DoorSound.Jail",
-         *   close: "sounds/doors/jail/close.ogg",
-         *   lock: "sounds/doors/jail/lock.ogg",
-         *   open: "sounds/doors/jail/open.ogg",
-         *   test: "sounds/doors/jail/test.ogg",
-         *   unlock: "sounds/doors/jail/unlock.ogg"
-         * }
-         * ```
-         */
-        jail: CONFIG.WallDoorSound;
-
-        /**
-         * @defaultValue
-         * ```ts
-         * {
-         *   label: "WALLS.DoorSound.MagicDoor",
-         *   close: "sounds/doors/magic/door-close.ogg",
-         *   lock: "sounds/doors/magic/lock.ogg",
-         *   open: "sounds/doors/magic/door-open.ogg",
-         *   test: "sounds/doors/magic/test.ogg",
-         *   unlock: "sounds/doors/magic/unlock.ogg"
-         * }
-         * ```
-         */
-        magicDoor: CONFIG.WallDoorSound;
-
-        /**
-         * @defaultValue
-         * ```ts
-         * {
-         *   label: "WALLS.DoorSound.MagicWall",
-         *   close: "sounds/doors/magic/wall-close.ogg",
-         *   lock: "sounds/doors/magic/lock.ogg",
-         *   open: "sounds/doors/magic/wall-open.ogg",
-         *   test: "sounds/doors/magic/test.ogg",
-         *   unlock: "sounds/doors/magic/unlock.ogg"
-         * }
-         * ```
-         */
-        magicWall: CONFIG.WallDoorSound;
-
-        /**
-         * @defaultValue
-         * ```ts
-         * {
-         *   label: "WALLS.DoorSound.Metal",
-         *   close: "sounds/doors/metal/close.ogg",
-         *   lock: "sounds/doors/metal/lock.ogg",
-         *   open: "sounds/doors/metal/open.ogg",
-         *   test: "sounds/doors/metal/test.ogg",
-         *   unlock: "sounds/doors/metal/unlock.ogg"
-         * }
-         * ```
-         */
-        metal: CONFIG.WallDoorSound;
-
-        /**
-         * @defaultValue
-         * ```ts
-         * {
-         *   label: "WALLS.DoorSound.SlidingMetal",
-         *   close: "sounds/doors/shutter/close.ogg",
-         *   lock: "sounds/doors/shutter/lock.ogg",
-         *   open: "sounds/doors/shutter/open.ogg",
-         *   test: "sounds/doors/shutter/test.ogg",
-         *   unlock: "sounds/doors/shutter/unlock.ogg"
-         * }
-         * ```
-         */
-        slidingMetal: CONFIG.WallDoorSound;
-
-        /**
-         * @defaultValue
-         * ```ts
-         * {
-         *   label: "WALLS.DoorSound.SlidingModern",
-         *   close: "sounds/doors/sliding/close.ogg",
-         *   lock: "sounds/doors/sliding/lock.ogg",
-         *   open: "sounds/doors/sliding/open.ogg",
-         *   test: "sounds/doors/sliding/test.ogg",
-         *   unlock: "sounds/doors/sliding/unlock.ogg"
-         * }
-         * ```
-         */
-        slidingModern: CONFIG.WallDoorSound;
-
-        /**
-         * @defaultValue
-         * ```ts
-         * {
-         *   label: "WALLS.DoorSound.SlidingWood",
-         *   close: "sounds/doors/sliding/close-wood.ogg",
-         *   lock: "sounds/doors/sliding/lock.ogg",
-         *   open: "sounds/doors/sliding/open-wood.ogg",
-         *   test: "sounds/doors/sliding/test.ogg",
-         *   unlock: "sounds/doors/sliding/unlock.ogg"
-         * }
-         * ```
-         */
-        slidingWood: CONFIG.WallDoorSound;
-
-        /**
-         * @defaultValue
-         * ```ts
-         * {
-         *   label: "WALLS.DoorSound.StoneBasic",
-         *   close: "sounds/doors/stone/close.ogg",
-         *   lock: "sounds/doors/stone/lock.ogg",
-         *   open: "sounds/doors/stone/open.ogg",
-         *   test: "sounds/doors/stone/test.ogg",
-         *   unlock: "sounds/doors/stone/unlock.ogg"
-         * }
-         * ```
-         */
-        stoneBasic: CONFIG.WallDoorSound;
-
-        /**
-         * @defaultValue
-         * ```ts
-         * {
-         *   label: "WALLS.DoorSound.StoneRocky",
-         *   close: "sounds/doors/stone/close-rocky.ogg",
-         *   lock: "sounds/doors/stone/lock.ogg",
-         *   open: "sounds/doors/stone/open-rocky.ogg",
-         *   test: "sounds/doors/stone/test.ogg",
-         *   unlock: "sounds/doors/stone/unlock.ogg"
-         * }
-         * ```
-         */
-        stoneRocky: CONFIG.WallDoorSound;
-
-        /**
-         * @defaultValue
-         * ```ts
-         * {
-         *   label: "WALLS.DoorSound.StoneSandy",
-         *   close: "sounds/doors/stone/close-sandy.ogg",
-         *   lock: "sounds/doors/stone/lock.ogg",
-         *   open: "sounds/doors/stone/open-sandy.ogg",
-         *   test: "sounds/doors/stone/test.ogg",
-         *   unlock: "sounds/doors/stone/unlock.ogg"
-         * }
-         * ```
-         */
-        stoneSandy: CONFIG.WallDoorSound;
-
-        /**
-         * @defaultValue
-         * ```ts
-         * {
-         *   label: "WALLS.DoorSound.WoodBasic",
-         *   close: "sounds/doors/wood/close.ogg",
-         *   lock: "sounds/doors/wood/lock.ogg",
-         *   open: "sounds/doors/wood/open.ogg",
-         *   test: "sounds/doors/wood/test.ogg",
-         *   unlock: "sounds/doors/wood/unlock.ogg"
-         * }
-         * ```
-         */
-        woodBasic: CONFIG.WallDoorSound;
-
-        /**
-         * @defaultValue
-         * ```ts
-         * {
-         *   label: "WALLS.DoorSound.WoodCreaky",
-         *   close: "sounds/doors/wood/close-creaky.ogg",
-         *   lock: "sounds/doors/wood/lock.ogg",
-         *   open: "sounds/doors/wood/open-creaky.ogg",
-         *   test: "sounds/doors/wood/test.ogg",
-         *   unlock: "sounds/doors/wood/unlock.ogg"
-         * }
-         * ```
-         */
-        woodCreaky: CONFIG.WallDoorSound;
-
-        /**
-         * @defaultValue
-         * ```ts
-         * {
-         *   label: "WALLS.DoorSound.WoodHeavy",
-         *   close: "sounds/doors/wood/close-heavy.ogg",
-         *   lock: "sounds/doors/wood/lock.ogg",
-         *   open: "sounds/doors/wood/open-heavy.ogg",
-         *   test: "sounds/doors/wood/test.ogg",
-         *   unlock: "sounds/doors/wood/unlock.ogg"
-         * }
-         * ```
-         */
-        woodHeavy: CONFIG.WallDoorSound;
-      };
+      animationTypes: InterfaceToObject<CONFIG.Wall.DoorAnimations>;
     };
 
     /**
@@ -2492,6 +2267,9 @@ declare global {
     }
 
     interface Canvas {
+      /** @defaultValue `10` */
+      elevationSnappingPrecision: number;
+
       /** @defaultValue `8` */
       blurStrength: number;
 
@@ -2570,7 +2348,7 @@ declare global {
 
       /**
        * @defaultValue `FogManager`
-       * @remarks Can't be `AnyConstructor` because Foundry assumes it can call `new` with the same arguments FogManager accepts
+       * @remarks `typeof` instead of `AnyConstructor` because it's instantiated via `new` in `Canvas##initializeFogManager`
        */
       fogManager: typeof perception.FogManager;
 
@@ -2579,9 +2357,9 @@ declare global {
       /** @defaultValue `number` */
       darknessSourcePaddingMultiplier: number;
 
-      visibilityFilter: foundry.canvas.rendering.filters.VisibilityFilter.AnyConstructor;
+      visibilityFilter: foundry.canvas.rendering.filters.VisibilityFilter.Internal.AnyConstructor;
 
-      visualEffectsMaskingFilter: foundry.canvas.rendering.filters.VisualEffectsMaskingFilter.AnyConstructor;
+      visualEffectsMaskingFilter: foundry.canvas.rendering.filters.VisualEffectsMaskingFilter.Internal.AnyConstructor;
 
       /**
        * @defaultValue `Ruler`
@@ -2607,7 +2385,7 @@ declare global {
       /**
        * A registry of Scenes which are managed by a specific SceneManager class.
        * @remarks Keys are Scene IDs
-       * @privateRemarks Can't be `AnyConstructor` because it's instantiated expecting a compatible constructor
+       * @privateRemarks `typeof` over `AnyConstructor` because it's instantiated via `new` in {@linkcode Canvas.getSceneManager}
        */
       managedScenes: Record<string, typeof foundry.canvas.SceneManager>;
 
@@ -2621,12 +2399,6 @@ declare global {
       hoverFade: Canvas.HoverFade;
 
       /**
-       * Allow specific transcoders for assets
-       * @defaultValue `{ basis: false }`
-       */
-      transCoders: Canvas.TransCoders;
-
-      /**
        * The set of VisionMode definitions which are available to be used for Token vision.
        */
       visionModes: Canvas.VisionModes;
@@ -2635,10 +2407,17 @@ declare global {
        * The set of DetectionMode definitions which are available to be used for visibility detection.
        */
       detectionModes: Canvas.DetectionModes;
+
+      /**
+       * @deprecated "`CONFIG.Canvas.transcoders` has been deprecated without replacement. KTX2/Basis support is always enabled and this property has no effect anymore." (since v13, until v15)
+       */
+      get transcoders(): { basis: true };
     }
 
     namespace Canvas {
       interface Groups {
+        // TODO: Index signature?
+
         /** @defaultValue `{ groupClass: HiddenCanvasGroup, parent: "stage" }` */
         hidden: CONFIG.Canvas.GroupDefinition<typeof canvasGroups.HiddenCanvasGroup>;
 
@@ -2664,11 +2443,33 @@ declare global {
         overlay: CONFIG.Canvas.GroupDefinition<typeof canvasGroups.OverlayCanvasGroup>;
       }
 
-      // This requires `CanvasGroupConstructor` because `Canvas##createGroups` assumes there's no parameters.
-      interface GroupDefinition<GroupClass extends CanvasGroupConstructor = CanvasGroupConstructor> {
+      /**
+       * @remarks `typeof MixedCanvasGroup` is used instead of {@linkcode CanvasGroupMixin.AnyMixedConstructor} because groups are
+       * instantiated via `new` in `Canvas##createGroups`
+       */
+      interface GroupDefinition<GroupClass extends typeof MixedCanvasGroup = typeof MixedCanvasGroup> {
+        /**
+         * @remarks The class that gets instantiated for this group. Must not take any arguments as Foundry doesn't pass any.
+         */
         groupClass: GroupClass;
-        parent: string;
+
+        /**
+         * @remarks Valid parents are {@linkcode foundry.canvas.Canvas.stage | "stage"} or any other defined Group
+         */
+        parent: "stage" | keyof typeof CONFIG.Canvas.groups;
+
+        /**
+         * @remarks Only used in `InterfaceCanvasGroup##createInterfaceDrawingsContainer`.
+         *
+         * Can't be `undefined` as it is directly assigned to {@linkcode PIXI.Container.zIndex | PIXI.Container#zIndex}
+         */
         zIndexDrawings?: number;
+
+        /**
+         * @remarks Only used in `InterfaceCanvasGroup##drawScrollingText`.
+         *
+         * Can't be `undefined` as it is directly assigned to {@linkcode PIXI.Container.zIndex | PIXI.Container#zIndex}
+         */
         zIndexScrollingText?: number;
       }
 
@@ -2680,7 +2481,7 @@ declare global {
         grid: LayerDefinition<typeof canvasLayers.GridLayer, "interface">;
 
         /** @defaultValue `{ layerClass: RegionLayer, group: "interface" }` */
-        // regions: LayerDefinition<typeof RegionLayer, "interface">;
+        regions: LayerDefinition<typeof canvasLayers.RegionLayer, "interface">;
 
         /** @defaultValue `{ layerClass: DrawingsLayer, group: "interface" }` */
         drawings: LayerDefinition<typeof canvasLayers.DrawingsLayer, "interface">;
@@ -2734,23 +2535,26 @@ declare global {
       }
 
       /**
-       * @privateRemarks Foundry types this as {@linkcode geometry.PointSourcePolygon | @enum PointSourcePolygon},
-       * but all the runtime defaults are {@linkcode geometry.ClockwiseSweepPolygon | ClockwiseSweepPolygon}, and its
-       * types and methods are assumed in other canvas classes, so entries have been constrained to it over `PointSourcePolygon`.
-       * It is not impossible to add a new type of source, so the index signature is included, but this is unlikely to
-       * come up in real world code.
+       * @privateRemarks Foundry types this as {@linkcode geometry.PointSourcePolygon | @enum PointSourcePolygon}, but all the runtime defaults are
+       * {@linkcode geometry.ClockwiseSweepPolygon | ClockwiseSweepPolygon}, and CSP types and methods are assumed in other canvas classes, so entries
+       * have been constrained to it instead of `PointSourcePolygon`.
+       *
+       * It is not impossible to add a new type of source, so the index signature is included, but this is unlikely to come up in real world code.
+       *
+       * `AnyConstructor` is used here because the expectation is that polygons are instantiated via {@linkcode geometry.ClockwiseSweepPolygon.create | .create},
+       * and the constructor has been made protected to enforce this.
        */
       interface PolygonBackends {
+        [polygonType: Brand<string, "CONFIG.Canvas.polygonBackends">]: geometry.ClockwiseSweepPolygon.AnyConstructor;
         sight: geometry.ClockwiseSweepPolygon.AnyConstructor;
         light: geometry.ClockwiseSweepPolygon.AnyConstructor;
         darkness: geometry.ClockwiseSweepPolygon.AnyConstructor;
         sound: geometry.ClockwiseSweepPolygon.AnyConstructor;
         move: geometry.ClockwiseSweepPolygon.AnyConstructor;
-        [K: string]: geometry.ClockwiseSweepPolygon.AnyConstructor;
       }
 
       interface GridStyles {
-        [key: string]: canvasLayers.GridLayer.GridStyle;
+        [gridStyle: Brand<string, "CONFIG.Canvas.gridStyles">]: canvasLayers.GridLayer.GridStyle;
 
         /**
          * @defaultValue
@@ -2844,7 +2648,7 @@ declare global {
           RenderedEffectSource._Seed {}
 
       interface LightAnimations {
-        [animationID: string]: LightSourceAnimationConfig;
+        [animationID: Brand<string, "CONFIG.Canvas.lightAnimations">]: LightSourceAnimationConfig;
         flame: LightAnimations.Flame;
         torch: LightAnimations.Torch;
         revolving: LightAnimations.Revolving;
@@ -3112,7 +2916,7 @@ declare global {
           RenderedEffectSource._Seed {}
 
       interface DarknessAnimations {
-        [animationID: string]: DarknessSourceAnimationConfig;
+        [animationID: Brand<string, "CONFIG.Canvas.darknessAnimations">]: DarknessSourceAnimationConfig;
         magicalGloom: DarknessAnimations.MagicalGloom;
         roiling: DarknessAnimations.Roiling;
         hole: DarknessAnimations.Hole;
@@ -3178,6 +2982,8 @@ declare global {
         }
 
         interface Styles {
+          [pingStyle: Brand<string, "CONFIG.Canvas.pings.styles">]: CONFIG.Canvas.Pings.Style;
+
           /** @defaultValue `{ class: AlertPing, color: "#ff0000", size: 1.5, duration: 900 }` */
           alert: CONFIG.Canvas.Pings.Style;
 
@@ -3189,8 +2995,6 @@ declare global {
 
           /** @defaultValue `{ class: PulsePing, size: 1.5, duration: 900 }` */
           pulse: CONFIG.Canvas.Pings.Style;
-
-          [key: string]: CONFIG.Canvas.Pings.Style;
         }
 
         interface Style {
@@ -3243,12 +3047,8 @@ declare global {
         duration: number;
       }
 
-      interface TransCoders {
-        [K: string]: boolean;
-      }
-
       interface VisionModes {
-        [key: string]: perception.VisionMode;
+        [visionMode: Brand<string, "CONFIG.Canvas.visionModes">]: perception.VisionMode;
 
         /**
          * Default (Basic) Vision
@@ -3422,7 +3222,7 @@ declare global {
       }
 
       interface DetectionModes {
-        [key: string]: perception.DetectionMode;
+        [detectionMode: Brand<string, "CONFIG.Canvas.detectionModes">]: perception.DetectionMode;
 
         lightPerception: perception.DetectionModeLightPerception;
 
@@ -3480,47 +3280,12 @@ declare global {
       }
     }
 
-    /** @privateRemarks Foundry does not document the array options */
-    interface WallDoorSound {
-      /** A localization string label */
-      label: string;
-
-      /**
-       * A sound path when the door is closed
-       * @remarks If an array is provided, a random entry is chosen
-       */
-      close?: string | string[];
-
-      /**
-       * A sound path when the door becomes locked
-       * @remarks If an array is provided, a random entry is chosen
-       */
-      lock?: string | string[];
-
-      /**
-       * A sound path when opening the door
-       * @remarks If an array is provided, a random entry is chosen
-       */
-      open?: string | string[];
-
-      /**
-       * A sound path when attempting to open a locked door
-       * @remarks If an array is provided, a random entry is chosen
-       */
-      test?: string | string[];
-
-      /**
-       * A sound path when the door becomes unlocked
-       * @remarks If an array is provided, a random entry is chosen
-       */
-      unlock?: string | string[];
-    }
-
     namespace Dice {
-      type RollMode = Brand<string, "CONFIG.Dice.RollMode">;
+      /** @deprecated Use {@linkcode foundry.dice.Roll.Mode} instead */
+      type RollMode = foundry.dice.Roll.Mode;
 
       interface RollModes {
-        [rollMode: RollMode]: RollModeConfig;
+        [rollMode: Brand<string, "CONFIG.Dice.RollMode">]: RollModeConfig;
         publicroll: RollModes.PublicRoll;
         gmroll: RollModes.GMRoll;
         blindroll: RollModes.BlindRoll;
@@ -3731,6 +3496,440 @@ declare global {
         ago: typeof foundry.data.CalendarData.formatAgo;
       }
     }
+
+    namespace Wall {
+      /** @internal */
+      type _DoorSoundConfig = InexactPartial<{
+        /**
+         * One or more sound paths for when the door is closed
+         * @remarks If an array is provided, a random entry is chosen
+         */
+        close: string | string[];
+
+        /**
+         * One or more sound paths for when the door becomes locked
+         * @remarks If an array is provided, a random entry is chosen
+         */
+        lock: string | string[];
+
+        /**
+         * One or more sound paths for when opening the door
+         * @remarks If an array is provided, a random entry is chosen
+         */
+        open: string | string[];
+
+        /**
+         * One or more sound paths for when attempting to open a locked door
+         * @remarks If an array is provided, a random entry is chosen
+         */
+        test: string | string[];
+
+        /**
+         * One or more sound paths for when the door becomes unlocked
+         * @remarks If an array is provided, a random entry is chosen
+         */
+        unlock: string | string[];
+      }>;
+
+      interface DoorSoundConfig extends _DoorSoundConfig {
+        /** A localization string label */
+        label: string;
+      }
+
+      interface DoorSounds {
+        [sound: Brand<string, "CONFIG.Wall.doorSounds">]: DoorSoundConfig;
+
+        /**
+         * @defaultValue
+         * ```ts
+         * {
+         *   label: "WALLS.DoorSound.FuturisticFast",
+         *   close: "sounds/doors/futuristic/close-fast.ogg",
+         *   lock: "sounds/doors/futuristic/lock.ogg",
+         *   open: "sounds/doors/futuristic/open-fast.ogg",
+         *   test: "sounds/doors/futuristic/test.ogg",
+         *   unlock: "sounds/doors/futuristic/unlock.ogg"
+         * }
+         * ```
+         */
+        futuristicFast: DoorSoundConfig;
+
+        /**
+         * @defaultValue
+         * ```ts
+         * {
+         *   label: "WALLS.DoorSound.FuturisticHydraulic",
+         *   close: "sounds/doors/futuristic/close-hydraulic.ogg",
+         *   lock: "sounds/doors/futuristic/lock.ogg",
+         *   open: "sounds/doors/futuristic/open-hydraulic.ogg",
+         *   test: "sounds/doors/futuristic/test.ogg",
+         *   unlock: "sounds/doors/futuristic/unlock.ogg"
+         * }
+         * ```
+         */
+        futuristicHydraulic: DoorSoundConfig;
+
+        /**
+         * @defaultValue
+         * ```ts
+         * {
+         *   label: "WALLS.DoorSound.FuturisticForcefield",
+         *   close: "sounds/doors/futuristic/close-forcefield.ogg",
+         *   lock: "sounds/doors/futuristic/lock.ogg",
+         *   open: "sounds/doors/futuristic/open-forcefield.ogg",
+         *   test: "sounds/doors/futuristic/test-forcefield.ogg",
+         *   unlock: "sounds/doors/futuristic/unlock.ogg"
+         * }
+         * ```
+         */
+        futuristicForcefield: DoorSoundConfig;
+
+        /**
+         * @defaultValue
+         * ```ts
+         * {
+         *   label: "WALLS.DoorSound.Industrial",
+         *   close: "sounds/doors/industrial/close.ogg",
+         *   lock: "sounds/doors/industrial/lock.ogg",
+         *   open: "sounds/doors/industrial/open.ogg",
+         *   test: "sounds/doors/industrial/test.ogg",
+         *   unlock: "sounds/doors/industrial/unlock.ogg"
+         * }
+         * ```
+         */
+        industrial: DoorSoundConfig;
+
+        /**
+         * @defaultValue
+         * ```ts
+         * {
+         *   label: "WALLS.DoorSound.IndustrialCreaky",
+         *   close: "sounds/doors/industrial/close-creaky.ogg",
+         *   lock: "sounds/doors/industrial/lock.ogg",
+         *   open: "sounds/doors/industrial/open-creaky.ogg",
+         *   test: "sounds/doors/industrial/test.ogg",
+         *   unlock: "sounds/doors/industrial/unlock.ogg"
+         * }
+         * ```
+         */
+        industrialCreaky: DoorSoundConfig;
+
+        /**
+         * @defaultValue
+         * ```ts
+         * {
+         *   label: "WALLS.DoorSound.Jail",
+         *   close: "sounds/doors/jail/close.ogg",
+         *   lock: "sounds/doors/jail/lock.ogg",
+         *   open: "sounds/doors/jail/open.ogg",
+         *   test: "sounds/doors/jail/test.ogg",
+         *   unlock: "sounds/doors/jail/unlock.ogg"
+         * }
+         * ```
+         */
+        jail: DoorSoundConfig;
+
+        /**
+         * @defaultValue
+         * ```ts
+         * {
+         *   label: "WALLS.DoorSound.MagicDoor",
+         *   close: "sounds/doors/magic/door-close.ogg",
+         *   lock: "sounds/doors/magic/lock.ogg",
+         *   open: "sounds/doors/magic/door-open.ogg",
+         *   test: "sounds/doors/magic/test.ogg",
+         *   unlock: "sounds/doors/magic/unlock.ogg"
+         * }
+         * ```
+         */
+        magicDoor: DoorSoundConfig;
+
+        /**
+         * @defaultValue
+         * ```ts
+         * {
+         *   label: "WALLS.DoorSound.MagicWall",
+         *   close: "sounds/doors/magic/wall-close.ogg",
+         *   lock: "sounds/doors/magic/lock.ogg",
+         *   open: "sounds/doors/magic/wall-open.ogg",
+         *   test: "sounds/doors/magic/test.ogg",
+         *   unlock: "sounds/doors/magic/unlock.ogg"
+         * }
+         * ```
+         */
+        magicWall: DoorSoundConfig;
+
+        /**
+         * @defaultValue
+         * ```ts
+         * {
+         *   label: "WALLS.DoorSound.Metal",
+         *   close: "sounds/doors/metal/close.ogg",
+         *   lock: "sounds/doors/metal/lock.ogg",
+         *   open: "sounds/doors/metal/open.ogg",
+         *   test: "sounds/doors/metal/test.ogg",
+         *   unlock: "sounds/doors/metal/unlock.ogg"
+         * }
+         * ```
+         */
+        metal: DoorSoundConfig;
+
+        /**
+         * @defaultValue
+         * ```ts
+         * {
+         *   label: "WALLS.DoorSound.SlidingMetal",
+         *   close: "sounds/doors/shutter/close.ogg",
+         *   lock: "sounds/doors/shutter/lock.ogg",
+         *   open: "sounds/doors/shutter/open.ogg",
+         *   test: "sounds/doors/shutter/test.ogg",
+         *   unlock: "sounds/doors/shutter/unlock.ogg"
+         * }
+         * ```
+         */
+        slidingMetal: DoorSoundConfig;
+
+        /**
+         * @defaultValue
+         * ```js
+         * {
+         *   label: "WALL.DoorSounds.SlidingMetalHeavy";
+         *   close: "sounds/doors/metal/heavy-sliding-close.ogg";
+         *   lock: "sounds/doors/metal/heavy-sliding-lock.ogg";
+         *   open: "sounds/doors/metal/heavy-sliding-open.ogg";
+         *   test: "sounds/doors/metal/heavy-sliding-test.ogg";
+         *   unlock: "sounds/doors/metal/heavy-sliding-unlock.ogg";
+         * }
+         * ```
+         */
+        slidingMetalHeavy: DoorSoundConfig;
+
+        /**
+         * @defaultValue
+         * ```ts
+         * {
+         *   label: "WALLS.DoorSound.SlidingModern",
+         *   close: "sounds/doors/sliding/close.ogg",
+         *   lock: "sounds/doors/sliding/lock.ogg",
+         *   open: "sounds/doors/sliding/open.ogg",
+         *   test: "sounds/doors/sliding/test.ogg",
+         *   unlock: "sounds/doors/sliding/unlock.ogg"
+         * }
+         * ```
+         */
+        slidingModern: DoorSoundConfig;
+
+        /**
+         * @defaultValue
+         * ```ts
+         * {
+         *   label: "WALLS.DoorSound.SlidingWood",
+         *   close: "sounds/doors/sliding/close-wood.ogg",
+         *   lock: "sounds/doors/sliding/lock.ogg",
+         *   open: "sounds/doors/sliding/open-wood.ogg",
+         *   test: "sounds/doors/sliding/test.ogg",
+         *   unlock: "sounds/doors/sliding/unlock.ogg"
+         * }
+         * ```
+         */
+        slidingWood: DoorSoundConfig;
+
+        /**
+         * @defaultValue
+         * ```ts
+         * {
+         *   label: "WALLS.DoorSound.StoneBasic",
+         *   close: "sounds/doors/stone/close.ogg",
+         *   lock: "sounds/doors/stone/lock.ogg",
+         *   open: "sounds/doors/stone/open.ogg",
+         *   test: "sounds/doors/stone/test.ogg",
+         *   unlock: "sounds/doors/stone/unlock.ogg"
+         * }
+         * ```
+         */
+        stoneBasic: DoorSoundConfig;
+
+        /**
+         * @defaultValue
+         * ```ts
+         * {
+         *   label: "WALLS.DoorSound.StoneRocky",
+         *   close: "sounds/doors/stone/close-rocky.ogg",
+         *   lock: "sounds/doors/stone/lock.ogg",
+         *   open: "sounds/doors/stone/open-rocky.ogg",
+         *   test: "sounds/doors/stone/test.ogg",
+         *   unlock: "sounds/doors/stone/unlock.ogg"
+         * }
+         * ```
+         */
+        stoneRocky: DoorSoundConfig;
+
+        /**
+         * @defaultValue
+         * ```ts
+         * {
+         *   label: "WALLS.DoorSound.StoneSandy",
+         *   close: "sounds/doors/stone/close-sandy.ogg",
+         *   lock: "sounds/doors/stone/lock.ogg",
+         *   open: "sounds/doors/stone/open-sandy.ogg",
+         *   test: "sounds/doors/stone/test.ogg",
+         *   unlock: "sounds/doors/stone/unlock.ogg"
+         * }
+         * ```
+         */
+        stoneSandy: DoorSoundConfig;
+
+        /**
+         * @defaultValue
+         * ```ts
+         * {
+         *   label: "WALLS.DoorSound.WoodBasic",
+         *   close: "sounds/doors/wood/close.ogg",
+         *   lock: "sounds/doors/wood/lock.ogg",
+         *   open: "sounds/doors/wood/open.ogg",
+         *   test: "sounds/doors/wood/test.ogg",
+         *   unlock: "sounds/doors/wood/unlock.ogg"
+         * }
+         * ```
+         */
+        woodBasic: DoorSoundConfig;
+
+        /**
+         * @defaultValue
+         * ```ts
+         * {
+         *   label: "WALLS.DoorSound.WoodCreaky",
+         *   close: "sounds/doors/wood/close-creaky.ogg",
+         *   lock: "sounds/doors/wood/lock.ogg",
+         *   open: "sounds/doors/wood/open-creaky.ogg",
+         *   test: "sounds/doors/wood/test.ogg",
+         *   unlock: "sounds/doors/wood/unlock.ogg"
+         * }
+         * ```
+         */
+        woodCreaky: DoorSoundConfig;
+
+        /**
+         * @defaultValue
+         * ```ts
+         * {
+         *   label: "WALLS.DoorSound.WoodHeavy",
+         *   close: "sounds/doors/wood/close-heavy.ogg",
+         *   lock: "sounds/doors/wood/lock.ogg",
+         *   open: "sounds/doors/wood/open-heavy.ogg",
+         *   test: "sounds/doors/wood/test.ogg",
+         *   unlock: "sounds/doors/wood/unlock.ogg"
+         * }
+         * ```
+         */
+        woodHeavy: DoorSoundConfig;
+      }
+
+      type DoorAnimationFunction = (this: DoorMesh, open: boolean) => CanvasAnimation.Attribute[];
+
+      type DoorAnimationHook = (this: DoorMesh, open: boolean) => MaybePromise<void>;
+
+      /** @internal */
+      type _DoorAnimationConfig = InexactPartial<{
+        /**
+         * @defaultValue `false`
+         * @remarks Pivot about the midpoint, instead of the {@linkcode geometry.edges.Edge.a | a} endpoint of the Wall's Edge?
+         */
+        midpoint: boolean;
+
+        /** @defaultValue {@linkcode CanvasAnimation.easeInOutCosine | "easeInOutCosine"} */
+        easing: CanvasAnimation.EasingFunction;
+
+        /** @remarks `initialize` hooks are not awaited */
+        initialize: DoorAnimationHook;
+
+        /** @remarks `preAnimate` hooks **are** awaited */
+        preAnimate: DoorAnimationHook;
+
+        /** @remarks `postAnimate` hooks **are** awaited */
+        postAnimate: DoorAnimationHook;
+      }>;
+
+      interface DoorAnimationConfig extends _DoorAnimationConfig {
+        /** @remarks Label (or localization key) for the animation select in {@linkcode foundry.applications.sheets.WallConfig | WallConfig}*/
+        label: string;
+
+        animate: DoorAnimationFunction;
+
+        /** @remarks Time to animate over in milliseconds */
+        duration: number;
+      }
+
+      interface DoorAnimations {
+        [animationName: Brand<string, "CONFIG.Wall.animationTypes">]: DoorAnimationConfig;
+
+        /**
+         * @defaultValue
+         * ```js
+         * {
+         *   label: "WALL.ANIMATION_TYPES.ASCEND",
+         *   midpoint: true,
+         *   animate: canvas.containers.DoorMesh.animateAscend,
+         *   duration: 1000
+         * }
+         * ```
+         */
+        ascend: DoorAnimationConfig;
+
+        /**
+         * @defaultValue
+         * ```js
+         * {
+         *   label: "WALL.ANIMATION_TYPES.DESCEND",
+         *   midpoint: true,
+         *   initialize: canvas.containers.DoorMesh.initializeDescend,
+         *   animate: canvas.containers.DoorMesh.animateDescend,
+         *   preAnimate: canvas.containers.DoorMesh.preAnimateDescend,
+         *   postAnimate: canvas.containers.DoorMesh.postAnimateDescend,
+         *   duration: 1000
+         * }
+         * ```
+         */
+        descend: DoorAnimationConfig;
+
+        /**
+         * @defaultValue
+         * ```js
+         * {
+         *   label: "WALL.ANIMATION_TYPES.SLIDE",
+         *   animate: canvas.containers.DoorMesh.animateSlide,
+         *   duration: 500
+         * }
+         * ```
+         */
+        slide: DoorAnimationConfig;
+
+        /**
+         * @defaultValue
+         * ```js
+         * {
+         *   label: "WALL.ANIMATION_TYPES.SWING",
+         *   animate: canvas.containers.DoorMesh.animateSwing,
+         *   duration: 500
+         * }
+         * ```
+         */
+        swing: DoorAnimationConfig;
+
+        /**
+         * @defaultValue
+         * ```js
+         * {
+         *   label: "WALL.ANIMATION_TYPES.SWIVEL",
+         *   midpoint: true,
+         *   animate: canvas.containers.DoorMesh.animateSwing,
+         *   duration: 500
+         * }
+         * ```
+         */
+        swivel: DoorAnimationConfig;
+      }
+    }
   }
 
   const CONFIG: CONFIG;
@@ -3756,17 +3955,11 @@ interface SheetClassConfig {
   label: string;
 }
 
-type PixiContainerConstructor = PIXI.Container.AnyConstructor;
-interface CanvasGroup extends PIXI.Container {
-  sortableChildren: boolean;
-}
+declare const Mixed: canvasGroups.CanvasGroupMixin.AnyMixedConstructor;
 
-interface CanvasGroupConstructor extends PixiContainerConstructor {
-  new (): CanvasGroup;
-
-  /**
-   * The name of this canvas group
-   * @remarks Can be undefined in some cases (e.g `EffectsCanvasGroup`) to prevent other groups using it as a parent
-   */
-  groupName?: string | undefined;
+/**
+ * @privateRemarks Used to enforce user-provided group classes taking no constructor arguments
+ */
+declare class MixedCanvasGroup extends Mixed {
+  constructor();
 }

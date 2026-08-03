@@ -11,11 +11,29 @@ declare class CardStacks extends foundry.documents.abstract.WorldCollection<"Car
 }
 
 declare namespace CardStacks {
-  interface Any extends AnyCardStacks {}
-  interface AnyConstructor extends Identity<typeof AnyCardStacks> {}
+  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
+  type Any = Internal.Any;
 
-  interface ConfiguredClass extends Document.ConfiguredCollectionClass<"Cards"> {}
-  interface Configured extends Document.ConfiguredCollection<"Cards"> {}
+  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
+  type AnyConstructor = Internal.AnyConstructor;
+
+  namespace Internal {
+    interface Any extends AnyCardStacks {}
+    interface AnyConstructor extends Identity<typeof AnyCardStacks> {}
+  }
+
+  interface ImplementationClass extends Document.Internal.ConfiguredCollectionClass<"Cards"> {}
+  interface Implementation extends Document.Internal.ConfiguredCollection<"Cards"> {}
+
+  /**
+   * @deprecated Replaced by {@linkcode CardStacks.ImplementationClass}.
+   */
+  type ConfiguredClass = ImplementationClass;
+
+  /**
+   * @deprecated Replaced by {@linkcode CardStacks.Implementation}.
+   */
+  type Configured = Implementation;
 }
 
 declare abstract class AnyCardStacks extends CardStacks {

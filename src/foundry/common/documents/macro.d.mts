@@ -11,7 +11,7 @@ import type { LogCompatibilityWarningOptions } from "../utils/logging.d.mts";
 // Note(LukeAbby): You may wonder why documents don't simply pass the `Parent` generic parameter.
 // This pattern evolved from trying to avoid circular loops and even internal tsc errors.
 // See: https://gist.github.com/LukeAbby/0d01b6e20ef19ebc304d7d18cef9cc21
-declare abstract class BaseMacro<out _SubType extends BaseMacro.SubType = BaseMacro.SubType> extends Document<
+declare abstract class BaseMacro<out SubType extends BaseMacro.SubType = BaseMacro.SubType> extends Document<
   "Macro",
   BaseMacro.Schema,
   any
@@ -101,6 +101,8 @@ declare abstract class BaseMacro<out _SubType extends BaseMacro.SubType = BaseMa
    * separate like this helps against circularities.
    */
 
+  type: SubType;
+
   /* Document overrides */
 
   override readonly parentCollection: Macro.ParentCollectionName | null;
@@ -126,7 +128,7 @@ declare abstract class BaseMacro<out _SubType extends BaseMacro.SubType = BaseMa
   static override createDocuments<Temporary extends boolean | undefined = undefined>(
     data: Array<Macro.Implementation | Macro.CreateData> | undefined,
     operation?: Document.Database.CreateOperation<Macro.Database.Create<Temporary>>,
-  ): Promise<Array<Document.TemporaryIf<Macro.Implementation, Temporary>>>;
+  ): Promise<Array<Macro.TemporaryIf<Temporary>>>;
 
   static override updateDocuments(
     updates: Macro.UpdateData[] | undefined,
@@ -141,7 +143,7 @@ declare abstract class BaseMacro<out _SubType extends BaseMacro.SubType = BaseMa
   static override create<Temporary extends boolean | undefined = undefined>(
     data: Macro.CreateData | Macro.CreateData[],
     operation?: Macro.Database.CreateOperation<Temporary>,
-  ): Promise<Document.TemporaryIf<Macro.Implementation, Temporary> | undefined>;
+  ): Promise<Macro.TemporaryIf<Temporary> | undefined>;
 
   override update(
     data: Macro.UpdateData | undefined,
@@ -162,12 +164,12 @@ declare abstract class BaseMacro<out _SubType extends BaseMacro.SubType = BaseMa
   override getFlag<Scope extends Macro.Flags.Scope, Key extends Macro.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): Document.GetFlag<Macro.Name, Scope, Key>;
+  ): Macro.Flags.Get<Scope, Key>;
 
   override setFlag<
     Scope extends Macro.Flags.Scope,
     Key extends Macro.Flags.Key<Scope>,
-    Value extends Document.GetFlag<Macro.Name, Scope, Key>,
+    Value extends Macro.Flags.Get<Scope, Key>,
   >(scope: Scope, key: Key, value: Value): Promise<this>;
 
   override unsetFlag<Scope extends Macro.Flags.Scope, Key extends Macro.Flags.Key<Scope>>(
@@ -313,7 +315,7 @@ declare namespace BaseMacro {
   export import Hierarchy = Macro.Hierarchy;
   export import Metadata = Macro.Metadata;
   export import SubType = Macro.SubType;
-  export import ConfiguredSubTypes = Macro.ConfiguredSubTypes;
+  export import ConfiguredSubType = Macro.ConfiguredSubType;
   export import Known = Macro.Known;
   export import OfType = Macro.OfType;
   export import Parent = Macro.Parent;
@@ -331,7 +333,8 @@ declare namespace BaseMacro {
   export import InitializedData = Macro.InitializedData;
   export import UpdateData = Macro.UpdateData;
   export import Schema = Macro.Schema;
-  export import DatabaseOperation = Macro.Database;
+  export import Database = Macro.Database;
+  export import TemporaryIf = Macro.TemporaryIf;
   export import Flags = Macro.Flags;
 
   namespace Internal {

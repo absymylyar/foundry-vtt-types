@@ -106,18 +106,18 @@ declare namespace Setting {
   /**
    * The world collection that contains `Setting`s. Will be `never` if none exists.
    */
-  type CollectionClass = foundry.documents.collections.WorldSettings.ConfiguredClass;
+  type CollectionClass = foundry.documents.collections.WorldSettings.ImplementationClass;
 
   /**
    * The world collection that contains `Setting`s. Will be `never` if none exists.
    */
-  type Collection = foundry.documents.collections.WorldSettings.Configured;
+  type Collection = foundry.documents.collections.WorldSettings.Implementation;
 
   /**
    * An instance of `Setting` that comes from the database but failed validation meaning that
    * its `system` and `_source` could theoretically be anything.
    */
-  interface Invalid extends Document.Internal.Invalid<Setting.Implementation> {}
+  type Invalid = Document.Internal.Invalid<Implementation>;
 
   /**
    * An instance of `Setting` that comes from the database.
@@ -323,6 +323,13 @@ declare namespace Setting {
   }
 
   /**
+   * If `Temporary` is true then `Setting.Implementation`, otherwise `Setting.Stored`.
+   */
+  type TemporaryIf<Temporary extends boolean | undefined> = true extends Temporary
+    ? Setting.Implementation
+    : Setting.Stored;
+
+  /**
    * @deprecated `Settings` does not have any flags.
    *
    * This permanently deprecated type helps to alleviate confusion as a user might expect it to exist.
@@ -363,7 +370,7 @@ declare namespace Setting {
   /**
    * The arguments to construct the document.
    *
-   * @deprecated - Writing the signature directly has helped reduce circularities and therefore is
+   * @deprecated Writing the signature directly has helped reduce circularities and therefore is
    * now recommended.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated

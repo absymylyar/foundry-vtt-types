@@ -4,7 +4,7 @@ import type Document from "#common/abstract/document.d.mts";
 import type { DataSchema } from "#common/data/fields.d.mts";
 import type { BaseActor, BaseUser } from "#common/documents/_module.d.mts";
 import type { UserTargets } from "#client/canvas/placeables/tokens/_module.d.mts";
-import type { Ping, Ruler } from "#client/canvas/interaction/_module.d.mts";
+import type { BaseRuler, Ping } from "#client/canvas/interaction/_module.d.mts";
 
 import AVSettings = foundry.av.AVSettings;
 import fields = foundry.data.fields;
@@ -110,18 +110,18 @@ declare namespace User {
   /**
    * The world collection that contains `User`s. Will be `never` if none exists.
    */
-  type CollectionClass = foundry.documents.collections.Users.ConfiguredClass;
+  type CollectionClass = foundry.documents.collections.Users.ImplementationClass;
 
   /**
    * The world collection that contains `User`s. Will be `never` if none exists.
    */
-  type Collection = foundry.documents.collections.Users.Configured;
+  type Collection = foundry.documents.collections.Users.Implementation;
 
   /**
    * An instance of `User` that comes from the database but failed validation meaning that
    * its `system` and `_source` could theoretically be anything.
    */
-  interface Invalid extends Document.Internal.Invalid<User.Implementation> {}
+  type Invalid = Document.Internal.Invalid<Implementation>;
 
   /**
    * An instance of `User` that comes from the database.
@@ -184,13 +184,7 @@ declare namespace User {
     /**
      * The user's name.
      */
-    name: fields.StringField<
-      { required: true; blank: false; textSearch: true },
-      // Note(LukeAbby): Field override because `blank: false` isn't fully accounted for or something.
-      string,
-      string,
-      string
-    >;
+    name: fields.StringField<{ required: true; blank: false; textSearch: true }>;
 
     /**
      * The user's role, see CONST.USER_ROLES.
@@ -395,25 +389,30 @@ declare namespace User {
   }
 
   /**
+   * If `Temporary` is true then `User.Implementation`, otherwise `User.Stored`.
+   */
+  type TemporaryIf<Temporary extends boolean | undefined> = true extends Temporary ? User.Implementation : User.Stored;
+
+  /**
    * The flags that are available for this document in the form `{ [scope: string]: { [key: string]: unknown } }`.
    */
-  interface Flags extends Document.ConfiguredFlagsForName<Name> {}
+  interface Flags extends Document.Internal.ConfiguredFlagsForName<Name> {}
 
   namespace Flags {
     /**
      * The valid scopes for the flags on this document e.g. `"core"` or `"dnd5e"`.
      */
-    type Scope = Document.FlagKeyOf<Flags>;
+    type Scope = Document.Internal.FlagKeyOf<Flags>;
 
     /**
      * The valid keys for a certain scope for example if the scope is "core" then a valid key may be `"sheetLock"` or `"viewMode"`.
      */
-    type Key<Scope extends Flags.Scope> = Document.FlagKeyOf<Document.FlagGetKey<Flags, Scope>>;
+    type Key<Scope extends Flags.Scope> = Document.Internal.FlagKeyOf<Document.Internal.FlagGetKey<Flags, Scope>>;
 
     /**
      * Gets the type of a particular flag given a `Scope` and a `Key`.
      */
-    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.GetFlag<Name, Scope, Key>;
+    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.Internal.GetFlag<Flags, Scope, Key>;
   }
 
   interface DropData extends Document.Internal.DropData<Name> {}
@@ -490,7 +489,7 @@ declare namespace User {
      * The state of the user's ruler, if they are currently using one.
      * @remarks Can't be explicit `undefined` as the socket drops such keys.
      */
-    ruler: Ruler.MeasurementData | null;
+    ruler: BaseRuler.UpdateData | null;
 
     /**
      * The IDs of the tokens the user has targeted in the currently viewed
@@ -580,7 +579,7 @@ declare namespace User {
   /**
    * The arguments to construct the document.
    *
-   * @deprecated - Writing the signature directly has helped reduce circularities and therefore is
+   * @deprecated Writing the signature directly has helped reduce circularities and therefore is
    * now recommended.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated

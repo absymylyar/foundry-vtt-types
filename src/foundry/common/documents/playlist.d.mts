@@ -101,7 +101,7 @@ declare abstract class BasePlaylist extends Document<"Playlist", BasePlaylist.Sc
   static override createDocuments<Temporary extends boolean | undefined = undefined>(
     data: Array<Playlist.Implementation | Playlist.CreateData> | undefined,
     operation?: Document.Database.CreateOperation<Playlist.Database.Create<Temporary>>,
-  ): Promise<Array<Document.TemporaryIf<Playlist.Implementation, Temporary>>>;
+  ): Promise<Array<Playlist.TemporaryIf<Temporary>>>;
 
   static override updateDocuments(
     updates: Playlist.UpdateData[] | undefined,
@@ -116,7 +116,7 @@ declare abstract class BasePlaylist extends Document<"Playlist", BasePlaylist.Sc
   static override create<Temporary extends boolean | undefined = undefined>(
     data: Playlist.CreateData | Playlist.CreateData[],
     operation?: Playlist.Database.CreateOperation<Temporary>,
-  ): Promise<Document.TemporaryIf<Playlist.Implementation, Temporary> | undefined>;
+  ): Promise<Playlist.TemporaryIf<Temporary> | undefined>;
 
   override update(
     data: Playlist.UpdateData | undefined,
@@ -144,17 +144,14 @@ declare abstract class BasePlaylist extends Document<"Playlist", BasePlaylist.Sc
   override createEmbeddedDocuments<EmbeddedName extends Playlist.Embedded.Name>(
     embeddedName: EmbeddedName,
     data: Document.CreateDataForName<EmbeddedName>[] | undefined,
-    // TODO(LukeAbby): The correct signature would be:
-    // operation?: Document.Database.CreateOperation<Document.Database.CreateForName<EmbeddedName>>,
-    // However this causes a number of errors.
-    operation?: object,
-  ): Promise<Array<Document.StoredForName<EmbeddedName>> | undefined>;
+    operation?: Document.Database.CreateOperationForName<EmbeddedName>,
+  ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
 
   override updateEmbeddedDocuments<EmbeddedName extends Playlist.Embedded.Name>(
     embeddedName: EmbeddedName,
     updates: Document.UpdateDataForName<EmbeddedName>[] | undefined,
     operation?: Document.Database.UpdateOperationForName<EmbeddedName>,
-  ): Promise<Array<Document.StoredForName<EmbeddedName>> | undefined>;
+  ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
 
   override deleteEmbeddedDocuments<EmbeddedName extends Playlist.Embedded.Name>(
     embeddedName: EmbeddedName,
@@ -170,12 +167,12 @@ declare abstract class BasePlaylist extends Document<"Playlist", BasePlaylist.Sc
   override getFlag<Scope extends Playlist.Flags.Scope, Key extends Playlist.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): Document.GetFlag<Playlist.Name, Scope, Key>;
+  ): Playlist.Flags.Get<Scope, Key>;
 
   override setFlag<
     Scope extends Playlist.Flags.Scope,
     Key extends Playlist.Flags.Key<Scope>,
-    Value extends Document.GetFlag<Playlist.Name, Scope, Key>,
+    Value extends Playlist.Flags.Get<Scope, Key>,
   >(scope: Scope, key: Key, value: Value): Promise<this>;
 
   override unsetFlag<Scope extends Playlist.Flags.Scope, Key extends Playlist.Flags.Key<Scope>>(
@@ -349,7 +346,8 @@ declare namespace BasePlaylist {
   export import InitializedData = Playlist.InitializedData;
   export import UpdateData = Playlist.UpdateData;
   export import Schema = Playlist.Schema;
-  export import DatabaseOperation = Playlist.Database;
+  export import Database = Playlist.Database;
+  export import TemporaryIf = Playlist.TemporaryIf;
   export import Flags = Playlist.Flags;
 
   namespace Internal {

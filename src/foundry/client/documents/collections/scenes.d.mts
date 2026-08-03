@@ -49,11 +49,29 @@ declare class Scenes extends foundry.documents.abstract.WorldCollection<"Scene",
 }
 
 declare namespace Scenes {
-  interface Any extends AnyScenes {}
-  interface AnyConstructor extends Identity<typeof AnyScenes> {}
+  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
+  type Any = Internal.Any;
 
-  interface ConfiguredClass extends Document.ConfiguredCollectionClass<"Scene"> {}
-  interface Configured extends Document.ConfiguredCollection<"Scene"> {}
+  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
+  type AnyConstructor = Internal.AnyConstructor;
+
+  namespace Internal {
+    interface Any extends AnyScenes {}
+    interface AnyConstructor extends Identity<typeof AnyScenes> {}
+  }
+
+  interface ImplementationClass extends Document.Internal.ConfiguredCollectionClass<"Scene"> {}
+  interface Implementation extends Document.Internal.ConfiguredCollection<"Scene"> {}
+
+  /**
+   * @deprecated Replaced by {@linkcode Scenes.ImplementationClass}.
+   */
+  type ConfiguredClass = ImplementationClass;
+
+  /**
+   * @deprecated Replaced by {@linkcode Scenes.Implementation}.
+   */
+  type Configured = Implementation;
 }
 
 declare abstract class AnyScenes extends Scenes {

@@ -10,6 +10,7 @@ import type DataModel from "#common/abstract/data.mjs";
 import type { TerrainData } from "#client/data/terrain-data.mjs";
 
 import fields = foundry.data.fields;
+import Token = foundry.canvas.placeables.Token;
 
 declare namespace TokenDocument {
   /**
@@ -190,7 +191,7 @@ declare namespace TokenDocument {
    * An instance of `TokenDocument` that comes from the database but failed validation meaning that
    * its `system` and `_source` could theoretically be anything.
    */
-  interface Invalid extends Document.Internal.Invalid<TokenDocument.Implementation> {}
+  type Invalid = Document.Internal.Invalid<Implementation>;
 
   /**
    * An instance of `TokenDocument` that comes from the database.
@@ -930,25 +931,32 @@ declare namespace TokenDocument {
   }
 
   /**
+   * If `Temporary` is true then `Token.Implementation`, otherwise `Token.Stored`.
+   */
+  type TemporaryIf<Temporary extends boolean | undefined> = true extends Temporary
+    ? TokenDocument.Implementation
+    : TokenDocument.Stored;
+
+  /**
    * The flags that are available for this document in the form `{ [scope: string]: { [key: string]: unknown } }`.
    */
-  interface Flags extends Document.ConfiguredFlagsForName<Name> {}
+  interface Flags extends Document.Internal.ConfiguredFlagsForName<Name>, CoreFlags {}
 
   namespace Flags {
     /**
      * The valid scopes for the flags on this document e.g. `"core"` or `"dnd5e"`.
      */
-    type Scope = Document.FlagKeyOf<Flags>;
+    type Scope = Document.Internal.FlagKeyOf<Flags>;
 
     /**
      * The valid keys for a certain scope for example if the scope is "core" then a valid key may be `"sheetLock"` or `"viewMode"`.
      */
-    type Key<Scope extends Flags.Scope> = Document.FlagKeyOf<Document.FlagGetKey<Flags, Scope>>;
+    type Key<Scope extends Flags.Scope> = Document.Internal.FlagKeyOf<Document.Internal.FlagGetKey<Flags, Scope>>;
 
     /**
      * Gets the type of a particular flag given a `Scope` and a `Key`.
      */
-    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.GetFlag<Name, Scope, Key>;
+    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.Internal.GetFlag<Flags, Scope, Key>;
   }
 
   interface CoreFlags {
@@ -1036,6 +1044,21 @@ declare namespace TokenDocument {
 
   interface GetBarAttributeOptions extends _GetBarAttributeOptions {}
 
+  interface SingleAttributeBar {
+    type: "value";
+    attribute: string;
+    value: number;
+    editable: boolean;
+  }
+
+  interface ObjectAttributeBar {
+    type: "bar";
+    attribute: string;
+    value: number;
+    max: number;
+    editable: boolean;
+  }
+
   type GetBarAttributeReturn = SingleAttributeBar | ObjectAttributeBar | null;
 
   /** @internal */
@@ -1085,13 +1108,9 @@ declare namespace TokenDocument {
 
   type GetEmbeddedCollectionName = Embedded.CollectionName | "Actor" | "Item" | "ActiveEffect";
 
-  // TODO(LukeAbby): Simplified for now to prevent circularities. The correct implementation would
-  // be this:
-  // | (Name extends "Actor" ? globalThis.Collection<Actor.Implementation> : never)
-  // | (Name extends "Item" ? globalThis.Collection<Item.Implementation> : never)
-  // | (Name extends "ActiveEffect" ? globalThis.Collection<ActiveEffect.Implementation> : never)
-  // | (Name extends Embedded.CollectionName ? Embedded.CollectionFor<Name> : never);
-  type GetEmbeddedCollectionResult<_Name extends GetEmbeddedCollectionName> = Collection.Any;
+  type GetEmbeddedCollectionResult<Name extends GetEmbeddedCollectionName> =
+    | (Name extends Document.Type ? globalThis.Collection<Document.ImplementationFor<Name>> : never)
+    | (Name extends Embedded.CollectionName ? Embedded.CollectionFor<Name> : never);
 
   type MovementState = "completed" | "paused" | "pending" | "stopped";
 
@@ -1209,33 +1228,6 @@ declare namespace TokenDocument {
     diagonals: number;
   }
 
-  interface ConstrainMovementPathOptions {
-    /**
-     * Constrain a preview path?
-     * @defaultValue `false`
-     */
-    preview: boolean;
-
-    /**
-     * Ignore walls?
-     * @defaultValue `false`
-     */
-    ignoreWalls: boolean;
-
-    /**
-     * Ignore cost?
-     * @defaultValue `false`
-     */
-    ignoreCost: boolean;
-
-    /**
-     * Consider movement history? If true, uses the current movement history. If waypoints are passed, uses those as the history.
-     * @defaultValue `false`
-     * @remarks marked by foundry as readonly
-     */
-    history: boolean | TokenDocument.MeasuredMovementWaypoint[];
-  }
-
   interface MovementContinuationHandle {
     /**
      * The movement ID
@@ -1298,7 +1290,7 @@ declare namespace TokenDocument {
     };
   }
 
-  interface ConstrainOptions extends Omit<ConstrainMovementPathOptions, "preview" | "history"> {}
+  interface ConstrainOptions extends Omit<Token.ConstrainMovementPathOptions, "preview" | "history"> {}
 
   interface MovementData {
     /**
@@ -1470,11 +1462,16 @@ declare namespace TokenDocument {
   /**
    * The arguments to construct the document.
    *
-   * @deprecated - Writing the signature directly has helped reduce circularities and therefore is
+   * @deprecated Writing the signature directly has helped reduce circularities and therefore is
    * now recommended.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   type ConstructorArgs = Document.ConstructorParameters<CreateData, Parent>;
+
+  /**
+   * @deprecated Replaced by {@linkcode Token.ConstrainMovementPathOptions}.
+   */
+  type ConstrainMovementPathOptions = Token.ConstrainMovementPathOptions;
 }
 
 /**
@@ -1562,7 +1559,7 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
   /**
    * The movement history
    */
-  get movementHistory(): TokenDocument.MeasuredMovementWaypoint;
+  get movementHistory(): TokenDocument.MeasuredMovementWaypoint[];
 
   /**
    * Check if the document has a distinct subject texture (inferred or explicit).
@@ -2150,19 +2147,4 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
   #TokenDocument: true;
 }
 
-interface SingleAttributeBar {
-  type: "value";
-  attribute: string;
-  value: number;
-  editable: boolean;
-}
-
-interface ObjectAttributeBar {
-  type: "bar";
-  attribute: string;
-  value: number;
-  max: number;
-  editable: boolean;
-}
-
-export { TokenDocument as default, SingleAttributeBar, ObjectAttributeBar };
+export default TokenDocument;

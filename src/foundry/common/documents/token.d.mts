@@ -239,7 +239,7 @@ declare abstract class BaseToken extends Document<"Token", BaseToken.Schema, any
   static override createDocuments<Temporary extends boolean | undefined = undefined>(
     data: Array<TokenDocument.Implementation | TokenDocument.CreateData> | undefined,
     operation?: Document.Database.CreateOperation<TokenDocument.Database.Create<Temporary>>,
-  ): Promise<Array<Document.TemporaryIf<TokenDocument.Implementation, Temporary>>>;
+  ): Promise<Array<TokenDocument.TemporaryIf<Temporary>>>;
 
   static override updateDocuments(
     updates: TokenDocument.UpdateData[] | undefined,
@@ -254,7 +254,7 @@ declare abstract class BaseToken extends Document<"Token", BaseToken.Schema, any
   static override create<Temporary extends boolean | undefined = undefined>(
     data: TokenDocument.CreateData | TokenDocument.CreateData[],
     operation?: TokenDocument.Database.CreateOperation<Temporary>,
-  ): Promise<Document.TemporaryIf<TokenDocument.Implementation, Temporary> | undefined>;
+  ): Promise<TokenDocument.TemporaryIf<Temporary> | undefined>;
 
   override update(
     data: TokenDocument.UpdateData | undefined,
@@ -290,17 +290,14 @@ declare abstract class BaseToken extends Document<"Token", BaseToken.Schema, any
   override createEmbeddedDocuments<EmbeddedName extends TokenDocument.Embedded.Name>(
     embeddedName: EmbeddedName,
     data: Document.CreateDataForName<EmbeddedName>[] | undefined,
-    // TODO(LukeAbby): The correct signature would be:
-    // operation?: Document.Database.CreateOperation<Document.Database.CreateForName<EmbeddedName>>,
-    // However this causes a number of errors.
-    operation?: object,
-  ): Promise<Array<Document.StoredForName<EmbeddedName>> | undefined>;
+    operation?: Document.Database.CreateOperationForName<EmbeddedName>,
+  ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
 
   override updateEmbeddedDocuments<EmbeddedName extends TokenDocument.Embedded.Name>(
     embeddedName: EmbeddedName,
     updates: Document.UpdateDataForName<EmbeddedName>[] | undefined,
     operation?: Document.Database.UpdateOperationForName<EmbeddedName>,
-  ): Promise<Array<Document.StoredForName<EmbeddedName>> | undefined>;
+  ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
 
   override deleteEmbeddedDocuments<EmbeddedName extends TokenDocument.Embedded.Name>(
     embeddedName: EmbeddedName,
@@ -316,12 +313,12 @@ declare abstract class BaseToken extends Document<"Token", BaseToken.Schema, any
   override getFlag<Scope extends TokenDocument.Flags.Scope, Key extends TokenDocument.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): Document.GetFlag<TokenDocument.Name, Scope, Key>;
+  ): TokenDocument.Flags.Get<Scope, Key>;
 
   override setFlag<
     Scope extends TokenDocument.Flags.Scope,
     Key extends TokenDocument.Flags.Key<Scope>,
-    Value extends Document.GetFlag<TokenDocument.Name, Scope, Key>,
+    Value extends TokenDocument.Flags.Get<Scope, Key>,
   >(scope: Scope, key: Key, value: Value): Promise<this>;
 
   override unsetFlag<Scope extends TokenDocument.Flags.Scope, Key extends TokenDocument.Flags.Key<Scope>>(
@@ -514,7 +511,8 @@ declare namespace BaseToken {
   export import InitializedData = TokenDocument.InitializedData;
   export import UpdateData = TokenDocument.UpdateData;
   export import Schema = TokenDocument.Schema;
-  export import DatabaseOperation = TokenDocument.Database;
+  export import Database = TokenDocument.Database;
+  export import TemporaryIf = TokenDocument.TemporaryIf;
   export import Flags = TokenDocument.Flags;
   export import CoreFlags = TokenDocument.CoreFlags;
 

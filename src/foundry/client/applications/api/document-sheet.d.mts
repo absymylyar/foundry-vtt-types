@@ -24,15 +24,25 @@ declare namespace DocumentSheetV2 {
     rootId: string;
   }
 
-  interface Configuration<ConcreteDocument extends Document.Any> extends _Configuration {
+  interface Configuration<
+    ConcreteDocument extends Document.Any,
+    DocumentSheet extends DocumentSheetV2.Any = DocumentSheetV2.Any,
+  > extends _Configuration<DocumentSheet> {
     /**
      * The Document instance associated with this sheet
      */
     document: ConcreteDocument;
   }
 
+  type InputOptions<Configuration extends DocumentSheetV2.Configuration<Document.Any>> = DeepPartial<
+    Omit<Configuration, "document">
+  > & {
+    document: Configuration["document"];
+  };
+
   /** @internal */
-  interface _Configuration extends ApplicationV2.Configuration {
+  interface _Configuration<DocumentSheet extends DocumentSheetV2.Any = DocumentSheetV2.Any>
+    extends ApplicationV2.Configuration<DocumentSheet> {
     /**
      * A permission level in CONST.DOCUMENT_OWNERSHIP_LEVELS
      */
@@ -56,13 +66,16 @@ declare namespace DocumentSheetV2 {
 
   // Note(LukeAbby): This `& object` is so that the `DEFAULT_OPTIONS` can be overridden more easily
   // Without it then `static override DEFAULT_OPTIONS = { unrelatedProp: 123 }` would error.
-  interface DefaultOptions extends DeepPartial<_Configuration>, Identity<object> {
-    /**
-     * @deprecated Setting `document` in `DocumentSheetV2.DEFAULT_OPTIONS` is not supported. If you
-     * have a need for this, please file an issue.
-     */
-    document?: never;
-  }
+  type DefaultOptions<DocumentSheet extends DocumentSheetV2.Any = DocumentSheetV2.Any> = DeepPartial<
+    _Configuration<DocumentSheet>
+  > &
+    object & {
+      /**
+       * @deprecated Setting `document` in `DocumentSheetV2.DEFAULT_OPTIONS` is not supported. If you
+       * have a need for this, please file an issue.
+       */
+      document?: never;
+    };
 
   interface RenderOptions extends ApplicationV2.RenderOptions {
     /** A string with the format "\{operation\}\{documentName\}" providing context */
@@ -87,7 +100,7 @@ declare class DocumentSheetV2<
   Configuration extends DocumentSheetV2.Configuration<Document> = DocumentSheetV2.Configuration<Document>,
   RenderOptions extends DocumentSheetV2.RenderOptions = DocumentSheetV2.RenderOptions,
 > extends ApplicationV2<RenderContext, Configuration, RenderOptions> {
-  constructor(options?: DeepPartial<Configuration>);
+  constructor(options?: DocumentSheetV2.InputOptions<Configuration>);
 
   static DEFAULT_OPTIONS: DocumentSheetV2.DefaultOptions;
 
@@ -107,6 +120,7 @@ declare class DocumentSheetV2<
    */
   get isEditable(): boolean;
 
+  // TODO(LukeAbby): This needs to be updated to use `DocumentSheetV2.InputOptions` but that breaks subclassing right now
   protected _initializeApplicationOptions(options: DeepPartial<Configuration>): Configuration;
 
   protected override _headerControlsButtons(): Generator<ApplicationV2.HeaderControlsEntry, void, undefined>;

@@ -80,7 +80,7 @@ declare abstract class BaseRegion extends Document<"Region", BaseRegion.Schema, 
   static override createDocuments<Temporary extends boolean | undefined = undefined>(
     data: Array<RegionDocument.Implementation | RegionDocument.CreateData> | undefined,
     operation?: Document.Database.CreateOperation<RegionDocument.Database.Create<Temporary>>,
-  ): Promise<Array<Document.TemporaryIf<RegionDocument.Implementation, Temporary>>>;
+  ): Promise<Array<RegionDocument.TemporaryIf<Temporary>>>;
 
   static override updateDocuments(
     updates: RegionDocument.UpdateData[] | undefined,
@@ -95,7 +95,7 @@ declare abstract class BaseRegion extends Document<"Region", BaseRegion.Schema, 
   static override create<Temporary extends boolean | undefined = undefined>(
     data: RegionDocument.CreateData | RegionDocument.CreateData[],
     operation?: RegionDocument.Database.CreateOperation<Temporary>,
-  ): Promise<Document.TemporaryIf<RegionDocument.Implementation, Temporary> | undefined>;
+  ): Promise<RegionDocument.TemporaryIf<Temporary> | undefined>;
 
   override update(
     data: RegionDocument.UpdateData | undefined,
@@ -126,17 +126,14 @@ declare abstract class BaseRegion extends Document<"Region", BaseRegion.Schema, 
   override createEmbeddedDocuments<EmbeddedName extends RegionDocument.Embedded.Name>(
     embeddedName: EmbeddedName,
     data: Document.CreateDataForName<EmbeddedName>[] | undefined,
-    // TODO(LukeAbby): The correct signature would be:
-    // operation?: Document.Database.CreateOperation<Document.Database.CreateForName<EmbeddedName>>,
-    // However this causes a number of errors.
-    operation?: object,
-  ): Promise<Array<Document.StoredForName<EmbeddedName>> | undefined>;
+    operation?: Document.Database.CreateOperationForName<EmbeddedName>,
+  ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
 
   override updateEmbeddedDocuments<EmbeddedName extends RegionDocument.Embedded.Name>(
     embeddedName: EmbeddedName,
     updates: Document.UpdateDataForName<EmbeddedName>[] | undefined,
     operation?: Document.Database.UpdateOperationForName<EmbeddedName>,
-  ): Promise<Array<Document.StoredForName<EmbeddedName>> | undefined>;
+  ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
 
   override deleteEmbeddedDocuments<EmbeddedName extends RegionDocument.Embedded.Name>(
     embeddedName: EmbeddedName,
@@ -152,12 +149,12 @@ declare abstract class BaseRegion extends Document<"Region", BaseRegion.Schema, 
   override getFlag<Scope extends RegionDocument.Flags.Scope, Key extends RegionDocument.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): Document.GetFlag<RegionDocument.Name, Scope, Key>;
+  ): RegionDocument.Flags.Get<Scope, Key>;
 
   override setFlag<
     Scope extends RegionDocument.Flags.Scope,
     Key extends RegionDocument.Flags.Key<Scope>,
-    Value extends Document.GetFlag<RegionDocument.Name, Scope, Key>,
+    Value extends RegionDocument.Flags.Get<Scope, Key>,
   >(scope: Scope, key: Key, value: Value): Promise<this>;
 
   override unsetFlag<Scope extends RegionDocument.Flags.Scope, Key extends RegionDocument.Flags.Key<Scope>>(
@@ -331,7 +328,8 @@ declare namespace BaseRegion {
   export import InitializedData = RegionDocument.InitializedData;
   export import UpdateData = RegionDocument.UpdateData;
   export import Schema = RegionDocument.Schema;
-  export import DatabaseOperation = RegionDocument.Database;
+  export import Database = RegionDocument.Database;
+  export import TemporaryIf = RegionDocument.TemporaryIf;
   export import Flags = RegionDocument.Flags;
 
   namespace Internal {

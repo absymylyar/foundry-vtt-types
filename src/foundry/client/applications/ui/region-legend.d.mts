@@ -19,8 +19,9 @@ declare class RegionLegend<
   RenderOptions extends RegionLegend.RenderOptions = RegionLegend.RenderOptions,
 > extends HandlebarsApplicationMixin(ApplicationV2)<RenderContext, Configuration, RenderOptions> {
   #RegionLegend: true;
+  static #RegionLegendStatic: true;
 
-  static override DEFAULT_OPTIONS: DeepPartial<ApplicationV2.Configuration> & object;
+  static override DEFAULT_OPTIONS: RegionLegend.DefaultOptions;
   static override PARTS: Record<string, HandlebarsApplicationMixin.HandlebarsTemplatePart>;
 
   /** The currently viewed elevation range. */
@@ -81,7 +82,16 @@ declare namespace RegionLegend {
     top: number | string;
   }
 
-  interface Configuration extends HandlebarsApplicationMixin.Configuration, ApplicationV2.Configuration {}
+  interface Configuration<RegionLegend extends RegionLegend.Any = RegionLegend.Any>
+    extends HandlebarsApplicationMixin.Configuration,
+      ApplicationV2.Configuration<RegionLegend> {}
+
+  // Note(LukeAbby): This `& object` is so that the `DEFAULT_OPTIONS` can be overridden more easily
+  // Without it then `static override DEFAULT_OPTIONS = { unrelatedProp: 123 }` would error.
+  type DefaultOptions<RegionLegend extends RegionLegend.Any = RegionLegend.Any> = DeepPartial<
+    Configuration<RegionLegend>
+  > &
+    object;
 
   interface RenderOptions extends HandlebarsApplicationMixin.RenderOptions, ApplicationV2.RenderOptions {}
 }

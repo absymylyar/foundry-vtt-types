@@ -20,11 +20,29 @@ declare class RollTables extends foundry.documents.abstract.WorldCollection<"Rol
 }
 
 declare namespace RollTables {
-  interface Any extends AnyRollTables {}
-  interface AnyConstructor extends Identity<typeof AnyRollTables> {}
+  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
+  type Any = Internal.Any;
 
-  interface ConfiguredClass extends Document.ConfiguredCollectionClass<"RollTable"> {}
-  interface Configured extends Document.ConfiguredCollection<"RollTable"> {}
+  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
+  type AnyConstructor = Internal.AnyConstructor;
+
+  namespace Internal {
+    interface Any extends AnyRollTables {}
+    interface AnyConstructor extends Identity<typeof AnyRollTables> {}
+  }
+
+  interface ImplementationClass extends Document.Internal.ConfiguredCollectionClass<"RollTable"> {}
+  interface Implementation extends Document.Internal.ConfiguredCollection<"RollTable"> {}
+
+  /**
+   * @deprecated Replaced by {@linkcode RollTables.ImplementationClass}.
+   */
+  type ConfiguredClass = ImplementationClass;
+
+  /**
+   * @deprecated Replaced by {@linkcode RollTables.Implementation}.
+   */
+  type Configured = Implementation;
 }
 
 declare abstract class AnyRollTables extends RollTables {

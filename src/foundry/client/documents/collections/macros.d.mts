@@ -20,11 +20,29 @@ declare class Macros extends foundry.documents.abstract.WorldCollection<"Macro",
 }
 
 declare namespace Macros {
-  interface Any extends AnyMacros {}
-  interface AnyConstructor extends Identity<typeof AnyMacros> {}
+  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
+  type Any = Internal.Any;
 
-  interface ConfiguredClass extends Document.ConfiguredCollectionClass<"Macro"> {}
-  interface Configured extends Document.ConfiguredCollection<"Macro"> {}
+  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
+  type AnyConstructor = Internal.AnyConstructor;
+
+  namespace Internal {
+    interface Any extends AnyMacros {}
+    interface AnyConstructor extends Identity<typeof AnyMacros> {}
+  }
+
+  interface ImplementationClass extends Document.Internal.ConfiguredCollectionClass<"Macro"> {}
+  interface Implementation extends Document.Internal.ConfiguredCollection<"Macro"> {}
+
+  /**
+   * @deprecated Replaced by {@linkcode Macros.ImplementationClass}.
+   */
+  type ConfiguredClass = ImplementationClass;
+
+  /**
+   * @deprecated Replaced by {@linkcode Macros.Implementation}.
+   */
+  type Configured = Implementation;
 }
 
 declare abstract class AnyMacros extends Macros {
