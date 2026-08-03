@@ -1,8 +1,8 @@
-import type { AnyMutableObject, MaybeArray, OverlapsWith } from "#utils";
-import type { DataModel, Document } from "#common/abstract/_module.d.mts";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- `DocumentStatsField` is only used for links.
-import type { DocumentStatsField, SchemaField } from "#common/data/fields.d.mts";
-import type { CompendiumCollection } from "#client/documents/collections/_module.d.mts";
+import type { AnyMutableObject } from "#utils";
+import type DataModel from "../abstract/data.d.mts";
+import type Document from "../abstract/document.mts";
+import type { DataField, SchemaField } from "../data/fields.d.mts";
+import type { LogCompatibilityWarningOptions } from "../utils/logging.d.mts";
 
 /**
  * The RollTable Document.
@@ -20,10 +20,10 @@ declare abstract class BaseRollTable extends Document<"RollTable", BaseRollTable
    * order to use documents on both the client (i.e. where all your code runs) and behind the scenes
    * on the server to manage document validation and storage.
    *
-   * You should use {@linkcode RollTable.implementation | new RollTable.implementation(...)} instead which will give you
+   * You should use {@link RollTable.implementation | `new RollTable.implementation(...)`} instead which will give you
    * a system specific implementation of the `RollTable` document.
    */
-  constructor(data: BaseRollTable.CreateData, context?: BaseRollTable.ConstructionContext);
+  constructor(data: RollTable.CreateData, context?: RollTable.ConstructionContext);
 
   /**
    * @defaultValue
@@ -54,13 +54,16 @@ declare abstract class BaseRollTable extends Document<"RollTable", BaseRollTable
 
   static override defineSchema(): BaseRollTable.Schema;
 
-  /** @remarks Calls {@linkcode DocumentStatsField._shimDocument}`(this)` */
   protected override _initialize(options?: Document.InitializeOptions): void;
 
-  /** @remarks Calls {@linkcode DocumentStatsField._migrateData}`(this, source)` */
-  static override migrateData(source: object): object;
+  /**
+   * @remarks
+   * Migrations:
+   * - `flags.core.sourceId` to `_stats.compendiumSource` (since v12, no specified end)
+   */
+  static override migrateData(source: AnyMutableObject): AnyMutableObject;
 
-  /** @remarks Calls {@linkcode DocumentStatsField._shimData}`(this, source, options)` */
+  /** @remarks `source` instead of the parent's `data` here */
   static override shimData(source: AnyMutableObject, options?: DataModel.ShimDataOptions): AnyMutableObject;
 
   /*
@@ -75,196 +78,248 @@ declare abstract class BaseRollTable extends Document<"RollTable", BaseRollTable
 
   /* Document overrides */
 
+  // Same as Document for now
+  protected static override _initializationOrder(): Generator<[string, DataField.Any], void, undefined>;
+
+  readonly parentCollection: RollTable.ParentCollectionName | null;
+
+  readonly pack: string | null;
+
   static override get implementation(): RollTable.ImplementationClass;
 
-  static override get baseDocument(): typeof BaseRollTable;
+  static get baseDocument(): typeof BaseRollTable;
 
-  static override get collectionName(): BaseRollTable.ParentCollectionName;
+  static get collectionName(): RollTable.ParentCollectionName;
 
-  static override get documentName(): BaseRollTable.Name;
+  static get documentName(): RollTable.Name;
 
-  static override get TYPES(): CONST.BASE_DOCUMENT_TYPE[];
+  static get TYPES(): CONST.BASE_DOCUMENT_TYPE[];
 
-  static override get hasTypeData(): false;
+  static get hasTypeData(): undefined;
 
-  static override readonly hierarchy: BaseRollTable.Hierarchy;
+  static get hierarchy(): RollTable.Hierarchy;
 
-  override parent: BaseRollTable.Parent;
+  override parent: RollTable.Parent;
 
-  override " fvtt_types_internal_document_parent": BaseRollTable.Parent;
+  static createDocuments<Temporary extends boolean | undefined = undefined>(
+    data: Array<RollTable.Implementation | RollTable.CreateData> | undefined,
+    operation?: Document.Database.CreateOperation<RollTable.Database.Create<Temporary>>,
+  ): Promise<Array<Document.TemporaryIf<RollTable.Implementation, Temporary>>>;
 
-  static override canUserCreate(user: User.Implementation): boolean;
+  static updateDocuments(
+    updates: RollTable.UpdateData[] | undefined,
+    operation?: Document.Database.UpdateDocumentsOperation<RollTable.Database.Update>,
+  ): Promise<RollTable.Implementation[]>;
 
-  override getUserLevel(user?: User.Implementation): CONST.DOCUMENT_OWNERSHIP_LEVELS;
+  static deleteDocuments(
+    ids: readonly string[] | undefined,
+    operation?: Document.Database.DeleteDocumentsOperation<RollTable.Database.Delete>,
+  ): Promise<RollTable.Implementation[]>;
 
-  override testUserPermission(
-    user: User.Implementation,
-    permission: Document.ActionPermission,
-    options?: Document.TestUserPermissionOptions,
-  ): boolean;
-
-  override canUserModify<Action extends Document.Database.OperationAction>(
-    user: User.Implementation,
-    action: Action,
-    data?: Document.CanUserModifyData<"RollTable", Action>,
-  ): boolean;
-
-  static override createDocuments(
-    data: BaseRollTable.CreateInput[],
-    operation?: BaseRollTable.Database.CreateDocumentsOperation,
-  ): Promise<RollTable.Stored[]>;
-
-  static override updateDocuments(
-    updates: BaseRollTable.UpdateInput[],
-    operation?: BaseRollTable.Database.UpdateManyDocumentsOperation,
-  ): Promise<RollTable.Stored[]>;
-
-  static override deleteDocuments(
-    ids: readonly string[],
-    operation?: BaseRollTable.Database.DeleteManyDocumentsOperation,
-  ): Promise<RollTable.Stored[]>;
-
-  static override create<Data extends MaybeArray<BaseRollTable.CreateInput>>(
-    data: Data,
-    operation?: BaseRollTable.Database.CreateDocumentsOperation,
-  ): Promise<BaseRollTable.CreateReturn<Data>>;
+  static override create<Temporary extends boolean | undefined = undefined>(
+    data: RollTable.CreateData | RollTable.CreateData[],
+    operation?: RollTable.Database.CreateOperation<Temporary>,
+  ): Promise<Document.TemporaryIf<RollTable.Implementation, Temporary> | undefined>;
 
   override update(
-    data: BaseRollTable.UpdateInput,
-    operation?: BaseRollTable.Database.UpdateOneDocumentOperation,
+    data: RollTable.UpdateData | undefined,
+    operation?: RollTable.Database.UpdateOperation,
   ): Promise<this | undefined>;
 
-  override delete(operation?: BaseRollTable.Database.DeleteOneDocumentOperation): Promise<this | undefined>;
+  override delete(operation?: RollTable.Database.DeleteOperation): Promise<this | undefined>;
 
-  static override get(
-    documentId: string,
-    operation?: BaseRollTable.Database.GetDocumentsOperation,
-  ): RollTable.Stored | CompendiumCollection.IndexEntry<"RollTable"> | null;
+  static override get(documentId: string, options?: RollTable.Database.GetOptions): RollTable.Implementation | null;
 
-  static override getCollectionName<Name extends string>(
-    name: OverlapsWith<Name, BaseRollTable.Embedded.CollectionName>,
-  ): BaseRollTable.Embedded.GetCollectionNameReturn<Name>;
+  static override getCollectionName<CollectionName extends RollTable.Embedded.Name>(
+    name: CollectionName,
+  ): RollTable.Embedded.CollectionNameOf<CollectionName> | null;
 
-  override getEmbeddedCollection<EmbeddedName extends BaseRollTable.Embedded.CollectionName>(
+  override getEmbeddedCollection<EmbeddedName extends RollTable.Embedded.CollectionName>(
     embeddedName: EmbeddedName,
-  ): BaseRollTable.Embedded.CollectionFor<EmbeddedName>;
+  ): RollTable.Embedded.CollectionFor<EmbeddedName>;
 
-  override getEmbeddedDocument<
-    EmbeddedName extends BaseRollTable.Embedded.CollectionName,
-    Options extends Document.GetEmbeddedDocumentOptions | undefined = undefined,
-  >(embeddedName: EmbeddedName, id: string, options?: Options): BaseRollTable.Embedded.GetReturn<EmbeddedName, Options>;
-
-  override createEmbeddedDocuments<EmbeddedName extends BaseRollTable.Embedded.Name>(
+  override getEmbeddedDocument<EmbeddedName extends RollTable.Embedded.CollectionName>(
     embeddedName: EmbeddedName,
-    data: Document.CreateDataForName<EmbeddedName>[],
-    operation?: Document.Database.CreateDocumentsOperationForName<EmbeddedName>,
+    id: string,
+    options: Document.GetEmbeddedDocumentOptions,
+  ): RollTable.Embedded.DocumentFor<EmbeddedName> | undefined;
+
+  override createEmbeddedDocuments<EmbeddedName extends RollTable.Embedded.Name>(
+    embeddedName: EmbeddedName,
+    data: Document.CreateDataForName<EmbeddedName>[] | undefined,
+    // TODO(LukeAbby): The correct signature would be:
+    // operation?: Document.Database.CreateOperation<Document.Database.CreateForName<EmbeddedName>>,
+    // However this causes a number of errors.
+    operation?: object,
+  ): Promise<Array<Document.StoredForName<EmbeddedName>> | undefined>;
+
+  override updateEmbeddedDocuments<EmbeddedName extends RollTable.Embedded.Name>(
+    embeddedName: EmbeddedName,
+    updates: Document.UpdateDataForName<EmbeddedName>[] | undefined,
+    operation?: Document.Database.UpdateOperationForName<EmbeddedName>,
+  ): Promise<Array<Document.StoredForName<EmbeddedName>> | undefined>;
+
+  override deleteEmbeddedDocuments<EmbeddedName extends RollTable.Embedded.Name>(
+    embeddedName: EmbeddedName,
+    ids: Array<string>,
+    operation?: Document.Database.DeleteOperationForName<EmbeddedName>,
   ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
 
-  override updateEmbeddedDocuments<EmbeddedName extends BaseRollTable.Embedded.Name>(
-    embeddedName: EmbeddedName,
-    updates: Document.UpdateDataForName<EmbeddedName>[],
-    operation?: Document.Database.UpdateManyDocumentsOperationForName<EmbeddedName>,
-  ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
+  // Same as Document for now
+  override traverseEmbeddedDocuments(
+    _parentPath?: string,
+  ): Generator<[string, Document.AnyChild<this>], void, undefined>;
 
-  override deleteEmbeddedDocuments<EmbeddedName extends BaseRollTable.Embedded.Name>(
-    embeddedName: EmbeddedName,
-    ids: string[],
-    operation?: Document.Database.DeleteManyDocumentsOperationForName<EmbeddedName>,
-  ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
-  override getFlag<Scope extends BaseRollTable.Flags.Scope, Key extends BaseRollTable.Flags.Key<Scope>>(
+  override getFlag<Scope extends RollTable.Flags.Scope, Key extends RollTable.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): BaseRollTable.Flags.Get<Scope, Key>;
+  ): Document.GetFlag<RollTable.Name, Scope, Key>;
 
   override setFlag<
-    Scope extends BaseRollTable.Flags.Scope,
-    Key extends BaseRollTable.Flags.Key<Scope>,
-    Value extends BaseRollTable.Flags.Get<Scope, Key>,
-  >(scope: Scope, key: Key, value: Value): Promise<this | undefined>;
+    Scope extends RollTable.Flags.Scope,
+    Key extends RollTable.Flags.Key<Scope>,
+    Value extends Document.GetFlag<RollTable.Name, Scope, Key>,
+  >(scope: Scope, key: Key, value: Value): Promise<this>;
 
-  override unsetFlag<Scope extends BaseRollTable.Flags.Scope, Key extends BaseRollTable.Flags.Key<Scope>>(
+  override unsetFlag<Scope extends RollTable.Flags.Scope, Key extends RollTable.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): Promise<this | undefined>;
+  ): Promise<this>;
 
-  protected override _preCreate(
-    data: BaseRollTable.CreateData,
-    options: BaseRollTable.Database.PreCreateOptions,
-    user: User.Stored,
+  protected _preCreate(
+    data: RollTable.CreateData,
+    options: RollTable.Database.PreCreateOptions,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
-  protected override _onCreate(
-    data: BaseRollTable.CreateData,
-    options: BaseRollTable.Database.OnCreateOptions,
-    userId: string,
-  ): void;
+  protected _onCreate(data: RollTable.CreateData, options: RollTable.Database.OnCreateOperation, userId: string): void;
 
-  protected static override _preCreateOperation(
+  protected static _preCreateOperation(
     documents: RollTable.Implementation[],
-    operation: BaseRollTable.Database.PreCreateOperation,
-    user: User.Stored,
+    operation: Document.Database.PreCreateOperationStatic<RollTable.Database.Create>,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
-  protected static override _onCreateOperation(
-    documents: RollTable.Stored[],
-    operation: BaseRollTable.Database.OnCreateOperation,
-    user: User.Stored,
+  protected static _onCreateOperation(
+    documents: RollTable.Implementation[],
+    operation: RollTable.Database.Create,
+    user: User.Implementation,
   ): Promise<void>;
 
-  protected override _preUpdate(
-    changed: BaseRollTable.UpdateData,
-    options: BaseRollTable.Database.PreUpdateOptions,
-    user: User.Stored,
+  protected _preUpdate(
+    changed: RollTable.UpdateData,
+    options: RollTable.Database.PreUpdateOptions,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
-  protected override _onUpdate(
-    changed: BaseRollTable.UpdateData,
-    options: BaseRollTable.Database.OnUpdateOptions,
+  protected _onUpdate(
+    changed: RollTable.UpdateData,
+    options: RollTable.Database.OnUpdateOperation,
     userId: string,
   ): void;
 
-  protected static override _preUpdateOperation(
-    documents: RollTable.Stored[],
-    operation: BaseRollTable.Database.PreUpdateOperation,
-    user: User.Stored,
+  protected static _preUpdateOperation(
+    documents: RollTable.Implementation[],
+    operation: RollTable.Database.Update,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
-  protected static override _onUpdateOperation(
-    documents: RollTable.Stored[],
-    operation: BaseRollTable.Database.OnUpdateOperation,
-    user: User.Stored,
+  protected static _onUpdateOperation(
+    documents: RollTable.Implementation[],
+    operation: RollTable.Database.Update,
+    user: User.Implementation,
   ): Promise<void>;
 
-  protected override _preDelete(
-    options: BaseRollTable.Database.PreDeleteOptions,
-    user: User.Stored,
+  protected _preDelete(
+    options: RollTable.Database.PreDeleteOptions,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
-  protected override _onDelete(options: BaseRollTable.Database.OnDeleteOptions, userId: string): void;
+  protected _onDelete(options: RollTable.Database.OnDeleteOperation, userId: string): void;
 
-  protected static override _preDeleteOperation(
-    documents: RollTable.Stored[],
-    operation: BaseRollTable.Database.PreDeleteOperation,
-    user: User.Stored,
+  protected static _preDeleteOperation(
+    documents: RollTable.Implementation[],
+    operation: RollTable.Database.Delete,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
-  protected static override _onDeleteOperation(
-    documents: RollTable.Stored[],
-    operation: BaseRollTable.Database.OnDeleteOperation,
-    user: User.Stored,
+  protected static _onDeleteOperation(
+    documents: RollTable.Implementation[],
+    operation: RollTable.Database.Delete,
+    user: User.Implementation,
+  ): Promise<void>;
+
+  // These data field things have been ticketed but will probably go into backlog hell for a while.
+  // We'll end up copy and pasting without modification for now I think. It makes it a tiny bit easier to update though.
+
+  // options: not null (parameter default only in _addDataFieldShim)
+  protected static override _addDataFieldShims(
+    data: AnyMutableObject,
+    shims: Record<string, string>,
+    options?: Document.DataFieldShimOptions,
+  ): void;
+
+  // options: not null (parameter default only)
+  protected static override _addDataFieldShim(
+    data: AnyMutableObject,
+    oldKey: string,
+    newKey: string,
+    options?: Document.DataFieldShimOptions,
+  ): void;
+
+  protected static override _addDataFieldMigration(
+    data: AnyMutableObject,
+    oldKey: string,
+    newKey: string,
+    apply?: ((data: AnyMutableObject) => unknown) | null,
+  ): boolean;
+
+  // options: not null (destructured where forwarded)
+  protected static override _logDataFieldMigration(
+    oldKey: string,
+    newKey: string,
+    options?: LogCompatibilityWarningOptions,
+  ): void;
+
+  /**
+   * @deprecated since v12, will be removed in v14
+   * @remarks "The `Document._onCreateDocuments` static method is deprecated in favor of {@link Document._onCreateOperation | `Document._onCreateOperation`}"
+   */
+  protected static _onCreateDocuments(
+    documents: RollTable.Implementation[],
+    context: Document.ModificationContext<RollTable.Parent>,
+  ): Promise<void>;
+
+  /**
+   * @deprecated since v12, will be removed in v14
+   * @remarks "The `Document._onUpdateDocuments` static method is deprecated in favor of {@link Document._onUpdateOperation | `Document._onUpdateOperation`}"
+   */
+  protected static _onUpdateDocuments(
+    documents: RollTable.Implementation[],
+    context: Document.ModificationContext<RollTable.Parent>,
+  ): Promise<void>;
+
+  /**
+   * @deprecated since v12, will be removed in v14
+   * @remarks "The `Document._onDeleteDocuments` static method is deprecated in favor of {@link Document._onDeleteOperation | `Document._onDeleteOperation`}"
+   */
+  protected static _onDeleteDocuments(
+    documents: RollTable.Implementation[],
+    context: Document.ModificationContext<RollTable.Parent>,
   ): Promise<void>;
 
   /* DataModel overrides */
 
-  static override _schema: SchemaField<BaseRollTable.Schema>;
+  protected static _schema: SchemaField<RollTable.Schema>;
 
-  static get schema(): SchemaField<BaseRollTable.Schema>;
+  static get schema(): SchemaField<RollTable.Schema>;
 
   /** @remarks Not actually overridden, still a no-op, typed for ease of subclassing */
-  static validateJoint(data: BaseRollTable.Source): void;
+  static validateJoint(data: RollTable.Source): void;
 
+  // options: not null (parameter default only, destructured in super)
   static override fromSource(
-    source: BaseRollTable.CreateData,
+    source: RollTable.CreateData,
     context?: DataModel.FromSourceOptions,
   ): RollTable.Implementation;
 
@@ -274,32 +329,27 @@ declare abstract class BaseRollTable extends Document<"RollTable", BaseRollTable
 export default BaseRollTable;
 
 declare namespace BaseRollTable {
-  // All types really live in the full document and are mirrored here for convenience
   export import Name = RollTable.Name;
   export import ConstructionContext = RollTable.ConstructionContext;
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
   export import ConstructorArgs = RollTable.ConstructorArgs;
   export import Hierarchy = RollTable.Hierarchy;
   export import Metadata = RollTable.Metadata;
   export import Parent = RollTable.Parent;
   export import Descendant = RollTable.Descendant;
   export import DescendantClass = RollTable.DescendantClass;
+  export import Pack = RollTable.Pack;
   export import Embedded = RollTable.Embedded;
   export import ParentCollectionName = RollTable.ParentCollectionName;
   export import CollectionClass = RollTable.CollectionClass;
   export import Collection = RollTable.Collection;
   export import Invalid = RollTable.Invalid;
+  export import Stored = RollTable.Stored;
   export import Source = RollTable.Source;
   export import CreateData = RollTable.CreateData;
-  export import CreateInput = RollTable.CreateInput;
-  export import CreateReturn = RollTable.CreateReturn;
   export import InitializedData = RollTable.InitializedData;
   export import UpdateData = RollTable.UpdateData;
-  export import UpdateInput = RollTable.UpdateInput;
   export import Schema = RollTable.Schema;
-  export import Database = RollTable.Database;
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  export import TemporaryIf = RollTable.TemporaryIf;
+  export import DatabaseOperation = RollTable.Database;
   export import Flags = RollTable.Flags;
 
   namespace Internal {

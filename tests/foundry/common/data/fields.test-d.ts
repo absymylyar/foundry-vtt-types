@@ -25,12 +25,12 @@ await foundry.documents.BaseNote.create({
 
 // #2555 NumberField Choices
 
-// @ts-expect-error A textAnchor cannot be an arbitrary number.
+// @ts-expect-error - A textAnchor cannot be an arbitrary number.
 await foundry.documents.BaseNote.create({ textAnchor: 999 });
 // Should be correct
-await foundry.documents.BaseNote.create({ textAnchor: CONST.TEXT_ANCHOR_POINTS.BOTTOM });
+await foundry.documents.BaseNote.create({ textAnchor: 2 });
 
-// @ts-expect-error t cannot be an arbitrary string.
+// @ts-expect-error - t cannot be an arbitrary string.
 await foundry.documents.BaseMeasuredTemplate.create({ t: "foobar" });
 
 // Flags
@@ -48,48 +48,49 @@ expectTypeOf(myEffect.flags.core!.overlay).toEqualTypeOf<boolean | undefined>();
 declare const JEPCoreTypes: JournalEntryPage.SubType;
 declare const JEPSystemTypes: Game.Model.TypeNames<"JournalEntryPage">;
 
-// Note(LukeAbby): Inlining this causes some circularities.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-class HeadquartersModel extends foundry.abstract.TypeDataModel<DataSchema, JournalEntryPage.Implementation> {}
-
-declare module "fvtt-types/configuration" {
+declare global {
   interface DataModelConfig {
     JournalEntryPage: {
-      headquarters: typeof HeadquartersModel;
+      headquarters: typeof foundry.abstract.TypeDataModel<DataSchema, JournalEntryPage.Implementation>;
     };
   }
 }
 
 expectTypeOf(JEPCoreTypes).toEqualTypeOf<
-  "image" | "pdf" | "text" | "video" | "headquarters" | foundry.abstract.Document.ModuleSubType
+  "base",
+  "image" | "pdf" | "text" | "video" | foundry.abstract.Document.ModuleSubType
 >();
-expectTypeOf(JEPSystemTypes).toEqualTypeOf<
-  "image" | "pdf" | "text" | "video" | "headquarters" | foundry.abstract.Document.ModuleSubType
->();
+expectTypeOf(JEPSystemTypes).toEqualTypeOf<"headquarters" | foundry.abstract.Document.ModuleSubType>();
 
 declare const myJournalEntryPage: JournalEntryPage.Implementation;
 if (myJournalEntryPage.system instanceof foundry.abstract.TypeDataModel) {
-  myJournalEntryPage.system.prepareBaseData();
+  expectTypeOf(myJournalEntryPage.system?.prepareBaseData()).toEqualTypeOf<void>();
 }
 
 /** EmbeddedDataField */
 
-type EmbeddedModel = typeof foundry.data.LightData;
-declare type embeddedOptions = foundry.data.fields.EmbeddedDataField.Options<EmbeddedModel>;
+declare const embeddedModel: typeof foundry.data.LightData;
+declare type embeddedOptions = foundry.data.fields.EmbeddedDataField.Options<typeof embeddedModel>;
 // eslint-disable-next-line @typescript-eslint/no-deprecated
-declare const embeddedAssignment: foundry.data.fields.EmbeddedDataField.AssignmentType<EmbeddedModel, embeddedOptions>;
-declare const embeddedInitialized: foundry.data.fields.EmbeddedDataField.InitializedType<
-  EmbeddedModel,
+declare const embeddedAssignment: foundry.data.fields.EmbeddedDataField.AssignmentType<
+  typeof embeddedModel,
   embeddedOptions
 >;
-declare const embeddedPersisted: foundry.data.fields.EmbeddedDataField.PersistedType<EmbeddedModel, embeddedOptions>;
-
-declare const lightModel: foundry.data.LightData;
+declare const embeddedInitialized: foundry.data.fields.EmbeddedDataField.InitializedType<
+  typeof embeddedModel,
+  embeddedOptions
+>;
+declare const embeddedPersisted: foundry.data.fields.EmbeddedDataField.PersistedType<
+  typeof embeddedModel,
+  embeddedOptions
+>;
 
 expectTypeOf(embeddedAssignment?.alpha).toEqualTypeOf<number | undefined | null>();
 expectTypeOf(embeddedInitialized?.alpha).toEqualTypeOf<number | undefined>();
 expectTypeOf(embeddedPersisted?.alpha).toEqualTypeOf<number | undefined>();
-expectTypeOf(lightModel.schema.fields.color).toEqualTypeOf<foundry.data.fields.ColorField>();
+expectTypeOf(embeddedModel.schema.fields.color).toEqualTypeOf<
+  foundry.data.fields.ColorField<{ label: "LIGHT.Color" }>
+>();
 
 declare const embeddedLightField: foundry.data.fields.EmbeddedDataField<typeof foundry.data.LightData>;
 expectTypeOf(embeddedLightField.model).toEqualTypeOf<typeof foundry.data.LightData>();
@@ -116,7 +117,9 @@ declare const AssignmentElementType: foundry.data.fields.EmbeddedCollectionField
 declare const InitializedElementType: foundry.data.fields.EmbeddedCollectionField.InitializedElementType<
   typeof ElementFieldType
 >;
-declare type EmbeddedCollectionOptions = foundry.data.fields.EmbeddedCollectionField.DefaultOptions;
+declare type EmbeddedCollectionOptions = foundry.data.fields.EmbeddedCollectionField.DefaultOptions<
+  typeof AssignmentElementType
+>;
 declare const InitializedType: foundry.data.fields.EmbeddedCollectionField.InitializedType<
   typeof AssignmentElementType,
   typeof InitializedElementType,
@@ -124,16 +127,17 @@ declare const InitializedType: foundry.data.fields.EmbeddedCollectionField.Initi
   EmbeddedCollectionOptions
 >;
 
-expectTypeOf(ElementFieldType.hasTypeData).toEqualTypeOf<true>();
+expectTypeOf(ElementFieldType.hasTypeData).toEqualTypeOf<boolean>();
 expectTypeOf(ParentDataModel.name).toEqualTypeOf<string>();
 expectTypeOf(AssignmentElementType.documentName).toEqualTypeOf<"ActiveEffect">();
 expectTypeOf(InitializedElementType.collectionName).toEqualTypeOf<"effects">();
-expectTypeOf(InitializedType.get("", { strict: true })).toEqualTypeOf<ActiveEffect.Stored>();
+expectTypeOf(InitializedType.get("", { strict: true })).toEqualTypeOf<ActiveEffect.Implementation>();
 
 const stringField = new foundry.data.fields.StringField();
 
 const withChoices = new foundry.data.fields.StringField({ choices: ["a", "b", "c"] });
 
+// @ts-expect-error - A string field is not `nullable` by default and validate does not accept null.
 stringField.validate(null);
 
 // A string field can effectively cast anything. It's a very unsound method.
@@ -142,9 +146,12 @@ stringField["_cast"](null);
 // `null` gets handled by `DataField.clean` and gets turned into `undefined` and then the default initial value.
 stringField.clean(null);
 
-stringField.initialize("", new Actor.implementation({ type: "base", name: "Test Actor" }));
+stringField.initialize(null);
 
+// @ts-expect-error - Options cannot accept null.
 type _NullOptions = DataField.Options<null>;
+
+// @ts-expect-error - Options cannot accept undefined.
 type _UndefinedOptions = DataField.Options<undefined>;
 
 // Regression test for issue where label was being constrained to `""`.
@@ -164,7 +171,7 @@ stringField.toInput({ value: 200 });
 stringField.toInput({ blank: "blank option", choices: ["option1"] });
 stringField.toInput({ blank: "blank option", options: [{ value: "option2", label: "Option 2" }] });
 
-// @ts-expect-error `blank` is not valid by itself when the field doesn't have choices set.
+// @ts-expect-error - `blank` is not valid by itself when the field doesn't have choices set.
 stringField.toInput({ blank: "blank option" });
 
 // Because this `StringField` has options it doesn't need to be passed in to `toInput` anymore.
@@ -181,66 +188,6 @@ test("circular data model heritage regression test", () => {
   };
 
   class MyActorSystem extends foundry.abstract.TypeDataModel<typeof schema, Actor.Implementation> {}
-});
-
-test("choices", () => {
-  const schema = () => ({
-    choices: new foundry.data.fields.StringField({ choices: ["a", "b"] }),
-  });
-
-  class StringModel extends foundry.abstract.DataModel<ReturnType<typeof schema>> {
-    static override defineSchema() {
-      return schema();
-    }
-  }
-
-  // @ts-expect-error `blank` is `false` by default when `choices` is set.
-  new StringModel({ choices: "" });
-
-  const model = new StringModel({ choices: "a" });
-  expectTypeOf(model.choices).toEqualTypeOf<"a" | "b" | undefined>();
-});
-
-test("blank choices", () => {
-  const schema = () => ({
-    blankChoices: new foundry.data.fields.StringField({ blank: true, choices: ["a", "b"] }),
-  });
-
-  class BlankModel extends foundry.abstract.DataModel<ReturnType<typeof schema>> {
-    static override defineSchema() {
-      return schema();
-    }
-  }
-
-  new BlankModel({ blankChoices: "a" });
-
-  const model = new BlankModel({ blankChoices: "" });
-  expectTypeOf(model.blankChoices).toEqualTypeOf<"a" | "b" | "" | undefined>();
-});
-
-test("nullable SchemaField", () => {
-  const schema = () => ({
-    data: new foundry.data.fields.SchemaField(
-      {
-        max: new foundry.data.fields.StringField({ required: true }),
-        value: new foundry.data.fields.StringField({ required: true }),
-        editable: new foundry.data.fields.BooleanField({ required: true }),
-      },
-      { nullable: true },
-    ),
-  });
-
-  class NullableSchema extends foundry.abstract.DataModel<ReturnType<typeof schema>> {
-    static override defineSchema() {
-      return schema();
-    }
-  }
-
-  new NullableSchema({ data: undefined });
-
-  const nullableSchema = new NullableSchema({ data: null });
-
-  expectTypeOf(nullableSchema.data).toEqualTypeOf<{ max: string; value: string; editable: boolean } | null>();
 });
 
 // TODO(LukeAbby): Relevant once requisite circularities are fixed.

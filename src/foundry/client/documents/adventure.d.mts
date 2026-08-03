@@ -1,15 +1,9 @@
-import type { InexactPartial, MaybeArray, Merge } from "#utils";
+import type { InexactPartial, Merge, NullishProps } from "#utils";
 import type { fields } from "#common/data/_module.d.mts";
-import type { DataModel, DatabaseBackend, Document } from "#common/abstract/_module.d.mts";
-import type { BaseAdventure } from "#common/documents/_module.d.mts";
-import type { DialogV2 } from "#client/applications/api/_module.d.mts";
-import type { CompendiumCollection } from "#client/documents/collections/_module.d.mts";
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type ClientDatabaseBackend from "#client/data/client-backend.d.mts";
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type ClientDocumentMixin from "#client/documents/abstract/client-document.d.mts";
+import type Document from "#common/abstract/document.d.mts";
+import type { DataSchema } from "#common/data/fields.d.mts";
+import type BaseAdventure from "#common/documents/adventure.mjs";
+import type DataModel from "#common/abstract/data.mjs";
 
 declare namespace Adventure {
   /**
@@ -28,14 +22,14 @@ declare namespace Adventure {
   type Hierarchy = Readonly<Document.HierarchyOf<Schema>>;
 
   /**
-   * The implementation of the `Adventure` document instance configured through
-   * {@linkcode CONFIG.Adventure.documentClass} in Foundry and {@linkcode DocumentClassConfig} in fvtt-types.
+   * The implementation of the `Adventure` document instance configured through `CONFIG.Adventure.documentClass` in Foundry and
+   * {@linkcode DocumentClassConfig} or {@link ConfiguredAdventure | `fvtt-types/configuration/ConfiguredAdventure`} in fvtt-types.
    */
   type Implementation = Document.ImplementationFor<Name>;
 
   /**
-   * The implementation of the `Adventure` document configured through
-   * {@linkcode CONFIG.Adventure.documentClass} in Foundry and {@linkcode DocumentClassConfig} in fvtt-types.
+   * The implementation of the `Adventure` document configured through `CONFIG.Adventure.documentClass` in Foundry and
+   * {@linkcode DocumentClassConfig} in fvtt-types.
    */
   type ImplementationClass = Document.ImplementationClassFor<Name>;
 
@@ -43,17 +37,18 @@ declare namespace Adventure {
    * A document's metadata is special information about the document ranging anywhere from its name,
    * whether it's indexed, or to the permissions a user has over it.
    */
-  interface Metadata extends Merge<
-    Document.Metadata.Default,
-    Readonly<{
-      name: "Adventure";
-      collection: "adventures";
-      compendiumIndexFields: ["_id", "name", "img", "sort", "folder"];
-      label: "DOCUMENT.Adventure";
-      labelPlural: "DOCUMENT.Adventures";
-      schemaVersion: "13.341";
-    }>
-  > {}
+  interface Metadata
+    extends Merge<
+      Document.Metadata.Default,
+      Readonly<{
+        name: "Adventure";
+        collection: "adventures";
+        compendiumIndexFields: ["_id", "name", "img", "sort", "folder"];
+        label: string;
+        labelPlural: string;
+        schemaVersion: string;
+      }>
+    > {}
 
   // No need for Metadata namespace
 
@@ -76,6 +71,15 @@ declare namespace Adventure {
   type DescendantClass = never;
 
   /**
+   * Types of `CompendiumCollection` this document might be contained in.
+   * Note that `this.pack` will always return a string; this is the type for `game.packs.get(this.pack)`
+   *
+   * Will be `never` if cannot be contained in a `CompendiumCollection`.
+   */
+  // Note: Takes any document in the heritage chain (i.e. itself or any parent, transitive or not) that can be contained in a compendium.
+  type Pack = foundry.documents.collections.CompendiumCollection.ForDocument<"Adventure">;
+
+  /**
    * An embedded document is a document contained in another.
    * For example an `Item` can be contained by an `Actor` which means `Item` can be embedded in `Actor`.
    *
@@ -86,8 +90,7 @@ declare namespace Adventure {
   /**
    * The name of the world or embedded collection this document can find itself in.
    * For example an `Item` is always going to be inside a collection with a key of `items`.
-   * This is a fixed string per document type and is primarily useful for the descendant Document operation methods, e.g
-   * {@linkcode ClientDocumentMixin.AnyMixed._preCreateDescendantDocuments | ClientDocument._preCreateDescendantDocuments}.
+   * This is a fixed string per document type and is primarily useful for {@link ClientDocumentMixin | `Descendant Document Events`}.
    */
   type ParentCollectionName = Metadata["collection"];
 
@@ -105,7 +108,7 @@ declare namespace Adventure {
    * An instance of `Adventure` that comes from the database but failed validation meaning that
    * its `system` and `_source` could theoretically be anything.
    */
-  type Invalid = Document.Internal.Invalid<Implementation>;
+  interface Invalid extends Document.Internal.Invalid<Adventure.Implementation> {}
 
   /**
    * An instance of `Adventure` that comes from the database.
@@ -113,75 +116,52 @@ declare namespace Adventure {
   type Stored = Document.Internal.Stored<Adventure.Implementation>;
 
   /**
-   * The data put in {@linkcode Adventure._source | Adventure#_source}. This data is what was
+   * The data put in {@link Adventure._source | `Adventure#_source`}. This data is what was
    * persisted to the database and therefore it must be valid JSON.
    *
-   * For example a {@linkcode fields.SetField | SetField} is persisted to the database as an array
+   * For example a {@link fields.SetField | `SetField`} is persisted to the database as an array
    * but initialized as a {@linkcode Set}.
    */
   interface Source extends fields.SchemaField.SourceData<Schema> {}
 
   /**
    * The data necessary to create a document. Used in places like {@linkcode Adventure.create}
-   * and {@linkcode Adventure | new Adventure(...)}.
+   * and {@link Adventure | `new Adventure(...)`}.
    *
-   * For example a {@linkcode fields.SetField | SetField} can accept any {@linkcode Iterable}
+   * For example a {@link fields.SetField | `SetField`} can accept any {@linkcode Iterable}
    * with the right values. This means you can pass a `Set` instance, an array of values,
    * a generator, or any other iterable.
    */
   interface CreateData extends fields.SchemaField.CreateData<Schema> {}
 
   /**
-   * Used in the {@linkcode Adventure.create} and {@linkcode Adventure.createDocuments} signatures, and
-   * {@linkcode Adventure.Database.CreateOperation} and its derivative interfaces.
-   */
-  type CreateInput = CreateData | Implementation;
-
-  /**
-   * The helper type for the return of {@linkcode Adventure.create}, returning (a single | an array of) (temporary | stored)
-   * `Adventure`s.
-   *
-   * `| undefined` is included in the non-array branch because if a `.create` call with non-array data is cancelled by the `preCreate`
-   * method or hook, `shift`ing the return of `.createDocuments` produces `undefined`
-   */
-  type CreateReturn<Data extends MaybeArray<CreateInput>> =
-    Data extends Array<CreateInput> ? Adventure.Stored[] : Adventure.Stored | undefined;
-
-  /**
-   * The data after a {@linkcode Document} has been initialized, for example
-   * {@linkcode Adventure.name | Adventure#name}.
+   * The data after a {@link foundry.abstract.Document | `Document`} has been initialized, for example
+   * {@link Adventure.name | `Adventure#name`}.
    *
    * This is data transformed from {@linkcode Adventure.Source} and turned into more
-   * convenient runtime data structures. For example a {@linkcode fields.SetField | SetField} is
+   * convenient runtime data structures. For example a {@link fields.SetField | `SetField`} is
    * persisted to the database as an array of values but at runtime it is a `Set` instance.
    */
   interface InitializedData extends fields.SchemaField.InitializedData<Schema> {}
 
   /**
-   * The data used to update a document, for example {@linkcode Adventure.update | Adventure#update}.
-   * It is a distinct type from {@linkcode Adventure.CreateData | DeepPartial<Adventure.CreateData>} because
+   * The data used to update a document, for example {@link Adventure.update | `Adventure#update`}.
+   * It is a distinct type from {@link Adventure.CreateData | `DeepPartial<Adventure.CreateData>`} because
    * it has different rules for `null` and `undefined`.
    */
   interface UpdateData extends fields.SchemaField.UpdateData<Schema> {}
 
   /**
-   * Used in the {@linkcode Adventure.update | Adventure#update} and
-   * {@linkcode Adventure.updateDocuments} signatures, and {@linkcode Adventure.Database.UpdateOperation}
-   * and its derivative interfaces.
-   */
-  type UpdateInput = UpdateData | Implementation;
-
-  /**
-   * The schema for {@linkcode Adventure}. This is the source of truth for how an `Adventure` document
+   * The schema for {@linkcode Adventure}. This is the source of truth for how an Adventure document
    * must be structured.
    *
    * Foundry uses this schema to validate the structure of the {@linkcode Adventure}. For example
-   * a {@linkcode fields.StringField | StringField} will enforce that the value is a string. More
-   * complex fields like {@linkcode fields.SetField | SetField} goes through various conversions
+   * a {@link fields.StringField | `StringField`} will enforce that the value is a string. More
+   * complex fields like {@link fields.SetField | `SetField`} goes through various conversions
    * starting as an array in the database, initialized as a set, and allows updates with any
    * iterable.
    */
-  interface Schema extends fields.DataSchema {
+  interface Schema extends DataSchema {
     /**
      * The _id which uniquely identifies this Adventure document
      * @defaultValue `null`
@@ -191,11 +171,17 @@ declare namespace Adventure {
     /**
      * The human-readable name of the Adventure
      */
-    name: fields.StringField<{
-      required: true;
-      blank: false;
-      textSearch: true;
-    }>;
+    name: fields.StringField<
+      {
+        required: true;
+        blank: false;
+        textSearch: true;
+      },
+      // Note(LukeAbby): Field override because `blank: false` isn't fully accounted for or something.
+      string,
+      string,
+      string
+    >;
 
     /**
      * The file path for the primary image of the adventure
@@ -299,546 +285,139 @@ declare namespace Adventure {
   }
 
   namespace Database {
-    /* ***********************************************
-     *                GET OPERATIONS                 *
-     *************************************************/
+    /** Options passed along in Get operations for Adventures */
+    interface Get extends foundry.abstract.types.DatabaseGetOperation<Adventure.Parent> {}
+
+    /** Options passed along in Create operations for Adventures */
+    interface Create<Temporary extends boolean | undefined = boolean | undefined>
+      extends foundry.abstract.types.DatabaseCreateOperation<Adventure.CreateData, Adventure.Parent, Temporary> {}
+
+    /** Options passed along in Delete operations for Adventures */
+    interface Delete extends foundry.abstract.types.DatabaseDeleteOperation<Adventure.Parent> {}
+
+    /** Options passed along in Update operations for Adventures */
+    interface Update extends foundry.abstract.types.DatabaseUpdateOperation<Adventure.UpdateData, Adventure.Parent> {}
+
+    /** Operation for {@linkcode Adventure.createDocuments} */
+    interface CreateDocumentsOperation<Temporary extends boolean | undefined>
+      extends Document.Database.CreateOperation<Adventure.Database.Create<Temporary>> {}
+
+    /** Operation for {@linkcode Adventure.updateDocuments} */
+    interface UpdateDocumentsOperation extends Document.Database.UpdateDocumentsOperation<Adventure.Database.Update> {}
+
+    /** Operation for {@linkcode Adventure.deleteDocuments} */
+    interface DeleteDocumentsOperation extends Document.Database.DeleteDocumentsOperation<Adventure.Database.Delete> {}
+
+    /** Operation for {@linkcode Adventure.create} */
+    interface CreateOperation<Temporary extends boolean | undefined>
+      extends Document.Database.CreateOperation<Adventure.Database.Create<Temporary>> {}
+
+    /** Operation for {@link Adventure.update | `Adventure#update`} */
+    interface UpdateOperation extends Document.Database.UpdateOperation<Update> {}
+
+    interface DeleteOperation extends Document.Database.DeleteOperation<Delete> {}
+
+    /** Options for {@linkcode Adventure.get} */
+    interface GetOptions extends Document.Database.GetOptions {}
+
+    /** Options for {@link Adventure._preCreate | `Adventure#_preCreate`} */
+    interface PreCreateOptions extends Document.Database.PreCreateOptions<Create> {}
+
+    /** Options for {@link Adventure._onCreate | `Adventure#_onCreate`} */
+    interface OnCreateOptions extends Document.Database.CreateOptions<Create> {}
+
+    /** Operation for {@linkcode Adventure._preCreateOperation} */
+    interface PreCreateOperation extends Document.Database.PreCreateOperationStatic<Adventure.Database.Create> {}
+
+    /** Operation for {@link Adventure._onCreateOperation | `Adventure#_onCreateOperation`} */
+    interface OnCreateOperation extends Adventure.Database.Create {}
+
+    /** Options for {@link Adventure._preUpdate | `Adventure#_preUpdate`} */
+    interface PreUpdateOptions extends Document.Database.PreUpdateOptions<Update> {}
+
+    /** Options for {@link Adventure._onUpdate | `Adventure#_onUpdate`} */
+    interface OnUpdateOptions extends Document.Database.UpdateOptions<Update> {}
+
+    /** Operation for {@linkcode Adventure._preUpdateOperation} */
+    interface PreUpdateOperation extends Adventure.Database.Update {}
+
+    /** Operation for {@link Adventure._onUpdateOperation | `Adventure._preUpdateOperation`} */
+    interface OnUpdateOperation extends Adventure.Database.Update {}
+
+    /** Options for {@link Adventure._preDelete | `Adventure#_preDelete`} */
+    interface PreDeleteOptions extends Document.Database.PreDeleteOperationInstance<Delete> {}
+
+    /** Options for {@link Adventure._onDelete | `Adventure#_onDelete`} */
+    interface OnDeleteOptions extends Document.Database.DeleteOptions<Delete> {}
+
+    /** Options for {@link Adventure._preDeleteOperation | `Adventure#_preDeleteOperation`} */
+    interface PreDeleteOperation extends Adventure.Database.Delete {}
+
+    /** Options for {@link Adventure._onDeleteOperation | `Adventure#_onDeleteOperation`} */
+    interface OnDeleteOperation extends Adventure.Database.Delete {}
+
+    /** Context for {@linkcode Adventure._onDeleteOperation} */
+    interface OnDeleteDocumentsContext extends Document.ModificationContext<Adventure.Parent> {}
+
+    /** Context for {@linkcode Adventure._onCreateDocuments} */
+    interface OnCreateDocumentsContext extends Document.ModificationContext<Adventure.Parent> {}
+
+    /** Context for {@linkcode Adventure._onUpdateDocuments} */
+    interface OnUpdateDocumentsContext extends Document.ModificationContext<Adventure.Parent> {}
 
     /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.GetOperation | GetOperation} interface for
-     * `Adventure` documents. Valid for passing to
-     * {@linkcode ClientDatabaseBackend._getDocuments | ClientDatabaseBackend#_getDocuments}.
-     *
-     * The {@linkcode GetDocumentsOperation} and {@linkcode BackendGetOperation} interfaces derive from this one.
+     * Options for {@link Adventure._preCreateDescendantDocuments | `Adventure#_preCreateDescendantDocuments`}
+     * and {@link Adventure._onCreateDescendantDocuments | `Adventure#_onCreateDescendantDocuments`}
      */
-    interface GetOperation extends DatabaseBackend.GetOperation<Adventure.Parent> {}
+    interface CreateOptions extends Document.Database.CreateOptions<Adventure.Database.Create> {}
 
     /**
-     * The interface for passing to {@linkcode Adventure.get}.
-     * @see {@linkcode Document.Database.GetDocumentsOperation}
+     * Options for {@link Adventure._preUpdateDescendantDocuments | `Adventure#_preUpdateDescendantDocuments`}
+     * and {@link Adventure._onUpdateDescendantDocuments | `Adventure#_onUpdateDescendantDocuments`}
      */
-    interface GetDocumentsOperation extends Document.Database.GetDocumentsOperation<GetOperation> {}
+    interface UpdateOptions extends Document.Database.UpdateOptions<Adventure.Database.Update> {}
 
     /**
-     * The interface for passing to {@linkcode DatabaseBackend.get | DatabaseBackend#get} for `Adventure` documents.
-     * @see {@linkcode Document.Database.BackendGetOperation}
+     * Options for {@link Adventure._preDeleteDescendantDocuments | `Adventure#_preDeleteDescendantDocuments`}
+     * and {@link Adventure._onDeleteDescendantDocuments | `Adventure#_onDeleteDescendantDocuments`}
      */
-    interface BackendGetOperation extends Document.Database.BackendGetOperation<GetOperation> {}
-
-    /* ***********************************************
-     *              CREATE OPERATIONS                *
-     *************************************************/
+    interface DeleteOptions extends Document.Database.DeleteOptions<Adventure.Database.Delete> {}
 
     /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.CreateOperation | DatabaseCreateOperation}
-     * interface for `Adventure` documents.
-     *
-     * See {@linkcode DatabaseBackend.CreateOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode Adventure.create}. The new name for that
-     * interface is {@linkcode CreateDocumentsOperation}.
+     * Create options for {@linkcode Adventure.createDialog}.
      */
-    interface CreateOperation extends DatabaseBackend.CreateOperation<Adventure.CreateInput, Adventure.Parent> {}
-
-    /**
-     * The interface for passing to {@linkcode Adventure.create} or {@linkcode Adventure.createDocuments}.
-     * @see {@linkcode Document.Database.CreateDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface CreateDocumentsOperation extends Document.Database.CreateDocumentsOperation<CreateOperation> {}
-
-    /**
-     * @deprecated `Adventure` documents are never embedded. This interface exists for consistency with other documents.
-     *
-     * The interface for passing to the {@linkcode Document.createEmbeddedDocuments | #createEmbeddedDocuments} method of any Documents that
-     * can contain `Adventure` documents. (see {@linkcode Adventure.Parent})
-     * @see {@linkcode Document.Database.CreateEmbeddedOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface CreateEmbeddedOperation extends Document.Database.CreateEmbeddedOperation<CreateOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.create | DatabaseBackend#create} for `Adventure` documents.
-     * @see {@linkcode Document.Database.BackendCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendCreateOperation extends Document.Database.BackendCreateOperation<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Adventure._preCreate | Adventure#_preCreate} and
-     * {@link Hooks.PreCreateDocument | the `preCreateAdventure` hook}.
-     * @see {@linkcode Document.Database.PreCreateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreCreateOptions extends Document.Database.PreCreateOptions<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Adventure._preCreateOperation}.
-     * @see {@linkcode Document.Database.PreCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreCreateOperation extends Document.Database.PreCreateOperation<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Adventure._onCreate | Adventure#_onCreate} and
-     * {@link Hooks.CreateDocument | the `createAdventure` hook}.
-     * @see {@linkcode Document.Database.OnCreateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnCreateOptions extends Document.Database.OnCreateOptions<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Adventure._onCreateOperation} and `Adventure`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnCreateOperation extends Document.Database.OnCreateOperation<CreateOperation> {}
-
-    /* ***********************************************
-     *              UPDATE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.UpdateOperation | DatabaseUpdateOperation}
-     * interface for `Adventure` documents.
-     *
-     * See {@linkcode DatabaseBackend.UpdateOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode Adventure.update | Adventure#update}.
-     * The new name for that interface is {@linkcode UpdateOneDocumentOperation}.
-     */
-    interface UpdateOperation extends DatabaseBackend.UpdateOperation<Adventure.UpdateInput, Adventure.Parent> {}
-
-    /**
-     * The interface for passing to {@linkcode Adventure.update | Adventure#update}.
-     * @see {@linkcode Document.Database.UpdateOneDocumentOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateOneDocumentOperation extends Document.Database.UpdateOneDocumentOperation<UpdateOperation> {}
-
-    /**
-     * @deprecated `Adventure` documents are never embedded. This interface exists for consistency with other documents.
-     *
-     * The interface for passing to the {@linkcode Document.updateEmbeddedDocuments | #updateEmbeddedDocuments} method of any Documents that
-     * can contain `Adventure` documents (see {@linkcode Adventure.Parent}). This interface is just an alias
-     * for {@linkcode UpdateOneDocumentOperation}, as the same keys are provided by the method in both cases.
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateEmbeddedOperation extends UpdateOneDocumentOperation {}
-
-    /**
-     * The interface for passing to {@linkcode Adventure.updateDocuments}.
-     * @see {@linkcode Document.Database.UpdateManyDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateManyDocumentsOperation extends Document.Database.UpdateManyDocumentsOperation<UpdateOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.update | DatabaseBackend#update} for `Adventure` documents.
-     * @see {@linkcode Document.Database.BackendUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendUpdateOperation extends Document.Database.BackendUpdateOperation<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Adventure._preUpdate | Adventure#_preUpdate} and
-     * {@link Hooks.PreUpdateDocument | the `preUpdateAdventure` hook}.
-     * @see {@linkcode Document.Database.PreUpdateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreUpdateOptions extends Document.Database.PreUpdateOptions<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Adventure._preUpdateOperation}.
-     * @see {@linkcode Document.Database.PreUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreUpdateOperation extends Document.Database.PreUpdateOperation<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Adventure._onUpdate | Adventure#_onUpdate} and
-     * {@link Hooks.UpdateDocument | the `updateAdventure` hook}.
-     * @see {@linkcode Document.Database.OnUpdateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnUpdateOptions extends Document.Database.OnUpdateOptions<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Adventure._onUpdateOperation} and `Adventure`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnUpdateOperation extends Document.Database.OnUpdateOperation<UpdateOperation> {}
-
-    /* ***********************************************
-     *              DELETE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.DeleteOperation | DatabaseDeleteOperation}
-     * interface for `Adventure` documents.
-     *
-     * See {@linkcode DatabaseBackend.DeleteOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode Adventure.delete | Adventure#delete}.
-     * The new name for that interface is {@linkcode DeleteOneDocumentOperation}.
-     */
-    interface DeleteOperation extends DatabaseBackend.DeleteOperation<Adventure.Parent> {}
-
-    /**
-     * The interface for passing to {@linkcode Adventure.delete | Adventure#delete}.
-     * @see {@linkcode Document.Database.DeleteOneDocumentOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteOneDocumentOperation extends Document.Database.DeleteOneDocumentOperation<DeleteOperation> {}
-
-    /**
-     * @deprecated `Adventure` documents are never embedded. This interface exists for consistency with other documents.
-     *
-     * The interface for passing to the {@linkcode Document.deleteEmbeddedDocuments | #deleteEmbeddedDocuments} method of any Documents that
-     * can contain `Adventure` documents (see {@linkcode Adventure.Parent}). This interface is just an alias
-     * for {@linkcode DeleteOneDocumentOperation}, as the same keys are provided by the method in both cases.
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteEmbeddedOperation extends DeleteOneDocumentOperation {}
-
-    /**
-     * The interface for passing to {@linkcode Adventure.deleteDocuments}.
-     * @see {@linkcode Document.Database.DeleteManyDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteManyDocumentsOperation extends Document.Database.DeleteManyDocumentsOperation<DeleteOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.delete | DatabaseBackend#delete} for `Adventure` documents.
-     * @see {@linkcode Document.Database.BackendDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendDeleteOperation extends Document.Database.BackendDeleteOperation<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Adventure._preDelete | Adventure#_preDelete} and
-     * {@link Hooks.PreDeleteDocument | the `preDeleteAdventure` hook}.
-     * @see {@linkcode Document.Database.PreDeleteOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreDeleteOptions extends Document.Database.PreDeleteOptions<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Adventure._preDeleteOperation}.
-     * @see {@linkcode Document.Database.PreDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreDeleteOperation extends Document.Database.PreDeleteOperation<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Adventure._onDelete | Adventure#_onDelete} and
-     * {@link Hooks.DeleteDocument | the `deleteAdventure` hook}.
-     * @see {@linkcode Document.Database.OnDeleteOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnDeleteOptions extends Document.Database.OnDeleteOptions<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Adventure._onDeleteOperation} and `Adventure`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnDeleteOperation extends Document.Database.OnDeleteOperation<DeleteOperation> {}
-
-    namespace Internal {
-      interface OperationNameMap {
-        GetDocumentsOperation: Adventure.Database.GetDocumentsOperation;
-        BackendGetOperation: Adventure.Database.BackendGetOperation;
-        GetOperation: Adventure.Database.GetOperation;
-
-        CreateDocumentsOperation: Adventure.Database.CreateDocumentsOperation;
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        CreateEmbeddedOperation: Adventure.Database.CreateEmbeddedOperation;
-        BackendCreateOperation: Adventure.Database.BackendCreateOperation;
-        CreateOperation: Adventure.Database.CreateOperation;
-        PreCreateOptions: Adventure.Database.PreCreateOptions;
-        PreCreateOperation: Adventure.Database.PreCreateOperation;
-        OnCreateOptions: Adventure.Database.OnCreateOptions;
-        OnCreateOperation: Adventure.Database.OnCreateOperation;
-
-        UpdateOneDocumentOperation: Adventure.Database.UpdateOneDocumentOperation;
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        UpdateEmbeddedOperation: Adventure.Database.UpdateEmbeddedOperation;
-        UpdateManyDocumentsOperation: Adventure.Database.UpdateManyDocumentsOperation;
-        BackendUpdateOperation: Adventure.Database.BackendUpdateOperation;
-        UpdateOperation: Adventure.Database.UpdateOperation;
-        PreUpdateOptions: Adventure.Database.PreUpdateOptions;
-        PreUpdateOperation: Adventure.Database.PreUpdateOperation;
-        OnUpdateOptions: Adventure.Database.OnUpdateOptions;
-        OnUpdateOperation: Adventure.Database.OnUpdateOperation;
-
-        DeleteOneDocumentOperation: Adventure.Database.DeleteOneDocumentOperation;
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        DeleteEmbeddedOperation: Adventure.Database.DeleteEmbeddedOperation;
-        DeleteManyDocumentsOperation: Adventure.Database.DeleteManyDocumentsOperation;
-        BackendDeleteOperation: Adventure.Database.BackendDeleteOperation;
-        DeleteOperation: Adventure.Database.DeleteOperation;
-        PreDeleteOptions: Adventure.Database.PreDeleteOptions;
-        PreDeleteOperation: Adventure.Database.PreDeleteOperation;
-        OnDeleteOptions: Adventure.Database.OnDeleteOptions;
-        OnDeleteOperation: Adventure.Database.OnDeleteOperation;
-      }
-    }
+    interface DialogCreateOptions extends InexactPartial<Create> {}
   }
-
-  /**
-   * If `Temporary` is true then {@linkcode Adventure.Implementation}, otherwise {@linkcode Adventure.Stored}.
-   * @deprecated `Document.create`/`Documents` can no longer return temporary documents as of v14. This type will be removed in v15.
-   */
-  type TemporaryIf<Temporary extends boolean | undefined> =
-    true extends Extract<Temporary, true> ? Adventure.Implementation : Adventure.Stored;
 
   /**
    * The flags that are available for this document in the form `{ [scope: string]: { [key: string]: unknown } }`.
    */
-  interface Flags extends Document.Internal.ConfiguredFlagsForName<Name> {}
+  interface Flags extends Document.ConfiguredFlagsForName<Name> {}
 
   namespace Flags {
     /**
      * The valid scopes for the flags on this document e.g. `"core"` or `"dnd5e"`.
      */
-    type Scope = Document.Internal.FlagKeyOf<Flags>;
+    type Scope = Document.FlagKeyOf<Flags>;
 
     /**
      * The valid keys for a certain scope for example if the scope is "core" then a valid key may be `"sheetLock"` or `"viewMode"`.
      */
-    type Key<Scope extends Flags.Scope> = Document.Internal.FlagKeyOf<Document.Internal.FlagGetKey<Flags, Scope>>;
+    type Key<Scope extends Flags.Scope> = Document.FlagKeyOf<Document.FlagGetKey<Flags, Scope>>;
 
     /**
      * Gets the type of a particular flag given a `Scope` and a `Key`.
      */
-    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.Internal.GetFlag<Flags, Scope, Key>;
+    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.GetFlag<Name, Scope, Key>;
   }
 
-  /* ***********************************************
-   *       CLIENT DOCUMENT TEMPLATE TYPES          *
-   *************************************************/
-
-  /** The interface {@linkcode Adventure.fromDropData} receives */
   interface DropData extends Document.Internal.DropData<Name> {}
+  interface DropDataOptions extends Document.DropDataOptions {}
 
-  /**
-   * @deprecated Foundry prior to v13 had a completely unused `options` parameter in the {@linkcode Adventure.fromDropData}
-   * signature that has since been removed. This type will be removed in v14.
-   */
-  type DropDataOptions = never;
+  interface DefaultNameContext extends Document.DefaultNameContext<Name, NonNullable<Parent>> {}
 
-  /**
-   * The interface for passing to {@linkcode Adventure.defaultName}
-   * @see {@linkcode Document.DefaultNameContext}
-   */
-  interface DefaultNameContext extends Document.DefaultNameContext<Name, Parent> {}
-
-  /**
-   * The interface for passing to {@linkcode Adventure.createDialog}'s first parameter
-   * @see {@linkcode Document.CreateDialogData}
-   */
   interface CreateDialogData extends Document.CreateDialogData<CreateData> {}
-
-  /**
-   * @deprecated This is for a deprecated signature, and will be removed in v15.
-   * The interface for passing to {@linkcode Adventure.createDialog}'s second parameter that still includes partial Dialog
-   * options, instead of being purely a {@linkcode Database.CreateDocumentsOperation | CreateDocumentsOperation}.
-   */
-  interface CreateDialogDeprecatedOptions
-    extends Database.CreateDocumentsOperation, Document._PartialDialogV1OptionsForCreateDialog {}
-
-  /**
-   * The interface for passing to {@linkcode Adventure.createDialog}'s third parameter
-   * @see {@linkcode Document.CreateDialogOptions}
-   */
   interface CreateDialogOptions extends Document.CreateDialogOptions<Name> {}
-
-  /**
-   * The return type for {@linkcode Adventure.createDialog}.
-   * @see {@linkcode Document.CreateDialogReturn}
-   */
-  type CreateDialogReturn<Config extends Adventure.CreateDialogOptions | undefined> = Document.CreateDialogReturn<
-    Adventure.Stored,
-    Config
-  >;
-
-  /**
-   * The return type for {@linkcode Adventure.deleteDialog | Adventure#deleteDialog}.
-   * @see {@linkcode Document.DeleteDialogReturn}
-   */
-  type DeleteDialogReturn<Config extends DialogV2.ConfirmConfig | undefined> = Document.DeleteDialogReturn<
-    Adventure.Stored,
-    Config
-  >;
-
-  /* ***********************************************
-   *           ADVENTURE-SPECIFIC TYPES            *
-   *************************************************/
 
   type DocumentDataRecord = {
     [K in ContainedDocumentType]?: Document.CreateDataForName<K>[];
@@ -862,13 +441,19 @@ declare namespace Adventure {
   }
 
   /** @internal */
-  interface _ImportOptions {
+  type _PrepareImportOptions = InexactPartial<{
     /**
      * A subset of adventure fields to import.
      * @defaultValue `[]`
+     * @remarks Can't be `null` as it only has a parameter default
      */
-    importFields: Array<keyof typeof BaseAdventure.contentFields | "all">;
+    importFields: Array<keyof typeof foundry.documents.BaseAdventure.contentFields | "all">;
+  }>;
 
+  interface PrepareImportOptions extends _PrepareImportOptions {}
+
+  /** @internal */
+  type _ImportOptions = NullishProps<{
     /**
      * Display a warning dialog if existing documents would be overwritten
      * @defaultValue `true`
@@ -878,28 +463,21 @@ declare namespace Adventure {
     /**
      * An array of awaited pre-import callbacks
      */
-    preImport: ((data: Adventure.ImportData, options: Adventure.ImportOptions) => Promise<void>)[];
+    preImport?: ((data: Adventure.ImportData, options: Adventure.ImportOptions) => Promise<void>)[];
 
     /**
      * An array of awaited post-import callbacks
      */
-    postImport: ((result: Adventure.ImportResult, options: Adventure.ImportOptions) => Promise<void>)[];
-  }
+    postImport?: ((result: Adventure.ImportResult, options: Adventure.ImportOptions) => Promise<void>)[];
+  }>;
 
-  interface ImportOptions extends InexactPartial<_ImportOptions> {}
-
-  /**
-   * {@linkcode Adventure.prepareImport | Adventure#prepareImport} is passed on the full options object from
-   * {@linkcode Adventure.import | #import}, though core's implementation only accesses
-   * {@linkcode ImportOptions.importFields | importFields}.
-   */
-  interface PrepareImportOptions extends ImportOptions {}
+  interface ImportOptions extends _ImportOptions, PrepareImportOptions {}
 
   /**
    * The arguments to construct the document.
    *
-   * @deprecated Writing the signature directly has helped reduce circularities and therefore is
-   * now recommended. This type will be removed in v14.
+   * @deprecated - Writing the signature directly has helped reduce circularities and therefore is
+   * now recommended.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   type ConstructorArgs = Document.ConstructorParameters<CreateData, Parent>;
@@ -916,15 +494,8 @@ declare class Adventure extends BaseAdventure.Internal.ClientDocument {
   constructor(data: Adventure.CreateData, context?: Adventure.ConstructionContext);
 
   /**
-   * Create a shallow Adventure document from a compendium index entry.
-   * @param id   - The adventure's document ID.
-   * @param pack - The compendium pack containing the adventure.
-   */
-  static fromIndex(id: string, pack: CompendiumCollection.Any): Adventure.Implementation;
-
-  /**
    * @remarks If this creation is happening in a provided `pack`, and that pack is **not** system-specific,
-   * strips `Actor`s, `Item`s, and `Actor` and `Item` `Folders`, from `source`s
+   * strips `Actor`s, `Item`s, and `Actor` and `Item` `Folders` from `source`s
    */
   static override fromSource(
     source: Adventure.CreateData,
@@ -967,51 +538,29 @@ declare class Adventure extends BaseAdventure.Internal.ClientDocument {
 
   // Descendant Document operations have been left out because Adventure does not have any descendant documents.
 
-  // `context` must contain a `pack`, so is required.
+  /** @remarks `context` must contain a `pack` or `parent`. */
   static override defaultName(context: Adventure.DefaultNameContext): string;
 
-  // `createOptions` must contain a `pack`, so is required.
-  static override createDialog<Options extends Adventure.CreateDialogOptions | undefined = undefined>(
+  /** @remarks `createOptions` must contain a `pack` or `parent`. */
+  static override createDialog(
     data: Adventure.CreateDialogData | undefined,
-    createOptions: Adventure.Database.CreateDocumentsOperation,
-    options?: Options,
-  ): Promise<Adventure.CreateDialogReturn<Options>>;
+    createOptions: Adventure.Database.DialogCreateOptions,
+    options?: Adventure.CreateDialogOptions,
+  ): Promise<Adventure.Stored | null | undefined>;
 
-  /**
-   * @deprecated "The `ClientDocument.createDialog` signature has changed. It now accepts database operation options in its second
-   * parameter, and options for {@linkcode DialogV2.prompt} in its third parameter." (since v13, until v15)
-   *
-   * @see {@linkcode Adventure.CreateDialogDeprecatedOptions}
-   */
-  static override createDialog<Options extends Adventure.CreateDialogOptions | undefined = undefined>(
-    data: Adventure.CreateDialogData | undefined,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    createOptions: Adventure.CreateDialogDeprecatedOptions,
-    options?: Options,
-  ): Promise<Adventure.CreateDialogReturn<Options>>;
+  override deleteDialog(
+    options?: InexactPartial<foundry.applications.api.DialogV2.ConfirmConfig>,
+    operation?: Document.Database.DeleteOperationForName<"Adventure">,
+  ): Promise<this | false | null | undefined>;
 
-  override deleteDialog<Options extends DialogV2.ConfirmConfig | undefined = undefined>(
-    options?: Options,
-    operation?: Adventure.Database.DeleteOneDocumentOperation,
-  ): Promise<Adventure.DeleteDialogReturn<Options>>;
-
-  /**
-   * @deprecated "`options` is now an object containing entries supported by {@linkcode DialogV2.confirm | DialogV2.confirm}."
-   * (since v13, until v15)
-   *
-   * @see {@linkcode Document.DeleteDialogDeprecatedConfig}
-   */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  override deleteDialog<Options extends Document.DeleteDialogDeprecatedConfig | undefined = undefined>(
-    options?: Options,
-    operation?: Adventure.Database.DeleteOneDocumentOperation,
-  ): Promise<Adventure.DeleteDialogReturn<Options>>;
-
-  static override fromDropData(data: Adventure.DropData): Promise<Adventure.Implementation | undefined>;
+  static override fromDropData(
+    data: Adventure.DropData,
+    options?: Adventure.DropDataOptions,
+  ): Promise<Adventure.Implementation | undefined>;
 
   static override fromImport(
     source: Adventure.Source,
-    context?: Document.FromImportContext<Adventure.Parent>,
+    context?: Document.FromImportContext<Adventure.Parent> | null,
   ): Promise<Adventure.Implementation>;
 
   override _onClickDocumentLink(event: MouseEvent): ClientDocument.OnClickDocumentLinkReturn;

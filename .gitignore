@@ -5,4 +5,3 @@ tsconfig.tsbuildinfo
 .typescript-build
 .eslintcache
 *.tsbuildinfo
-.env.local

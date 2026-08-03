@@ -1,6 +1,5 @@
 import { expectTypeOf } from "vitest";
-
-import BaseSamplerShader = foundry.canvas.rendering.shaders.BaseSamplerShader;
+import { BaseSamplerShader } from "#client/canvas/rendering/shaders/_module.mjs";
 
 const myBSS = BaseSamplerShader.create();
 expectTypeOf(myBSS).toEqualTypeOf<BaseSamplerShader>();

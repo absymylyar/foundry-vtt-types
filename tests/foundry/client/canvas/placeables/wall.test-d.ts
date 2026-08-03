@@ -1,11 +1,10 @@
 import { expectTypeOf } from "vitest";
+import { Wall } from "#client/canvas/placeables/_module.mjs";
+import type { DoorControl } from "#client/canvas/containers/_module.d.mts";
 
-import Wall = foundry.canvas.placeables.Wall;
-import DoorControl = foundry.canvas.containers.DoorControl;
 import Canvas = foundry.canvas.Canvas;
 import Ray = foundry.canvas.geometry.Ray;
 
-expectTypeOf(Wall.implementation).toEqualTypeOf<Wall.ImplementationClass>();
 expectTypeOf(Wall.embeddedName).toEqualTypeOf<"Wall">();
 expectTypeOf(Wall.RENDER_FLAGS.redraw.propagate).toEqualTypeOf<
   | Array<"refresh" | "refreshState" | "refreshLine" | "refreshEndpoints" | "refreshDirection" | "refreshHighlight">
@@ -17,7 +16,7 @@ declare const doc: WallDocument.Stored;
 const wall = new CONFIG.Wall.objectClass(doc);
 
 expectTypeOf(wall.controlIcon).toBeNull();
-expectTypeOf(wall.doorControl).toEqualTypeOf<DoorControl.Implementation | null | undefined>();
+expectTypeOf(wall.doorControl).toEqualTypeOf<DoorControl.ConfiguredInstance | null | undefined>();
 expectTypeOf(wall.line).toEqualTypeOf<PIXI.Graphics | undefined>();
 expectTypeOf(wall.endpoints).toEqualTypeOf<PIXI.Graphics | undefined>();
 expectTypeOf(wall.directionIcon).toEqualTypeOf<PIXI.Sprite | undefined>();
@@ -36,7 +35,7 @@ expectTypeOf(wall.getSnappedPosition()).toBeNever();
 expectTypeOf(wall.initializeEdge()).toBeVoid();
 expectTypeOf(wall.initializeEdge({})).toBeVoid();
 expectTypeOf(wall.initializeEdge({ deleted: true })).toBeVoid();
-expectTypeOf(wall.initializeEdge({ deleted: undefined })).toBeVoid();
+expectTypeOf(wall.initializeEdge({ deleted: null })).toBeVoid();
 
 expectTypeOf(wall.toRay()).toEqualTypeOf<Ray>();
 
@@ -45,10 +44,13 @@ expectTypeOf(wall["_draw"]()).toEqualTypeOf<Promise<void>>();
 expectTypeOf(wall["_draw"]({})).toEqualTypeOf<Promise<void>>();
 
 expectTypeOf(wall.clear()).toEqualTypeOf<Wall.Implementation>();
+expectTypeOf(wall.createDoorControl()).toEqualTypeOf<DoorControl.ConfiguredInstance>();
+expectTypeOf(wall.clearDoorControl()).toBeVoid();
+
 expectTypeOf(wall.control()).toBeBoolean();
 expectTypeOf(wall.control({})).toBeBoolean();
 expectTypeOf(wall.control({ releaseOthers: true, chain: true })).toBeBoolean();
-expectTypeOf(wall.control({ releaseOthers: false, chain: undefined })).toBeBoolean();
+expectTypeOf(wall.control({ releaseOthers: false, chain: null })).toBeBoolean();
 
 // @ts-expect-error _destroy always gets passed a value, even if that value is `undefined`
 expectTypeOf(wall["_destroy"]()).toBeVoid();
@@ -66,7 +68,7 @@ expectTypeOf(wall.getLinkedSegments()).toEqualTypeOf<Wall.GetLinkedSegmentsRetur
 expectTypeOf(wall["_applyRenderFlags"]()).toBeVoid();
 expectTypeOf(wall["_applyRenderFlags"]({})).toBeVoid();
 // all falsey values have no effect
-expectTypeOf(wall["_applyRenderFlags"]({ refreshLine: false, refreshEndpoints: undefined })).toBeVoid();
+expectTypeOf(wall["_applyRenderFlags"]({ refreshLine: null, refreshEndpoints: undefined })).toBeVoid();
 expectTypeOf(
   wall["_applyRenderFlags"]({
     redraw: true,
@@ -86,18 +88,8 @@ expectTypeOf(wall["_refreshHighlight"]()).toBeVoid();
 expectTypeOf(wall["_refreshState"]()).toBeVoid();
 
 expectTypeOf(wall["_getWallColor"]()).toBeNumber();
-
-// TODO: _onCreate and _onUpdate tests once document test helpers are done
-
-expectTypeOf(wall.hasDoorMesh).toBeBoolean();
-expectTypeOf(wall.createDoorMeshes()).toEqualTypeOf<Promise<void>>();
-expectTypeOf(wall.destroyDoorMeshes()).toBeVoid();
-
 expectTypeOf(wall["_playDoorSound"]("lock")).toBeVoid();
 expectTypeOf(wall.soundRadius).toBeNumber();
-
-expectTypeOf(wall.createDoorControl()).toEqualTypeOf<DoorControl.Implementation>();
-expectTypeOf(wall.clearDoorControl()).toBeVoid();
 
 declare const someUser: User.Implementation;
 declare const pointerEvent: foundry.canvas.Canvas.Event.Pointer;
@@ -107,7 +99,7 @@ expectTypeOf(wall["_canControl"](someUser, pointerEvent)).toBeBoolean();
 expectTypeOf(wall["_onHoverIn"](pointerEvent)).toEqualTypeOf<false | void>();
 expectTypeOf(wall["_onHoverIn"](pointerEvent, {})).toEqualTypeOf<false | void>();
 expectTypeOf(wall["_onHoverIn"](pointerEvent, { hoverOutOthers: true })).toEqualTypeOf<false | void>();
-expectTypeOf(wall["_onHoverIn"](pointerEvent, { hoverOutOthers: undefined })).toEqualTypeOf<false | void>();
+expectTypeOf(wall["_onHoverIn"](pointerEvent, { hoverOutOthers: null })).toEqualTypeOf<false | void>();
 
 expectTypeOf(wall["_overlapsSelection"](new PIXI.Rectangle())).toBeBoolean();
 

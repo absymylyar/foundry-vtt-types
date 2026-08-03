@@ -1,7 +1,6 @@
 import { expectTypeOf } from "vitest";
-
-import AbstractBaseFilter = foundry.canvas.rendering.filters.AbstractBaseFilter;
-import AbstractBaseShader = foundry.canvas.rendering.shaders.AbstractBaseShader;
+import { AbstractBaseFilter } from "#client/canvas/rendering/filters/_module.mjs";
+import { AbstractBaseShader } from "#client/canvas/rendering/shaders/_module.mjs";
 
 class TestFilter extends AbstractBaseFilter {}
 

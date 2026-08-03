@@ -13,9 +13,8 @@ export interface DeprecatedHookConfig {
    * @remarks This is called when creating a {@linkcode ChatBubble}, but before displaying it.
    * @remarks This is called by {@linkcode Hooks.call}.
    * @remarks An explicit return value of `false` prevents the chat bubble being shown.
-   * @see {@linkcode ChatBubbles.say | ChatBubbles#say}
-   * @deprecated "The `chatBubble` hook is deprecated. Please use `chatBubbleHTML` instead, which now passes
-   * an HTMLElement argument instead of jQuery." (since v13, until v15)
+   * @see {@link ChatBubbles.say | `ChatBubbles#say`}
+   * @deprecated since v13 until v15
    */
   chatBubble: (
     token: Token.Implementation,
@@ -32,7 +31,7 @@ export interface DeprecatedHookConfig {
    * @param messageData    - The input data provided for template rendering
    * @remarks This is called by {@linkcode Hooks.call}, but its return is not checked;
    * returning `false` only prevents later hooks running
-   * @see {@linkcode ChatMessage.render | ChatMessage#render}
+   * @see {@link ChatMessage.render | `ChatMessage#render`}
    */
   renderChatMessage: (
     message: ChatMessage.Implementation,
@@ -41,14 +40,12 @@ export interface DeprecatedHookConfig {
   ) => boolean | void;
 
   /**
-   * @deprecated This hook appears to have been deleted.
+   * @deprecated - This hook appears to have been deleted.
    */
-  getSceneNavigationContext: (app: never, contextOptions: never) => never;
-
-  /**
-   * @deprecated Removed without replacement in v13. This warning will be removed in v14.
-   */
-  initializeDarknessSources: (group: never) => never;
+  getSceneNavigationContext: (
+    app: foundry.applications.ui.SceneNavigation,
+    contextOptions: foundry.applications.ux.ContextMenu.Entry<HTMLElement>[],
+  ) => boolean | void;
 }
 
 /**

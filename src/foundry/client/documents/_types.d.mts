@@ -83,7 +83,7 @@ type RegionTokenRoundStartEvent = RegionTokenRoundEvent;
 
 type RegionTokenRoundEndEvent = RegionTokenRoundEvent;
 
-type RegionMovementSegment = RegionDocument.MovementSegment;
+type RegionMovementSegment = foundry.canvas.placeables.Region.MovementSegment;
 
 type RegionSegmentizeMovementPathWaypoint = RegionDocument.SegmentizeMovementPathWaypoint;
 

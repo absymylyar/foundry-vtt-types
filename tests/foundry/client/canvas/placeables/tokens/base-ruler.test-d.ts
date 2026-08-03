@@ -1,2 +1,4 @@
-// All actual methods in BaseTokenRuler are abstract; This file is left intentionally blank, tests in
-// the TokenRuler file.
+// import { expectTypeOf } from "vitest";
+// import { BaseTokenRuler } from "#client/canvas/placeables/tokens/_module.mjs";
+
+// TODO: new in v13

@@ -24,7 +24,7 @@ export function saveDataToFile(data: string, type: string, filename: string): vo
 export function readTextFromFile(file: File): Promise<string>;
 
 /** @internal */
-interface _FromUuidOptions {
+type _FromUuidOptions = InexactPartial<{
   /** A Document to resolve relative UUIDs against. */
   relative: Document.Any;
 
@@ -33,9 +33,9 @@ interface _FromUuidOptions {
    * @defaultValue `false`
    */
   invalid: boolean;
-}
+}>;
 
-export interface FromUuidOptions extends InexactPartial<_FromUuidOptions> {}
+export interface FromUuidOptions extends _FromUuidOptions {}
 
 /**
  * Retrieve an Entity or Embedded Entity by its Universally Unique Identifier (uuid).
@@ -48,15 +48,15 @@ export function fromUuid<ConcreteDocument extends Document.Any = __UnsetDocument
 ): Promise<(__UnsetDocument extends ConcreteDocument ? FromUuid<Uuid> : ConcreteDocument) | null>;
 
 /** @internal */
-interface _FromUuidSyncOptions {
+type _FromUuidSyncOptions = InexactPartial<{
   /**
    * Throw an error if the UUID cannot be resolved synchronously.
    * @defaultValue `true`
    */
   strict: boolean;
-}
+}>;
 
-export interface FromUuidSyncOptions extends InexactPartial<_FromUuidOptions>, InexactPartial<_FromUuidSyncOptions> {}
+export interface FromUuidSyncOptions extends _FromUuidOptions, _FromUuidSyncOptions {}
 
 /**
  * Retrieve a Document by its Universally Unique Identifier (uuid) synchronously. If the uuid resolves to a compendium
@@ -72,7 +72,6 @@ export function fromUuidSync<
 >(
   uuid: FromUuidValidate<ConcreteDocument, Uuid> | null | undefined,
   options?: FromUuidSyncOptions,
-  // TODO(LukeAbby): `AnyObject` is actually a stand in for a compendium index entry which should be typed.
 ): (__UnsetDocument extends ConcreteDocument ? FromUuid<Uuid> : ConcreteDocument) | AnyObject | null;
 
 declare const __Unset: unique symbol;
@@ -81,18 +80,23 @@ type __UnsetDocument = Document.Any & {
   [__Unset]: true;
 };
 
-declare const AnyDocumentClass: Document.AnyConstructor;
-declare abstract class InvalidUuid extends AnyDocumentClass {}
+declare class InvalidUuid extends foundry.abstract.Document<any, any, any> {}
 
 type FromUuid<Uuid extends string> = Uuid extends `${string}.${string}.${infer Rest}`
   ? FromUuid<Rest>
   : Uuid extends `${infer DocumentType extends Document.Type}.${string}`
-    ? Document.StoredForName<DocumentType>
+    ? Document.ImplementationFor<DocumentType>
     : InvalidUuid;
 
-type FromUuidValidate<ConcreteDocument extends Document.Any, Uuid extends string> = string extends Uuid
-  ? string
-  : MustBeValidUuid<Uuid, ConcreteDocument["documentName"]>;
+// TODO(LukeAbby): The usage of `Document.Type` when it's unset will not be necessary once `Document.Any` is more type safe.
+type FromUuidValidate<
+  ConcreteDocument extends Document.Any,
+  Uuid extends string,
+> = __UnsetDocument extends ConcreteDocument
+  ? MustBeValidUuid<Uuid, Document.Type>
+  : string extends Uuid
+    ? string
+    : MustBeValidUuid<Uuid, ConcreteDocument["documentName"]>;
 
 /**
  * Return a reference to the Document class implementation which is configured for use.
@@ -190,15 +194,15 @@ export function parseHTML(htmlString: string): HTMLCollection | HTMLElement;
 export function getCacheBustURL(src: string): string | false;
 
 /** @internal */
-interface _FetchResourceOptions {
+type _FetchResourceOptions = InexactPartial<{
   /**
    * Append a cache-busting query parameter to the request.
    * @defaultValue `false`
    */
   bustCache: boolean;
-}
+}>;
 
-export interface FetchResourceOptions extends InexactPartial<_FetchResourceOptions> {}
+interface FetchResourceOptions extends _FetchResourceOptions {}
 
 /**
  * Use the Fetch API to retrieve a resource and return a Blob instance for it.

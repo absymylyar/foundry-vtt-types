@@ -1,5 +1,6 @@
 import { expectTypeOf } from "vitest";
 import type { MaybePromise } from "fvtt-types/utils";
+import type { RollParseNode } from "../../../../../src/foundry/client/dice/_types.d.mts";
 
 declare const rollTerm: foundry.dice.terms.RollTerm;
 
@@ -22,6 +23,6 @@ declare const term: foundry.dice.terms.RollTerm;
 expectTypeOf(foundry.dice.terms.RollTerm.isDeterministic(term)).toEqualTypeOf<boolean>();
 expectTypeOf(foundry.dice.terms.RollTerm.fromData({})).toEqualTypeOf<foundry.dice.terms.RollTerm>();
 
-declare const node: foundry.dice.types.RollParseNode;
+declare const node: RollParseNode;
 expectTypeOf(foundry.dice.terms.RollTerm.fromParseNode(node)).toEqualTypeOf<foundry.dice.terms.RollTerm>();
 expectTypeOf(foundry.dice.terms.RollTerm.fromJSON("")).toEqualTypeOf<foundry.dice.terms.RollTerm>();

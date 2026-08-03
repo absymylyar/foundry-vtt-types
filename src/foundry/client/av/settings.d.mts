@@ -1,56 +1,31 @@
-import type { Brand } from "#utils";
 import type { fields } from "#common/data/_module.mjs";
-import type { ClientSettings } from "#client/helpers/_module.d.mts";
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type AVMaster from "#client/av/master.d.mts";
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type { AllHooks } from "#client/hooks.d.mts";
+import type { DataSchema } from "#common/data/fields.mjs";
+import type { GetKey, ValueOf } from "#utils";
 
 declare class AVSettings {
   constructor();
 
-  /**
-   * @remarks A debounce callback for setting a setting in the `"core"` namespace.
-   * @privateRemarks Not defined in the class body, but during construction.
-   * @internal
-   */
-  _set: <K extends ClientSettings.KeyFor<"core">>(key: K, value: ClientSettings.SettingCreateData<"core", K>) => void;
+  /** @internal */
+  protected _set: <T>(key: string, value: T) => void;
 
-  /**
-   * @remarks A cached value of the `core.rtcClientSettings` setting. Updated every time the setting is changed via
-   * the registered `onChange` function being {@linkcode AVSettings.changed | () => game.webrtc.settings.changed()}.
-   *
-   * @privateRemarks This isn't defined in the class body, but in `##initialize`,
-   * which is called during construction, as well as by `changed`.
-   */
-  client: AVSettings.ClientSettingData;
+  /** @internal */
+  protected _change: () => void;
 
-  /**
-   * @remarks A cached value of the `core.rtcWorldSettings` setting. Updated every time the setting is changed via
-   * the registered `onChange` function being {@linkcode AVSettings.changed | () => game.webrtc.settings.changed()}.
-   *
-   * @privateRemarks This isn't defined in the class body, but in `##initialize`,
-   * which is called during construction, as well as by `changed`.
-   */
-  world: AVSettings.WorldSettingData;
+  client: AVSettings.ClientSettings;
 
-  /**
-   * @remarks A record of the last known setting values; diffed against to get the value passed to
-   * {@linkcode AVMaster.onSettingsChanged | game.webrtc.onSettingsChanged} and the
-   * {@linkcode AllHooks.rtcSettingsChanged | rtcSettingsChanged} hook. Updated every time the setting is changed via
-   * the registered `onChange` function being {@linkcode AVSettings.changed | () => game.webrtc.settings.changed()}.
-   *
-   * @privateRemarks This isn't defined in the class body, but in `##initialize`,
-   * which is called during construction, as well as by `changed`.
-   */
-  _original: Readonly<AVSettings.Settings>;
+  world: AVSettings.WorldSettings;
+
+  protected _original: AVSettings.Settings;
 
   /**
    * WebRTC Mode, Disabled, Audio only, Video only, Audio & Video
    */
-  static AV_MODES: AVSettings.AVModes;
+  static AV_MODES: {
+    DISABLED: 0;
+    AUDIO: 1;
+    VIDEO: 2;
+    AUDIO_VIDEO: 3;
+  };
 
   /**
    * Voice modes: Always-broadcasting, voice-level triggered, push-to-talk.
@@ -68,33 +43,28 @@ declare class AVSettings {
    */
   static DOCK_POSITIONS: AVSettings.DockPositions;
 
-  /**
-   * Schemas for world and client settings
-   * @privateRemarks This replaces itself with a property on first read. Since that property is readonly and non-enumerable, exactly like a
-   * getter, it has just been typed as such.
-   */
   static get schemaFields(): AVSettings.SchemaFields;
 
   /**
-   * Default client settings for each connected user.
+   * Default Client Settings
    */
-  static get DEFAULT_USER_SETTINGS(): AVSettings.UserData;
+  static DEFAULT_CLIENT_SETTINGS: AVSettings.ClientSettings;
 
   /**
-   * Register world and client WebRTC settings.
-   * @remarks Called in {@linkcode foundry.Game.registerSettings | Game#registerSettings}.
+   * Default world-level AV settings.
    */
-  static register(): void;
+  static DEFAULT_WORLD_SETTINGS: AVSettings.WorldSettings;
 
-  /**
-   * A debounce callback for when either the world or client settings change.
-   */
-  changed: () => void;
+  static DEFAULT_USER_SETTINGS: AVSettings.StoredUserSettings;
 
   /**
    * Stores the transient AV activity data received from other users.
    */
   activity: Record<string, AVSettings.Data>;
+
+  initialize(): void;
+
+  changed(): void;
 
   get<S extends "client" | "world">(scope: S, setting: string): unknown; // TODO: Improve once we have proper typing for dot notation
 
@@ -113,174 +83,260 @@ declare class AVSettings {
   get verticalDock(): boolean;
 
   /**
+   * Prepare a standardized object of user settings data for a single User
+   * @internal
+   */
+  protected _getUserSettings(user: User.Implementation): AVSettings.UserSettings;
+
+  /**
+   * Handle setting changes to either rctClientSettings or rtcWorldSettings.
+   * @internal
+   */
+  protected _onSettingsChanged(): void;
+
+  /**
    * Handle another connected user changing their AV settings.
    */
   handleUserActivity(userId: string, settings: AVSettings.Data): void;
-
-  #AVSettings: true;
 }
 
 declare namespace AVSettings {
-  interface UserSettings extends UserData {
+  interface ClientSettings {
+    /**
+     * @defaultValue `"default"`
+     */
+    videoSrc: string;
+
+    /**
+     * @defaultValue `"default"`
+     */
+    audioSrc: string;
+
+    /**
+     * @defaultValue `"default"`
+     */
+    audioSink: string;
+
+    /**
+     * @defaultValue `"bottom"`
+     */
+    dockPosition: AVSettings.DOCK_POSITIONS;
+
+    /**
+     * @defaultValue `false`
+     */
+    hidePlayerList: boolean;
+
+    /**
+     * @defaultValue `false`
+     */
+    hideDock: boolean;
+
+    /**
+     * @defaultValue `false`
+     */
+    muteAll: boolean;
+
+    /**
+     * @defaultValue `false`
+     */
+    disableVideo: boolean;
+
+    /**
+     * @defaultValue `false`
+     */
+    borderColors: boolean;
+
+    /**
+     * @defaultValue `240`
+     */
+    dockWidth: number;
+
+    /**
+     * @defaultValue `1`
+     */
+    nameplates: AVSettings.NAMEPLATE_MODES;
+
+    voice: {
+      /**
+       * @defaultValue `"AVSettings.VOICE_MODES.PTT"`
+       */
+      mode: AVSettings.VOICE_MODES;
+
+      /**
+       * @defaultValue
+       * ```
+       * "`"
+       * ```
+       */
+      pttName: string;
+
+      /**
+       * @defaultValue `100`
+       */
+      pttDelay: number;
+
+      /**
+       * @defaultValue `-45`
+       */
+      activityThreshold: number;
+    };
+
+    /**
+     * @defaultValue `{}`
+     */
+    users: Record<string, AVSettings.StoredUserSettings>;
+  }
+
+  interface WorldSettings {
+    /**
+     * @defaultValue `AVSettings.AV_MODES.DISABLED`
+     */
+    mode: AVSettings.AV_MODES;
+
+    turn: {
+      /**
+       * @defaultValue `"server"`
+       */
+      type: string;
+
+      /**
+       * @defaultValue `""`
+       */
+      url: string;
+
+      /**
+       * @defaultValue `""`
+       */
+      username: string;
+
+      /**
+       * @defaultValue `""`
+       */
+      password: string;
+    };
+  }
+
+  interface StoredUserSettings {
+    /**
+     * @defaultValue `false`
+     */
+    popout: boolean;
+
+    /**
+     * @defaultValue `100`
+     */
+    x: number;
+
+    /**
+     * @defaultValue `100`
+     */
+    y: number;
+
+    /**
+     * @defaultValue `0`
+     */
+    z: number;
+
+    /**
+     * @defaultValue `320`
+     */
+    width: number;
+
+    /**
+     * @defaultValue `1.0`
+     */
+    volume: number;
+
+    /**
+     * @defaultValue `false`
+     */
+    muted: boolean;
+
+    /**
+     * @defaultValue `false`
+     */
+    hidden: boolean;
+
+    /**
+     * @defaultValue `false`
+     */
+    blocked: boolean;
+
+    /**
+     * @defaultValue `240`
+     */
+    dockWidth: number;
+  }
+
+  interface UserSettings extends StoredUserSettings {
     canBroadcastAudio: boolean;
     canBroadcastVideo: boolean;
-    speaking: boolean | undefined;
   }
 
   interface Settings {
-    client: ClientSettingData;
-    world: WorldSettingData;
+    client: ClientSettings;
+    world: WorldSettings;
   }
 
-  type AV_MODES = Brand<number, "AVSettings.AV_MODES">;
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  interface Overrides {}
 
-  interface AVModes {
-    DISABLED: 0 & AV_MODES;
-    AUDIO: 1 & AV_MODES;
-    VIDEO: 2 & AV_MODES;
-    AUDIO_VIDEO: 3 & AV_MODES;
+  interface DefaultVoiceModes {
+    ALWAYS: "always";
+    ACTIVITY: "activity";
+    PTT: "ptt";
   }
+  type VoiceModes = GetKey<AVSettings.Overrides, "VoiceModes", DefaultVoiceModes>;
+  type VOICE_MODES = ValueOf<VoiceModes>;
 
-  type VOICE_MODES = Brand<string, "AVSettings.VOICE_MODES">;
-
-  interface VoiceModes {
-    ALWAYS: "always" & VOICE_MODES;
-    ACTIVITY: "activity" & VOICE_MODES;
-    PTT: "ptt" & VOICE_MODES;
+  interface DefaultNamePlateModes {
+    OFF: 0;
+    BOTH: 1;
+    PLAYER_ONLY: 2;
+    CHAR_ONLY: 3;
   }
+  type NameplateModes = GetKey<AVSettings.Overrides, "NameplateModes", DefaultNamePlateModes>;
+  type NAMEPLATE_MODES = ValueOf<NameplateModes>;
 
-  type NAMEPLATE_MODES = Brand<number, "AVSettings.NAMEPLATE_MODES">;
-
-  interface NameplateModes {
-    OFF: 0 & NAMEPLATE_MODES;
-    BOTH: 1 & NAMEPLATE_MODES;
-    PLAYER_ONLY: 2 & NAMEPLATE_MODES;
-    CHAR_ONLY: 3 & NAMEPLATE_MODES;
+  interface DefaultDockPositions {
+    TOP: "top";
+    RIGHT: "right";
+    BOTTOM: "bottom";
+    LEFT: "left";
   }
+  type DockPositions = GetKey<AVSettings.Overrides, "DockPositions", DefaultDockPositions>;
+  type DOCK_POSITIONS = ValueOf<DockPositions>;
 
-  type DOCK_POSITIONS = Brand<string, "AVSettings.DOCK_POSITIONS">;
-
-  interface DockPositions {
-    TOP: "top" & DOCK_POSITIONS;
-    RIGHT: "right" & DOCK_POSITIONS;
-    BOTTOM: "bottom" & DOCK_POSITIONS;
-    LEFT: "left" & DOCK_POSITIONS;
-  }
-
-  interface TurnSchema extends fields.DataSchema {
-    /** @defaultValue `"server"` */
-    type: fields.StringField<{ required: true; choices: ["server", "custom"]; initial: "server" }>;
-
-    /** @defaultValue `""` */
-    url: fields.StringField<{ required: true }>;
-
-    /** @defaultValue `""` */
-    username: fields.StringField<{ required: true }>;
-
-    /** @defaultValue `""` */
-    password: fields.StringField<{ required: true }>;
-  }
-
-  interface WorldSchema extends fields.DataSchema {
-    /** @defaultValue {@linkcode AVSettings.AV_MODES.DISABLED} */
+  interface WorldSchema extends DataSchema {
     mode: fields.NumberField<{
       required: true;
       nullable: false;
       choices: AVSettings.AV_MODES[];
       initial: typeof AVSettings.AV_MODES.DISABLED;
     }>;
-    turn: fields.SchemaField<TurnSchema>;
-  }
-
-  interface WorldSettingData extends fields.SchemaField.InitializedData<WorldSchema> {}
-
-  interface VoiceSchema extends fields.DataSchema {
-    /** @defaultValue {@linkcode AVSettings.VOICE_MODES.PTT} */
-    mode: fields.StringField<{
-      required: true;
-      choices: AVSettings.VOICE_MODES[];
-      initial: typeof AVSettings.VOICE_MODES.PTT;
+    turn: fields.SchemaField<{
+      type: fields.StringField<{ required: true; choices: ["server", "custom"]; initial: "server" }>;
+      url: fields.StringField<{ required: true }>;
+      username: fields.StringField<{ required: true }>;
+      password: fields.StringField<{ required: true }>;
     }>;
-
-    /**
-     * @defaultValue A string containing a backtick, i.e.:
-     * ```js
-     * "`"
-     * ```
-     */
-    pttName: fields.StringField<{ required: true; initial: "`" }>;
-
-    /** @defaultValue 100 */
-    pttDelay: fields.NumberField<{ required: true; nullable: false; integer: true; min: 0; initial: 100 }>;
-
-    /** @defaultValue -45 */
-    activityThreshold: fields.NumberField<{ required: true; nullable: false; integer: true; initial: -45 }>;
   }
 
-  interface UserSchema extends fields.DataSchema {
-    /** @defaultValue `false` */
-    popout: fields.BooleanField;
-
-    /** @defaultValue `100` */
-    left: fields.NumberField<{ required: true; nullable: false; integer: true; initial: 100 }>;
-
-    /** @defaultValue `100` */
-    top: fields.NumberField<{ required: true; nullable: false; integer: true; initial: 100 }>;
-
-    /** @defaultValue `0` */
-    z: fields.NumberField<{ required: true; nullable: false; integer: true; initial: 0 }>;
-
-    /** @defaultValue `320` */
-    width: fields.NumberField<{ required: true; nullable: false; integer: true; positive: true; initial: 320 }>;
-
-    /** @defaultValue `1` */
-    volume: fields.NumberField<{ required: true; nullable: false; min: 0; max: 1; initial: 1 }>;
-
-    /** @defaultValue `false` */
-    muted: fields.BooleanField;
-
-    /** @defaultValue `false` */
-    hidden: fields.BooleanField;
-
-    /** @defaultValue `false` */
-    blocked: fields.BooleanField;
-  }
-
-  interface UserData extends fields.SchemaField.InitializedData<UserSchema> {}
-
-  interface ClientSchema extends fields.DataSchema {
-    /** @defaultValue `"default"` */
+  interface ClientSchema extends DataSchema {
     videoSrc: fields.StringField<{ required: true; initial: "default" }>;
-
-    /** @defaultValue `"default"` */
     audioSrc: fields.StringField<{ required: true; initial: "default" }>;
-
-    /** @defaultValue `"default"` */
     audioSink: fields.StringField<{ required: true; initial: "default" }>;
-
-    /** @defaultValue {@linkcode AVSettings.DOCK_POSITIONS.LEFT} */
     dockPosition: fields.StringField<{
       required: true;
-      choices: AVSettings.DOCK_POSITIONS[];
+      // choices: Object.values(AVSettings.DOCK_POSITIONS>,
       initial: typeof AVSettings.DOCK_POSITIONS.LEFT;
     }>;
-
-    /** @defaultValue `false` */
     hidePlayerList: fields.BooleanField;
-
-    /** @defaultValue `false` */
     hideDock: fields.BooleanField;
-
-    /** @defaultValue `false` */
     muteAll: fields.BooleanField;
-
-    /** @defaultValue `false` */
     disableVideo: fields.BooleanField;
-
-    /** @defaultValue `false` */
     borderColors: fields.BooleanField;
-
-    /** @defaultValue `240` */
     dockWidth: fields.NumberField<{
       required: true;
       nullable: false;
@@ -288,47 +344,61 @@ declare namespace AVSettings {
       positive: true;
       initial: 240;
     }>;
-
-    /** @defaultValue {@linkcode AVSettings.NAMEPLATE_MODES.BOTH} */
     nameplates: fields.NumberField<{
       required: true;
       nullable: false;
       choices: AVSettings.NAMEPLATE_MODES[];
       initial: typeof AVSettings.NAMEPLATE_MODES.BOTH;
     }>;
-
-    voice: fields.SchemaField<VoiceSchema>;
-
+    voice: fields.SchemaField<{
+      mode: fields.StringField<{
+        required: true;
+        choices: AVSettings.VOICE_MODES[];
+        initial: typeof AVSettings.VOICE_MODES.PTT;
+      }>;
+      pttName: fields.StringField<{ required: true; initial: "`" }>;
+      pttDelay: fields.NumberField<{ required: true; nullable: false; integer: true; min: 0; initial: 100 }>;
+      activityThreshold: fields.NumberField<{ required: true; nullable: false; integer: true; initial: -45 }>;
+    }>;
     users: fields.TypedObjectField<
-      fields.SchemaField<UserSchema>,
+      fields.SchemaField<{
+        popout: fields.BooleanField;
+        left: fields.NumberField<{ required: true; nullable: false; integer: true; initial: 100 }>;
+        top: fields.NumberField<{ required: true; nullable: false; integer: true; initial: 100 }>;
+        z: fields.NumberField<{ required: true; nullable: false; integer: true; initial: 0 }>;
+        width: fields.NumberField<{ required: true; nullable: false; integer: true; positive: true; initial: 320 }>;
+        volume: fields.NumberField<{ required: true; nullable: false; min: 0; max: 1; initial: 1 }>;
+        muted: fields.BooleanField;
+        hidden: fields.BooleanField;
+        blocked: fields.BooleanField;
+      }>,
       { validateKey: typeof foundry.data.validators.isValidId }
     >;
   }
 
-  interface ClientSettingData extends fields.SchemaField.InitializedData<ClientSchema> {}
-
-  /** @privateRemarks This weirdly doesn't extend `fields.DataSchema` as its never used as a schema itself. */
   interface SchemaFields {
     world: fields.SchemaField<WorldSchema>;
     client: fields.SchemaField<ClientSchema>;
   }
 
+  type AV_MODES = ValueOf<typeof AVSettings.AV_MODES>;
+
   interface Data {
     /**
      * Whether this user has muted themselves.
-     * @remarks Non-nullish due to use of `in`, and because this will be coming in over a socket.
+     * @remarks non-nullish due to use of `in`
      */
     muted?: boolean;
 
     /**
      * Whether this user has hidden their video.
-     * @remarks Non-nullish due to use of `in`, and because this will be coming in over a socket.
+     * @remarks non-nullish due to use of `in`
      */
     hidden?: boolean;
 
     /**
      * Whether the user is broadcasting audio.
-     * @remarks Non-nullish due to use of `in`, and because this will be coming in over a socket.
+     * @remarks non-nullish due to use of `in`
      */
     speaking?: boolean;
   }

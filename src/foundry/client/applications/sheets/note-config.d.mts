@@ -30,10 +30,12 @@ declare namespace NoteConfig {
   interface AnyConstructor extends Identity<typeof AnyNoteConfig> {}
 
   interface RenderContext
-    extends HandlebarsApplicationMixin.RenderContext, DocumentSheetV2.RenderContext<NoteDocument.Implementation> {}
+    extends HandlebarsApplicationMixin.RenderContext,
+      DocumentSheetV2.RenderContext<NoteDocument.Implementation> {}
 
   interface Configuration
-    extends HandlebarsApplicationMixin.Configuration, DocumentSheetV2.Configuration<NoteDocument.Implementation> {}
+    extends HandlebarsApplicationMixin.Configuration,
+      DocumentSheetV2.Configuration<NoteDocument.Implementation> {}
 
   interface RenderOptions extends HandlebarsApplicationMixin.RenderOptions, DocumentSheetV2.RenderOptions {}
 }

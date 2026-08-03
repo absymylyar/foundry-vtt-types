@@ -6,7 +6,7 @@ declare const _leavesSymbol: unique symbol;
 /**
  * A data structure representing a tree of string nodes with arbitrary object leaves.
  */
-declare class StringTree<Leaf extends object = AnyObject, Keys extends Iterable<string> = string[]> {
+declare class StringTree<Leaf extends object = AnyObject, Key = string[]> {
   /**
    * The key symbol that stores the leaves of any given node.
    */
@@ -14,19 +14,19 @@ declare class StringTree<Leaf extends object = AnyObject, Keys extends Iterable<
 
   /**
    * Insert an entry into the tree.
-   * @param strings - The string parents for the entry.
-   * @param entry   - The entry to store.
+   * @param strings  - The string parents for the entry.
+   * @param entry    - The entry to store.
    * @returns   The node the entry was added to.
    */
-  addLeaf(strings: Keys, entry: Leaf): StringTree.Node<Leaf>;
+  addLeaf(strings: Key, entry: Leaf): StringTree.Node<Leaf>;
 
   /**
    * Traverse the tree along the given string path and return any entries reachable from the node.
-   * @param strings - The string path to the desired node.
-   * @param options - Additional options to configure behaviour.
+   * @param strings         - The string path to the desired node.
+   * @param options         - Additional options to configure behaviour.
    * @returns    The reachable entries
    */
-  lookup(strings: Keys, options?: StringTree.LookupOptions<Leaf>): Leaf[];
+  lookup(strings: Key, options?: StringTree.LookupOptions<Leaf>): Leaf[];
 
   /**
    * Returns the node at the given path through the tree.
@@ -34,7 +34,7 @@ declare class StringTree<Leaf extends object = AnyObject, Keys extends Iterable<
    * @param options - Additional options to configure behaviour.
    * @returns The node at the path, if found
    */
-  nodeAtPrefix(strings: Keys, options?: StringTree.NodeAtPrefixOptions): StringTree.Node<Leaf> | undefined;
+  nodeAtPrefix(strings: Key, options?: StringTree.NodeAtPrefixOptions): StringTree.Node<Leaf> | undefined;
 
   /**
    * Perform a breadth-first search starting from the given node and retrieving any entries reachable from that node,
@@ -75,18 +75,15 @@ declare namespace StringTree {
   type EntryFilter<Leaf extends object> = (entry: Leaf) => boolean;
 
   /** @internal */
-  interface _SearchOptions<Leaf extends object> {
-    /**
-     * The maximum number of items to retrieve.
-     * @defaultValue `Infinity`
-     */
+  type _SearchOptions<Leaf extends object> = InexactPartial<{
+    /** The maximum number of items to retrieve. */
     limit: number;
 
     /** A filter function to apply to each candidate entry. */
     filterEntries: StringTree.EntryFilter<Leaf>;
-  }
+  }>;
 
-  interface LookupOptions<Leaf extends object> extends InexactPartial<_SearchOptions<Leaf>> {}
+  interface LookupOptions<Leaf extends object> extends _SearchOptions<Leaf> {}
 
   interface NodeAtPrefixOptions {
     /**
@@ -97,7 +94,7 @@ declare namespace StringTree {
     hasLeaves?: boolean | undefined;
   }
 
-  interface BreadthFirstSearchOptions<Leaf extends object> extends InexactPartial<_SearchOptions<Leaf>> {}
+  interface BreadthFirstSearchOptions<Leaf extends object> extends _SearchOptions<Leaf> {}
 }
 
 export default StringTree;

@@ -1,24 +1,86 @@
-import type { AnyObject, Brand, ConcreteKeys, Identity, InterfaceToObject } from "#utils";
+import type { Brand, ConcreteKeys, InterfaceToObject, SimpleMerge } from "#utils";
 import type { fields } from "#common/data/_module.d.mts";
-import type { DataModel } from "#common/abstract/_module.d.mts";
-import type { PointVisionSource } from "#client/canvas/sources/_module.d.mts";
-import type { fields as clientFields } from "#client/data/_module.d.mts";
+import type { DataSchema } from "#common/data/fields.d.mts";
+import type { AbstractBaseShader } from "#client/canvas/rendering/shaders/_module.d.mts";
+import DataField = foundry.data.fields.DataField;
+import type DataModel from "#common/abstract/data.d.mts";
+import type PointVisionSource from "#client/canvas/sources/point-vision-source.d.mts";
+
+declare class ShaderField<
+  const Options extends ShaderField.Options = ShaderField.DefaultOptions,
+  const AssignmentType = ShaderField.AssignmentType<Options>,
+  const InitializedType = ShaderField.InitializedType<Options>,
+  const PersistedType extends typeof AbstractBaseShader | null | undefined = ShaderField.InitializedType<Options>,
+> extends foundry.data.fields.DataField<Options, AssignmentType, InitializedType, PersistedType> {
+  /**
+   * @defaultValue
+   * ```typescript
+   * const defaults = super._defaults;
+   * defaults.nullable = true;
+   * defaults.initial = undefined;
+   * return defaults;
+   * ```
+   */
+  static override get _defaults(): ShaderField.DefaultOptions;
+
+  // TODO: _cast blatantly breaks inheritance so this is difficult to work with
+
+  /** @remarks The value provided to a ShaderField must be an AbstractBaseShader subclass. */
+  override _cast(value: unknown): AssignmentType; // typeof AbstractBaseShader;
+}
+
+declare namespace ShaderField {
+  type Options = DataField.Options<typeof AbstractBaseShader>;
+
+  type DefaultOptions = SimpleMerge<
+    DataField.DefaultOptions,
+    {
+      nullable: true;
+      initial: undefined;
+    }
+  >;
+
+  /**
+   * A helper type for the given options type merged into the default options of the BooleanField class.
+   * @template Opts - the options that override the default options
+   */
+  type MergedOptions<Opts extends Options> = SimpleMerge<DefaultOptions, Opts>;
+
+  /**
+   * A shorthand for the assignment type of a BooleanField class.
+   * @template Opts - the options that override the default options
+   */
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
+  type AssignmentType<Opts extends Options> = DataField.DerivedAssignmentType<
+    typeof AbstractBaseShader,
+    MergedOptions<Opts>
+  >;
+
+  /**
+   * A shorthand for the initialized type of a BooleanField class.
+   * @template Opts - the options that override the default options
+   */
+  type InitializedType<Opts extends Options> = DataField.DerivedInitializedType<
+    typeof AbstractBaseShader,
+    MergedOptions<Opts>
+  >;
+}
 
 /**
  * A Vision Mode which can be selected for use by a Token.
  * The selected Vision Mode alters the appearance of various aspects of the canvas while that Token is the POV.
  */
-declare class VisionMode extends DataModel<
+declare class VisionMode extends foundry.abstract.DataModel<
   VisionMode.Schema,
   DataModel.Any | null,
   InterfaceToObject<VisionMode.ExtraConstructorOptions>
 > {
   // A constructor override has been omitted as there are no typing changes
 
-  static override defineSchema(): VisionMode.Schema;
+  static defineSchema(): VisionMode.Schema;
 
   /** The lighting illumination levels which are supported. */
-  static LIGHTING_LEVELS: typeof CONST.LIGHTING_LEVELS;
+  static LIGHTING_LEVELS: typeof foundry.CONST.LIGHTING_LEVELS;
 
   /**
    * Flags for how each lighting channel should be rendered for the currently active vision modes:
@@ -41,63 +103,47 @@ declare class VisionMode extends DataModel<
   get perceivesLight(): boolean;
 
   /**
-   * Special activation handling that could be implemented by `VisionMode` subclasses
-   * @param source - Activate this `VisionMode` for a specific source
+   * Special activation handling that could be implemented by VisionMode subclasses
+   * @param source - Activate this VisionMode for a specific source
    */
-  protected _activate(source: PointVisionSource.Internal.Any): void;
+  _activate(source: PointVisionSource.Any): void;
 
   /**
-   * Special deactivation handling that could be implemented by `VisionMode` subclasses
-   * @param source - Deactivate this `VisionMode` for a specific source
+   * Special deactivation handling that could be implemented by VisionMode subclasses
+   * @param source - Deactivate this VisionMode for a specific source
    */
-  protected _deactivate(source: PointVisionSource.Internal.Any): void;
+  _deactivate(source: PointVisionSource.Any): void;
 
   /**
    * Special handling which is needed when this Vision Mode is activated for a VisionSource.
-   * @param source - Activate this `VisionMode` for a specific source
+   * @param source - Activate this VisionMode for a specific source
    */
-  activate(source: PointVisionSource.Internal.Any): void;
+  activate(source: PointVisionSource.Any): void;
 
   /**
    * Special handling which is needed when this Vision Mode is deactivated for a VisionSource.
-   * @param source - Deactivate this `VisionMode` for a specific source
+   * @param source - Deactivate this VisionMode for a specific source
    */
-  deactivate(source: PointVisionSource.Internal.Any): void;
+  deactivate(source: PointVisionSource.Any): void;
 
   /**
    * An animation function which runs every frame while this Vision Mode is active.
    * @param dt - The deltaTime passed by the PIXI Ticker
-   * @deprecated Always throws as of 13.346, see remarks
-   * @remarks Calls {@linkcode foundry.canvas.sources.RenderedEffectSource.animateTime | RenderedEffectSource#animateTime} with `this` set to this {@linkcode VisionMode}
-   * @throws Because of the above, as of 13.346 this will **always** throw: it tries to access `this.animation.seed`, but `VisionMode`s don't have an `#animation` object.
-   * See {@link https://github.com/foundryvtt/foundryvtt/issues/13227}.
+   * @remarks Calls `RenderedEffectSource#animateTime` with `this` set to this `VisionMode`
    */
   animate(dt: number): void;
-
-  /* DataModel overrides */
-
-  static override _schema: fields.SchemaField<VisionMode.Schema>;
-
-  static override get schema(): fields.SchemaField<VisionMode.Schema>;
-
-  static override validateJoint(data: VisionMode.Source): void;
-
-  static override fromSource(source: VisionMode.CreateData, context?: DataModel.FromSourceOptions): VisionMode;
-
-  static override fromJSON(json: string): VisionMode;
 }
 
 declare namespace VisionMode {
   interface Any extends AnyVisionMode {}
-  interface AnyConstructor extends Identity<typeof AnyVisionMode> {}
+  type AnyConstructor = typeof AnyVisionMode;
 
   type ConfiguredModes = ConcreteKeys<CONFIG["Canvas"]["visionModes"]>;
 
   type LIGHTING_VISIBILITY = Brand<number, "VisionMode.LIGHTING_VISIBILITY">;
 
   interface ExtraConstructorOptions {
-    /** @defaultValue `false` */
-    animated?: boolean | undefined;
+    animated?: boolean | undefined | null;
   }
 
   interface LightingVisibility {
@@ -111,58 +157,58 @@ declare namespace VisionMode {
     REQUIRED: 2 & LIGHTING_VISIBILITY;
   }
 
-  interface ShaderSchema extends fields.DataSchema {
-    shader: clientFields.ShaderField;
+  type ShaderSchema = fields.SchemaField<{
+    shader: ShaderField;
     uniforms: fields.ObjectField;
-  }
+  }>;
 
-  interface LightingTypeSchema extends fields.DataSchema {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
+  type LightingSchema = {
     visibility: fields.NumberField;
     postProcessingModes: fields.ArrayField<fields.StringField>;
     uniforms: fields.ObjectField;
-  }
+  };
 
-  /** @privateRemarks Pulled out simplify creating {@linkcode LightingData} */
-  interface LightingSchema extends fields.DataSchema {
-    background: fields.SchemaField<LightingTypeSchema>;
-    coloration: fields.SchemaField<LightingTypeSchema>;
-    illumination: fields.SchemaField<LightingTypeSchema>;
-    levels: fields.ObjectField<
-      {
-        validate: (o: AnyObject) => o is LightingLevels;
-        validationError: "may only contain a mapping of keys from VisionMode.LIGHTING_LEVELS";
-      },
-      LightingLevels,
-      LightingLevels,
-      LightingLevels
-    >;
-    multipliers: fields.ObjectField<
-      {
-        validate: (o: AnyObject) => o is LightingMultipliers;
-        validationError: "must provide a mapping of keys from VisionMode.LIGHTING_LEVELS to numeric multiplier values";
-      },
-      LightingMultipliers,
-      LightingMultipliers,
-      LightingMultipliers
-    >;
-  }
+  type LightingSchemaField = fields.SchemaField<LightingSchema>;
 
-  type LightingLevels = Record<CONST.LIGHTING_LEVELS | `${CONST.LIGHTING_LEVELS}`, CONST.LIGHTING_LEVELS>;
-  type LightingMultipliers = Record<CONST.LIGHTING_LEVELS | `${CONST.LIGHTING_LEVELS}`, number>;
+  type LightingLevels = Record<foundry.CONST.LIGHTING_LEVELS, foundry.CONST.LIGHTING_LEVELS>;
+  type LightingMultipliers = Record<foundry.CONST.LIGHTING_LEVELS, number>;
 
-  interface Schema extends fields.DataSchema {
+  interface Schema extends DataSchema {
     id: fields.StringField<{ blank: false }>;
     label: fields.StringField<{ blank: false }>;
     tokenConfig: fields.BooleanField<{ initial: true }>;
     canvas: fields.SchemaField<{
-      shader: clientFields.ShaderField;
+      shader: ShaderField;
       uniforms: fields.ObjectField;
     }>;
-    lighting: fields.SchemaField<LightingSchema>;
+    lighting: fields.SchemaField<{
+      background: LightingSchemaField;
+      coloration: LightingSchemaField;
+      illumination: LightingSchemaField;
+      levels: fields.ObjectField<
+        {
+          validate: (o: unknown) => boolean;
+          validationError: "may only contain a mapping of keys from VisionMode.LIGHTING_LEVELS";
+        },
+        LightingLevels,
+        LightingLevels,
+        LightingLevels
+      >;
+      multipliers: fields.ObjectField<
+        {
+          validate: (o: unknown) => boolean;
+          validationError: "must provide a mapping of keys from VisionMode.LIGHTING_LEVELS to numeric multiplier values";
+        },
+        LightingMultipliers,
+        LightingMultipliers,
+        LightingMultipliers
+      >;
+    }>;
     vision: fields.SchemaField<{
-      background: fields.SchemaField<ShaderSchema>;
-      coloration: fields.SchemaField<ShaderSchema>;
-      illumination: fields.SchemaField<ShaderSchema>;
+      background: ShaderSchema;
+      coloration: ShaderSchema;
+      illumination: ShaderSchema;
       darkness: fields.SchemaField<{
         adaptive: fields.BooleanField<{ initial: true }>;
       }>;
@@ -194,30 +240,9 @@ declare namespace VisionMode {
       preferred: fields.BooleanField<{ initial: false }>;
     }>;
   }
-
-  interface LightingData extends fields.SchemaField.InitializedData<LightingSchema> {}
-
-  interface CreateData extends fields.SchemaField.CreateData<Schema> {}
-
-  interface UpdateData extends fields.SchemaField.UpdateData<Schema> {}
-
-  interface Source extends fields.SchemaField.SourceData<Schema> {}
-
-  /** @deprecated Use {@linkcode DetectionMode.Source} instead. This type will be removed in v14. */
-  type SourceData = Source;
 }
 
-/**
- * @deprecated "Kept here for full compatibility" (since v13, until v14)
- * @remarks Access via {@linkcode foundry.data.fields.ShaderField} instead
- */
-declare const ShaderField: clientFields.ShaderField;
-
-export {
-  VisionMode as default,
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  ShaderField,
-};
+export { VisionMode as default, ShaderField };
 
 declare class AnyVisionMode extends VisionMode {
   constructor(...args: never);

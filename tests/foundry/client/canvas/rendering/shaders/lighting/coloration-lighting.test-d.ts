@@ -1,7 +1,5 @@
 import { expectTypeOf } from "vitest";
-
-import AbstractBaseShader = foundry.canvas.rendering.shaders.AbstractBaseShader;
-import AdaptiveColorationShader = foundry.canvas.rendering.shaders.AdaptiveColorationShader;
+import { AbstractBaseShader, AdaptiveColorationShader } from "#client/canvas/rendering/shaders/_module.mjs";
 
 let myACS;
 

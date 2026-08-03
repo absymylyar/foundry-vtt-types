@@ -1,3 +1,5 @@
+import type { Editor } from "tinymce";
+import type { EditorView } from "prosemirror-view";
 import type { GetDataReturnType, Identity, MaybePromise } from "#utils";
 import type Showdown from "showdown";
 import type { Application, DocumentSheet, FormApplication } from "../api/_module.d.mts";
@@ -7,6 +9,7 @@ declare module "#configuration" {
   namespace Hooks {
     interface ApplicationConfig {
       JournalPageSheet: JournalPageSheet.Any;
+      JournalTextTinyMCESheet: JournalTextTinyMCESheet.Any;
     }
   }
 }
@@ -35,25 +38,13 @@ declare class JournalPageSheet<
    */
   static override get defaultOptions(): JournalPageSheet.Options;
 
-  /**
-   * Indicates that the sheet renders with App V2 rather than V1.
-   * @defaultValue `false`
-   */
-  static isV2: boolean;
-
-  /**
-   * Indicates that the sheet renders with App V2 rather than V1.
-   * @defaultValue `this.constructor.isV2`
-   */
-  isV2: boolean;
-
   override get template(): string;
 
   override get title(): string;
 
-  toc: JournalEntryPage.TOC;
+  toc: Record<string, JournalEntryPage.JournalEntryPageHeading>;
 
-  override getData(options?: Partial<Options>): MaybePromise<GetDataReturnType<JournalPageSheet.Data>>;
+  override getData(options?: Partial<Options>): MaybePromise<GetDataReturnType<JournalPageSheet.JournalPageSheetData>>;
 
   protected override _renderInner(data: ReturnType<this["getData"]>): Promise<JQuery<HTMLElement>>;
 
@@ -68,23 +59,18 @@ declare class JournalPageSheet<
     name: string,
     options?: TextEditor.Options,
     initialContent?: string,
-  ): Promise<TextEditor.EditorInstance>;
-
-  /**
-   * Called when the view mode of this page is closed.
-   */
-  protected _closeView(): void;
+  ): Promise<Editor | EditorView>;
 
   /**
    * Update the parent sheet if it is open when the server autosaves the contents of this editor.
    * @param html - The updated editor contents.
    */
-  protected _onAutosave(html: string): void;
+  onAutosave(html: string): void;
 
   /**
    * Update the UI appropriately when receiving new steps from another client.
    */
-  protected _onNewSteps(): void;
+  onNewSteps(): void;
 }
 
 declare namespace JournalPageSheet {
@@ -93,14 +79,9 @@ declare namespace JournalPageSheet {
 
   interface Options extends DocumentSheet.Options<JournalEntryPage.Implementation> {}
 
-  interface Data extends DocumentSheet.Data<Options, JournalEntryPage.Implementation> {
+  interface JournalPageSheetData extends DocumentSheet.DocumentSheetData<Options, JournalEntryPage.Implementation> {
     headingLevels: Record<number, string>;
   }
-
-  /**
-   * @deprecated Replaced with {@linkcode JournalPageSheet.Data}.
-   */
-  type JournalPageSheetData = Data;
 }
 
 /**
@@ -155,7 +136,7 @@ declare class JournalTextPageSheet extends JournalPageSheet {
 }
 
 declare namespace JournalTextPageSheet {
-  interface TextData extends JournalPageSheet.Data {
+  interface TextData extends JournalPageSheet.JournalPageSheetData {
     editor: {
       engine: string;
       collaborate: boolean;
@@ -164,8 +145,35 @@ declare namespace JournalTextPageSheet {
   }
 }
 
+/**
+ * A subclass of {@linkcode JournalTextPageSheet} that implements a TinyMCE editor.
+ */
+declare class JournalTextTinyMCESheet extends JournalTextPageSheet {
+  override getData(
+    options?: Partial<JournalPageSheet.Options>,
+  ): Promise<GetDataReturnType<JournalTextTinyMCESheet.MCEData>>;
+
+  override close(options?: FormApplication.CloseOptions): Promise<void>;
+
+  protected override _render(
+    force?: boolean,
+    options?: Application.RenderOptions<JournalPageSheet.Options>,
+  ): Promise<void>;
+}
+
+declare namespace JournalTextTinyMCESheet {
+  interface Any extends AnyJournalTextTinyMCESheet {}
+  interface AnyConstructor extends Identity<typeof AnyJournalTextTinyMCESheet> {}
+
+  interface MCEData extends JournalTextPageSheet.TextData {}
+}
+
 declare abstract class AnyJournalPageSheet extends JournalPageSheet<JournalPageSheet.Options> {
   constructor(...args: never);
 }
 
-export { JournalPageSheet, JournalTextPageSheet };
+declare abstract class AnyJournalTextTinyMCESheet extends JournalTextTinyMCESheet {
+  constructor(...args: never);
+}
+
+export { JournalPageSheet, JournalTextPageSheet, JournalTextTinyMCESheet };

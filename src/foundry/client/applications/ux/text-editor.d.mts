@@ -1,4 +1,4 @@
-import type { ValueOf, AnyObject, Identity, JSONValue, MaybePromise, InexactPartial, FixedInstanceType } from "#utils";
+import type { ValueOf, AnyObject, Identity, JSONValue, MaybePromise } from "#utils";
 import type { HTMLEnrichedContentElement } from "../elements/_module.d.mts";
 import type ProseMirrorEditor from "./prosemirror-editor.mjs";
 
@@ -7,13 +7,25 @@ import type ProseMirrorEditor from "./prosemirror-editor.mjs";
  */
 declare class TextEditor {
   /**
-   * Create a Rich Text Editor. The current built-in implementation uses ProseMirror.
+   * Create a Rich Text Editor. The current implementation uses TinyMCE
    * @param options - Configuration options provided to the Editor init
    * @param content - Initial HTML or text content to populate the editor with (default: `""`)
    * @returns The editor instance.
    */
   static create(options: TextEditor.ProseMirrorOptions, content?: string): Promise<ProseMirrorEditor>;
-  static create(options: TextEditor.CustomEngineOptions, content?: string): Promise<TextEditor.CustomEngine>;
+
+  /**
+   * @deprecated "The editor engine option of "tinymce" is deprecated and will be removed in V14. Please use "prosemirror" instead."
+   */
+  static create(options: TextEditor.TinyMCEOptions, content?: string): Promise<tinyMCE.Editor>;
+
+  /**
+   * Create a TinyMCE editor instance.
+   * @param options - Configuration options passed to the editor.
+   * @param content - Initial HTML or text content to populate the editor with.
+   * @returns The TinyMCE editor instance.
+   */
+  protected static _createTinyMCE(options: TextEditor.TinyMCEOptions, content?: string): Promise<tinyMCE.Editor>;
 
   /**
    * Safely decode an HTML string, removing invalid tags and converting entities back to unicode characters.
@@ -211,7 +223,7 @@ declare class TextEditor {
   /**
    * Activate listeners for the interior content of the editor frame.
    */
-  static activateListeners(document?: Document): void;
+  static activateListeners(): void;
 
   /**
    * Handle left-mouse clicks on an inline roll, dispatching the formula or displaying the tooltip
@@ -249,53 +261,40 @@ declare class TextEditor {
 
   /**
    * Retrieve the configured TextEditor implementation.
+   * @remarks TODO: Link up with CONFIG
    */
-  static get implementation(): TextEditor.ImplementationClass;
+  static get implementation(): typeof TextEditor;
 
   #private: true;
 }
 
 declare namespace TextEditor {
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
-  type Any = Internal.Any;
-
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyTextEditor {}
-    interface AnyConstructor extends Identity<typeof AnyTextEditor> {}
-  }
-
-  interface ImplementationClass extends Identity<typeof CONFIG.ux.TextEditor> {}
-  interface Implementation extends FixedInstanceType<ImplementationClass> {}
+  interface Any extends AnyTextEditor {}
+  interface AnyConstructor extends Identity<typeof AnyTextEditor> {}
 
   type TEXT_MIME_TYPES = ValueOf<typeof CONST.TEXT_FILE_EXTENSIONS>;
 
-  type Options = ProseMirrorOptions | CustomEngineOptions;
+  type Options = ProseMirrorOptions | TinyMCEOptions;
 
   interface ProseMirrorOptions extends ProseMirrorEditor._CreateOptions {
     /**
-     * Which rich text editor engine to use.
-     * @defaultValue `"prosemirror"`
+     * Which rich text editor engine to use, "tinymce" or "prosemirror". TinyMCE
+     * is deprecated and will be removed in a later version.
+     * @defaultValue `"tinymce"`
      */
-    engine?: "prosemirror" | undefined;
+    engine: "prosemirror";
 
     target: HTMLElement;
   }
 
-  interface CustomEngine {
-    destroy(): unknown;
-  }
-
-  interface CustomEngineOptions extends Record<string, unknown> {
+  interface TinyMCEOptions extends tinyMCE.RawEditorOptions {
     /**
-     * Which rich text editor engine to use.
+     * Which rich text editor engine to use, "tinymce" or "prosemirror". TinyMCE
+     * is deprecated and will be removed in a later version.
+     * @defaultValue `"tinymce"`
      */
-    engine: string;
+    engine: "tinymce";
   }
-
-  type EditorInstance = ProseMirrorEditor | CustomEngine;
 
   interface EnrichmentOptions {
     /**
@@ -358,12 +357,16 @@ declare namespace TextEditor {
    */
   type TextContentReplacer = (match: RegExpMatchArray) => Promise<HTMLElement>;
 
-  /** @internal */
-  interface _DocumentHTMLEmbedConfig {
+  interface DocumentHTMLEmbedConfig {
+    /**
+     * Any strings that did not have a key name associated with them.
+     */
+    values: string[];
+
     /**
      * Classes to attach to the outermost element.
      */
-    classes: string;
+    classes?: string | undefined;
 
     /**
      * By default Documents are embedded inside a figure element. If this option is
@@ -397,23 +400,6 @@ declare namespace TextEditor {
 
     /** The label. */
     label: string;
-
-    /**
-     * Alt text for the image, otherwise the caption will be used.
-     * @remarks Only used by core in {@linkcode JournalEntryPage._embedImagePage | JournalEntryPage#_embedImagePage}, included here for
-     * visibility because that method will likely never be called directly by users.
-     *
-     * The description above is actually only partially correct; `#_embedImagePage` will use the config's {@linkcode label} over the `Page`'s
-     * `image.caption`, if provided.
-     */
-    alt: string;
-  }
-
-  interface DocumentHTMLEmbedConfig extends InexactPartial<_DocumentHTMLEmbedConfig> {
-    /**
-     * Any strings that did not have a key name associated with them.
-     */
-    values: string[];
   }
 
   interface EnrichmentAnchorOptions {
@@ -442,33 +428,24 @@ declare namespace TextEditor {
   // Defined in `client/config.mjs`
   type Enricher = (match: RegExpMatchArray, options?: EnrichmentOptions) => MaybePromise<HTMLElement | null>;
 
-  /** @internal */
-  interface _EnricherConfig {
-    /**
-     * A unique ID to assign to the enricher type. Required if you want to use the onRender callback.
-     */
-    id: string;
+  // Defined in `client/config.mjs`
+  interface EnricherConfig {
+    /** The string pattern to match. Must be flagged as global. */
+    pattern: RegExp;
 
     /**
      * Hoist the replacement element out of its containing element if it replaces the entire contents of the element.
      * @defaultValue `false`
      */
-    replaceParent: boolean;
-
-    /** An optional callback that is invoked when the enriched content is added to the DOM. */
-    onRender: (el: HTMLEnrichedContentElement) => void;
-  }
-
-  // Defined in `client/config.mjs`
-  interface EnricherConfig extends InexactPartial<_EnricherConfig> {
-    /** The string pattern to match. Must be flagged as global. */
-    pattern: RegExp;
+    replaceParent?: boolean | undefined;
 
     /**
      * The function that will be called on each match. It is expected that this returns an HTML element
      * to be inserted into the final enriched content.
      */
     enricher: Enricher;
+
+    onRender?: ((el: HTMLEnrichedContentElement) => void) | undefined | null;
   }
 
   interface TruncateTextOptions {

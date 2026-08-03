@@ -1,7 +1,5 @@
-import { describe, expectTypeOf, test } from "vitest";
+import { expectTypeOf } from "vitest";
 
-describe("RegExp Tests", () => {
-  test("The One Method", () => {
-    expectTypeOf(RegExp.escape("Hello! (world)?")).toEqualTypeOf<string>();
-  });
-});
+declare const regExpConstructor: RegExpConstructor;
+
+expectTypeOf(regExpConstructor.escape("3")).toEqualTypeOf<string>();

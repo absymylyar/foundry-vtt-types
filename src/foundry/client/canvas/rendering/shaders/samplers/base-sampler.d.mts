@@ -167,7 +167,7 @@ declare class BaseSamplerShader extends AbstractBaseShader {
 
   /**
    * Create a batch plugin for this sampler class.
-   * @returns The batch plugin class linked to this sampler class.
+   * @returns - The batch plugin class linked to this sampler class.
    */
   static createPlugin<ThisType extends BaseSamplerShader.AnyConstructor>(
     this: ThisType,
@@ -205,15 +205,15 @@ declare namespace BaseSamplerShader {
   >;
 
   /** @internal */
-  interface _RegisterPluginOptions {
+  type _RegisterPluginOptions = InexactPartial<{
     /**
      * Override the plugin of the same name that is already registered?
      * @defaultValue `false`
      */
     force: boolean;
-  }
+  }>;
 
-  interface RegisterPluginOptions extends InexactPartial<_RegisterPluginOptions> {}
+  interface RegisterPluginOptions extends _RegisterPluginOptions {}
 }
 
 export default BaseSamplerShader;

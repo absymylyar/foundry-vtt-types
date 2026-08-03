@@ -1,6 +1,7 @@
 // In Foundry itself this file contains re-exports of these other modules.
 // Therefore it has a runtime effect and uses `.mjs` instead of `.d.mts`.
 // While `.mts` could work, to avoid `import-x/no-unresolved` from erroring `.mjs` is used.
+/* eslint-disable import-x/extensions */
 
 export { default as Canvas } from "./board.mjs";
 export { default as SceneManager } from "./scene-manager.mjs";
@@ -20,4 +21,3 @@ export * as interaction from "./interaction/_module.mjs";
 export * as animation from "./animation/_module.mjs";
 export * as rendering from "./rendering/_module.mjs";
 export * as perception from "./perception/_module.mjs";
-export * as vfx from "./vfx/_module.mjs";

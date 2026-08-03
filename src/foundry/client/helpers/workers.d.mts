@@ -56,7 +56,7 @@ declare namespace AsyncWorker {
   interface AnyConstructor extends Identity<typeof AnyAsyncWorker> {}
 
   /** @internal */
-  interface _ConstructionOptions {
+  type _ConstructionOptions = InexactPartial<{
     /**
      * Should the worker run in debug mode?
      * @defaultValue `false`
@@ -73,9 +73,9 @@ declare namespace AsyncWorker {
      * Should the worker operates in script modes? Optional scripts.
      */
     scripts: string[];
-  }
+  }>;
 
-  interface ConstructionOptions extends InexactPartial<_ConstructionOptions> {}
+  interface ConstructionOptions extends _ConstructionOptions {}
 
   interface WorkerTask {
     [key: string]: unknown;

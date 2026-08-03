@@ -1,16 +1,13 @@
-import type { FixedInstanceType, HandleEmptyObject, Identity, InexactPartial } from "#utils";
+import type { HandleEmptyObject, Identity, NullishProps } from "#utils";
 import type { Canvas } from "#client/canvas/_module.d.mts";
-import type { Document } from "#common/abstract/_module.d.mts";
+import type Document from "#common/abstract/document.d.mts";
 import type { PlaceablesLayer } from "./_module.d.mts";
-import type { Token } from "#client/canvas/placeables/_module.d.mts";
-import type { Notifications, SceneControls } from "#client/applications/ui/_module.d.mts";
-import type { PIXI } from "#configuration";
-import type { DialogV2 } from "#client/applications/api/_module.d.mts";
+import type { PlaceableObject, Token } from "#client/canvas/placeables/_module.d.mts";
 
 declare module "#configuration" {
   namespace Hooks {
     interface PlaceablesLayerConfig {
-      TokenLayer: TokenLayer.Implementation;
+      TokenLayer: TokenLayer.Any;
     }
   }
 }
@@ -19,39 +16,22 @@ declare module "#configuration" {
  * The Tokens Container
  */
 declare class TokenLayer extends PlaceablesLayer<"Token"> {
-  constructor();
-
-  /**
-   * The ruler paths.
-   * @internal
-   * @remarks This Container's `eventMode` is set to `"none"`
-   */
-  _rulerPaths: PIXI.Container;
-
   /**
    * The current index position in the tab cycle
    * @defaultValue `null`
-   * @internal
+   * @remarks Foundry marked `@private` but sets it `null` in  {@link Canvas#_onDragRightMove}
    */
-  _tabIndex: number | null;
+  protected _tabIndex: number | null;
 
   /**
-   * The Token that the drag workflow was initiated on, if there's a drag workflow in progress.
-   * Set in {@linkcode Token._onDragLeftStart | Token#_onDragLeftStart} and {@linkcode Token._onDragLeftCancel | Token#_onDragLeftCancel}.
-   * @defaultValue `null`
-   * @internal
+   * @privateRemarks This is not overridden in foundry but reflects the real behavior.
    */
-  _draggedToken: Token.Implementation | null;
-
-  /**
-   * The currently selected movement action override.
-   * @defaultValue `null`
-   * @internal
-   */
-  _dragMovementAction: string | null;
-
-  // Fake type override
   static get instance(): Canvas["tokens"];
+
+  /**
+   * @privateRemarks This is not overridden in foundry but reflects the real behavior.
+   */
+  override options: TokenLayer.LayerOptions;
 
   /**
    * @defaultValue
@@ -60,56 +40,37 @@ declare class TokenLayer extends PlaceablesLayer<"Token"> {
    *  name: "tokens",
    *  controllableObjects: true,
    *  rotatableObjects: true,
-   *  confirmDeleteKey: true
    *  zIndex: 200
    * })
    * ```
    */
   static override get layerOptions(): TokenLayer.LayerOptions;
 
-  // Fake type override
-  override options: TokenLayer.LayerOptions;
-
   static override documentName: "Token";
 
   /**
    * The set of tokens that trigger occlusion (a union of {@linkcode CONST.TOKEN_OCCLUSION_MODES}).
    */
-  get occlusionMode(): CONST.TOKEN_OCCLUSION_MODES;
+  set occlusionMode(value: foundry.CONST.OCCLUSION_MODES);
 
-  set occlusionMode(value);
+  get occlusionMode();
 
   override get hookName(): "TokenLayer";
 
-  override get hud(): NonNullable<Canvas["hud"]>["token"];
+  /**
+   * Token objects on this layer utilize the TokenHUD
+   */
+  get hud(): NonNullable<Canvas["hud"]>["token"];
 
   /**
    * An Array of tokens which belong to actors which are owned
    */
   get ownedTokens(): Token.Implementation[];
 
-  /**
-   * A Set of Token objects which currently display a combat turn marker.
-   */
-  turnMarkers: Set<Token.Implementation>;
-
   /** @remarks Forces top left corner snapping */
   override getSnappedPoint(point: Canvas.Point): Canvas.Point;
 
-  override _prepareKeyboardMovementUpdates(
-    objects: Token.Implementation[],
-    dx: -1 | 0 | 1,
-    dy: -1 | 0 | 1,
-    dz: -1 | 0 | 1,
-  ): PlaceablesLayer.PreparedUpdates<"Token">;
-
-  // fake type override
-  override draw(options?: HandleEmptyObject<TokenLayer.DrawOptions>): Promise<this>;
-
   protected override _draw(options: HandleEmptyObject<TokenLayer.DrawOptions>): Promise<void>;
-
-  // fake type override
-  override tearDown(options?: HandleEmptyObject<TokenLayer.TearDownOptions>): Promise<this>;
 
   protected override _tearDown(options: HandleEmptyObject<TokenLayer.TearDownOptions>): Promise<void>;
 
@@ -117,20 +78,25 @@ declare class TokenLayer extends PlaceablesLayer<"Token"> {
 
   protected override _deactivate(): void;
 
+  protected override _pasteObject(
+    copy: Token.Implementation,
+    offset: Canvas.Point,
+    options?: PlaceablesLayer.PasteOptions, // not:null (destructured)
+  ): Omit<TokenDocument.Source, "_id">;
+
+  /** @remarks Returns `[]` if the ruler is currently measuring */
+  protected override _getMovableObjects(ids?: string[] | null, includeLocked?: boolean | null): Token.Implementation[];
+
   /**
    * Target all Token instances which fall within a coordinate rectangle.
    * @param rectangle - The selection rectangle.
    * @param options   - Additional options to configure targeting behaviour.
    * @returns The number of Token instances which were targeted.
    */
-  targetObjects(rectangle: Canvas.Rectangle, options?: TokenLayer.TargetObjectsOptions): number;
-
-  /**
-   * Assign multiple token targets
-   * @param targetIds - The array or set of Token IDs.
-   * @param options   - Additional options to configure targeting behaviour.
-   */
-  setTargets(targetIds: Iterable<string>, options?: TokenLayer.SetTargetsOptions): void;
+  targetObjects(
+    rectangle: Canvas.Rectangle,
+    options?: TokenLayer.TargetObjectsOptions, // not:null (destructured)
+  ): number;
 
   /**
    * Cycle the controlled token by rotating through the list of Owned Tokens that are available within the Scene
@@ -138,38 +104,27 @@ declare class TokenLayer extends PlaceablesLayer<"Token"> {
    * @param forwards - Which direction to cycle. A truthy value cycles forward, while a false value cycles backwards.
    * @param reset    - Restart the cycle order back at the beginning?
    * @returns The Token object which was cycled to, or null
-   * @remarks Neither parameter has a default, so a call with no arguments cycles backward without resetting.
+   * @remarks Neither parameter has a default, so a call with no arguments cycles backward without resetting
    *
-   * Also selects the returned token if any, and pans the camera to its center.
+   * Also selects the returned token if any, and pans the camera to its center
    */
-  cycleTokens(forwards?: boolean, reset?: boolean): Token.Implementation | null;
+  cycleTokens(forwards?: boolean | null, reset?: boolean | null): Token.Implementation | null;
 
-  /** @deprecated Made hard private in v13. This warning will be removed in v14. */
-  protected _getCycleOrder(): never;
+  /**
+   * Get the tab cycle order for tokens by sorting observable tokens based on their distance from top-left.
+   * @remarks Foundry marked `@private`
+   */
+  protected _getCycleOrder(): Token.Implementation[];
 
   /**
    * Immediately conclude the animation of any/all tokens
    */
   concludeAnimation(): void;
 
-  /** @deprecated Made hard private in v13. This warning will be removed in v14. */
+  /**
+   * Animate targeting arrows on targeted tokens.
+   */
   protected _animateTargets(): void;
-
-  /**
-   * Recalculate the planned movement paths of all Tokens for the current User.
-   */
-  recalculatePlannedMovementPaths(): void;
-
-  /**
-   * Handle broadcast planned movement update.
-   * @param user             - The User the planned movement data belongs to
-   * @param plannedMovements - The planned movement data
-   * @internal
-   */
-  _updatePlannedMovements(
-    user: User.Implementation,
-    plannedMovements: Record<string, Token.PlannedMovement | null> | null,
-  ): void;
 
   /**
    * Provide an array of Tokens which are eligible subjects for overhead tile occlusion.
@@ -177,158 +132,83 @@ declare class TokenLayer extends PlaceablesLayer<"Token"> {
    */
   protected _getOccludableTokens(): Token.Implementation[];
 
-  override _getMovableObjects(ids?: string[], includeLocked?: boolean): Token.Implementation[];
-
-  override _getCopyableObjects(options: PlaceablesLayer.GetCopyableObjectsOptions): Token.Implementation[];
-
-  override storeHistory<Operation extends Document.Database.OperationAction>(
+  /** @remarks "Clean actorData and delta updates from the history so changes to those fields are not undone" */
+  override storeHistory<Operation extends Document.Database.Operation>(
     type: Operation,
-    data: PlaceablesLayer.HistoryDataFor<Operation, "Token">[],
-    options?: PlaceablesLayer.HistoryEntry<"Token">["options"],
+    data: PlaceablesLayer.HistoryDataFor<Operation, "Token">,
   ): void;
-
-  protected override _onCycleViewKey(event: KeyboardEvent): boolean;
-
-  protected override _confirmDeleteKey(documents: TokenDocument.Implementation[]): Promise<DialogV2.ConfirmReturn>;
-
-  static override prepareSceneControls(): SceneControls.Control;
-
-  protected override _highlightObjects(active: boolean): void;
 
   /**
    * Handle dropping of Actor data onto the Scene canvas
-   * @internal
+   * @remarks Foundry marked `@private`
    */
   protected _onDropActorData(
     event: DragEvent,
     data: TokenLayer.DropData,
-  ): Promise<ReturnType<Notifications["warn"]> | false | TokenDocument.Implementation>;
+  ): Promise<ReturnType<foundry.applications.ui.Notifications["warn"]> | false | TokenDocument.Implementation>;
 
   protected override _onClickLeft(event: Canvas.Event.Pointer): void;
 
-  protected override _onClickLeft2(event: Canvas.Event.Pointer): void;
-
-  protected override _onClickRight(event: Canvas.Event.Pointer): void;
-
-  protected override _onClickRight2(event: Canvas.Event.Pointer): void;
-
-  protected override _onDragLeftCancel(event: Canvas.Event.Pointer): void;
-
-  protected override _onMouseWheel(event: Canvas.Event.Wheel): Promise<Token.Implementation[]> | void;
+  protected override _onMouseWheel(event: Canvas.Event.Wheel): Promise<Token.Implementation[] | void>;
 
   /**
-   * @deprecated "`TokenLayer#gridPrecision` is deprecated. Use {@linkcode TokenLayer.getSnappedPoint | TokenLayer#getSnappedPoint}
-   * instead of `GridLayer#getSnappedPosition` and `TokenLayer#gridPrecision`." (since v12, until v14)
+   * @deprecated since v12 until v14
+   * @remarks "TokenLayer#gridPrecision is deprecated. Use TokenLayer#getSnappedPoint instead of GridLayer#getSnappedPosition and TokenLayer#gridPrecision."
    */
   override get gridPrecision(): 1;
 
   /**
    * Add or remove the set of currently controlled Tokens from the active combat encounter
-   * @param  state  - The desired combat state which determines if each Token is added (true) or removed (false) (default: `true`)
-   * @param  combat - A Combat encounter from which to add or remove the Token (default: `null`)
+   * @param  state  - The desired combat state which determines if each Token is added (true) or removed (false)
+   *                  (default: `true`)
+   * @param  combat - A Combat encounter from which to add or remove the Token
+   *                  (default: `null`)
    * @returns The Combatants added or removed
-   * @deprecated "`TokenLayer#toggleCombat` is deprecated in favor of {@linkcode TokenDocument.implementation.createCombatants} and
-   * {@linkcode TokenDocument.implementation.deleteCombatants}" (since v12, until v14)
+   * @deprecated since v12 until v14
+   * @remarks "TokenLayer#toggleCombat is deprecated in favor of TokenDocument.implementation.createCombatants and TokenDocument.implementation.deleteCombatants"
    */
   toggleCombat(
-    state?: boolean,
+    state?: boolean | null,
     combat?: Combat.Implementation | null,
-    options?: TokenLayer.ToggleCombatOptions,
+    options?: TokenLayer.ToggleCombatOptions, // not:null (destructured)
   ): Promise<Combatant.Implementation[]>;
-
-  #TokenLayer: true;
 }
 
 declare namespace TokenLayer {
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
-  type Any = Internal.Any;
-
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyTokenLayer {}
-    interface AnyConstructor extends Identity<typeof AnyTokenLayer> {}
-  }
-
-  interface ImplementationClass extends Identity<typeof CONFIG.Canvas.layers.tokens.layerClass> {}
-  interface Implementation extends FixedInstanceType<ImplementationClass> {}
-
-  interface LayerOptions extends PlaceablesLayer.LayerOptions<Token.ImplementationClass> {
-    name: "tokens";
-    controllableObjects: true;
-    rotatableObjects: true;
-    confirmDeleteKey: true;
-
-    /** @defaultValue `200` */
-    zIndex: number;
-  }
+  interface Any extends AnyTokenLayer {}
+  interface AnyConstructor extends Identity<typeof AnyTokenLayer> {}
 
   interface DrawOptions extends PlaceablesLayer.DrawOptions {}
 
   interface TearDownOptions extends PlaceablesLayer.TearDownOptions {}
 
-  /** @remarks The waypoint data {@linkcode TokenLayer.storeHistory | TokenLayer#storeHistory} includes in movement-including update `undoOptions` */
-  interface MovementUpdateHistoryWaypoint extends Pick<
-    TokenDocument.MeasuredMovementWaypoint,
-    keyof TokenDocument.Position | "action"
-  > {}
-
-  /**
-   * @remarks See {@linkcode PlaceablesLayer.UpdateHistoryEntry.options} remarks.
-   */
-  interface MovementUpdateHistoryOptionsEntry {
-    waypoints: MovementUpdateHistoryWaypoint[];
-    method: "undo";
-  }
-
-  interface MovementUpdateHistoryUndoOptions {
-    movement: Record<string, MovementUpdateHistoryOptionsEntry>;
+  interface LayerOptions extends PlaceablesLayer.LayerOptions<Token.ImplementationClass> {
+    name: "tokens";
+    controllableObjects: true;
+    rotatableObjects: true;
+    zIndex: 200;
   }
 
   interface DropData extends Canvas.DropPosition {
     type: "Actor";
     uuid: string;
-    elevation?: number | undefined;
   }
 
   /** @internal */
-  interface _TargetObjectsOptions {
-    /**
-     * Whether or not to release other targeted tokens
-     * @defaultValue `true`
-     */
-    releaseOthers: boolean;
-  }
+  // TODO: the NP should probably be on the PO side, update once PO has been done
+  type _TargetObjectsOptions = NullishProps<PlaceableObject.ControlOptions>;
 
-  interface TargetObjectsOptions extends InexactPartial<_TargetObjectsOptions> {}
-
-  type SetTargetMode = "replace" | "acquire" | "release";
+  interface TargetObjectsOptions extends _TargetObjectsOptions {}
 
   /** @internal */
-  interface _SetTargetsOptions {
-    /**
-     * The mode that determines the targeting behavior.
-     *   - `"replace"` (default): Replace the current set of targeted Tokens with provided set of Tokens.
-     *   - `"acquire"`: Acquire the given Tokens as targets without releasing already targeted Tokens.
-     *   - `"release"`: Release the given Tokens as targets.
-     * @defaultValue `"replace"`
-     */
-    mode: SetTargetMode;
-  }
-
-  interface SetTargetsOptions extends InexactPartial<_SetTargetsOptions> {}
-
-  /** @internal */
-  interface _ToggleCombatOptions {
+  type _ToggleCombatOptions = NullishProps<{
     /**
      * A specific Token which is the origin of the group toggle request
      * @defaultValue `null`
      */
-    token: Token.Implementation | null;
-  }
-
-  interface ToggleCombatOptions extends InexactPartial<_ToggleCombatOptions> {}
+    token: Token.Implementation;
+  }>;
+  interface ToggleCombatOptions extends _ToggleCombatOptions {}
 }
 
 export default TokenLayer;

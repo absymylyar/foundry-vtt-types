@@ -1,7 +1,5 @@
 import { expectTypeOf } from "vitest";
-
-import RainShader = foundry.canvas.rendering.shaders.RainShader;
-import AbstractBaseShader = foundry.canvas.rendering.shaders.AbstractBaseShader;
+import { AbstractBaseShader, RainShader } from "#client/canvas/rendering/shaders/_module.mjs";
 
 const RS = RainShader;
 let myRS;

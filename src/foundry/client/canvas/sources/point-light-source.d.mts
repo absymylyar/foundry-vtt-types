@@ -14,6 +14,7 @@ import type {
   RenderedEffectSource,
 } from "#client/canvas/sources/_module.d.mts";
 import type { ClockwiseSweepPolygon } from "#client/canvas/geometry/_module.d.mts";
+import type { PlaceableObject } from "#client/canvas/placeables/_module.d.mts";
 import type { CanvasVisibility } from "#client/canvas/groups/_module.d.mts";
 import type { PointSourceMesh } from "#client/canvas/containers/_module.d.mts";
 
@@ -75,9 +76,8 @@ declare class PointLightSource<
    * This check should not consider the relative positions of either object, only their state.
    * @param target - The target object being tested
    * @returns Can the target object theoretically be detected by this vision source?
-   * @remarks Only returns `false` in core's implementation if `target?.document` is a {@linkcode TokenDocument} with {@linkcode CONFIG.specialStatusEffects.INVISIBLE}
    */
-  protected _canDetectObject(target?: CanvasVisibility.TestObject): boolean;
+  protected _canDetectObject(target?: PlaceableObject.Any | null): boolean;
 
   /**
    * @deprecated "`BaseLightSource#isDarkness` is now obsolete. Use {@linkcode foundry.canvas.sources.PointDarknessSource | PointDarknessSource} instead." (since v12, until v14)
@@ -91,16 +91,8 @@ declare class PointLightSource<
 }
 
 declare namespace PointLightSource {
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
-  type Any = Internal.Any;
-
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyPointLightSource {}
-    interface AnyConstructor extends Identity<typeof AnyPointLightSource> {}
-  }
+  interface Any extends AnyPointLightSource {}
+  interface AnyConstructor extends Identity<typeof AnyPointLightSource> {}
 
   type Initialized<
     SourceData extends PointLightSource.SourceData = PointLightSource.SourceData,

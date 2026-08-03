@@ -46,8 +46,43 @@ declare class Localization {
    * @param model   - The DataModel class to localize
    * @param options - Options which configure how localization is performed
    *
-   * @see {@linkcode foundry.abstract.DataModel.LOCALIZATION_PREFIXES} for an example of the class definition and
-   * localization file structure.
+   * @example
+   * JavaScript class definition and localization call.
+   * ```js
+   * class MyDataModel extends foundry.abstract.DataModel {
+   *   static defineSchema() {
+   *     return {
+   *       foo: new foundry.data.fields.StringField(),
+   *       bar: new foundry.data.fields.NumberField()
+   *     };
+   *   }
+   *   static LOCALIZATION_PREFIXES = ["MYMODULE.MYDATAMODEL"];
+   * }
+   *
+   * Hooks.on("i18nInit", () => {
+   *   Localization.localizeDataModel(MyDataModel);
+   * });
+   * ```
+   *
+   * JSON localization file
+   * ```json
+   * {
+   *   "MYMODULE": {
+   *     "MYDATAMODEL": {
+   *       "FIELDS" : {
+   *         "foo": {
+   *           "label": "Foo",
+   *           "hint": "Instructions for foo"
+   *         },
+   *         "bar": {
+   *           "label": "Bar",
+   *           "hint": "Instructions for bar"
+   *         }
+   *       }
+   *     }
+   *   }
+   * }
+   * ```
    */
   static localizeDataModel(
     model: foundry.abstract.DataModel.AnyConstructor,
@@ -173,16 +208,15 @@ declare namespace Localization {
     prefixPath?: string | undefined;
   }
 
-  interface _LocalizeSchemaOptions {
+  type _LocalizeSchemaOptions = InexactPartial<{
     /**
      * @defaultValue `new Set()`
      * @remarks Used for recursive calls, not intended to be passed externally
      */
     seenFields: Set<foundry.data.fields.DataField.Any>;
-  }
+  }>;
 
-  interface LocalizeSchemaOptions
-    extends InexactPartial<_LocalizeSchemaOptions>, Pick<LocalizeDataModelOptions, "prefixPath"> {}
+  interface LocalizeSchemaOptions extends _LocalizeSchemaOptions, Pick<LocalizeDataModelOptions, "prefixPath"> {}
 
   interface GetListFormatterOptions {
     /**

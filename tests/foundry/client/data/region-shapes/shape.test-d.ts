@@ -1,11 +1,16 @@
 import { expectTypeOf } from "vitest";
+import type {
+  CircleShapeData,
+  EllipseShapeData,
+  PolygonShapeData,
+  RectangleShapeData,
+} from "../../../../../src/foundry/common/data/data.d.mts";
+import { RegionShape } from "#client/data/region-shapes/_module.mjs";
 
-import RegionShape = foundry.data.regionShapes.RegionShape;
-
-declare const cData: foundry.data.CircleShapeData;
-declare const eData: foundry.data.EllipseShapeData;
-declare const rData: foundry.data.RectangleShapeData;
-declare const pData: foundry.data.PolygonShapeData;
+declare const cData: CircleShapeData;
+declare const eData: EllipseShapeData;
+declare const rData: RectangleShapeData;
+declare const pData: PolygonShapeData;
 declare const someGraphics: PIXI.Graphics;
 
 const rCircle = RegionShape.create(cData);

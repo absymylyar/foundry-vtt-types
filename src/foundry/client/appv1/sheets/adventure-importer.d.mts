@@ -38,7 +38,7 @@ declare class AdventureImporter<
    */
   static override get defaultOptions(): AdventureImporter.Options;
 
-  override getData(options?: Partial<Options>): Promise<GetDataReturnType<AdventureImporter.Data>>;
+  override getData(options?: Partial<Options>): Promise<GetDataReturnType<AdventureImporter.AdventureImporterData>>;
 
   override activateListeners(html: JQuery<HTMLElement>): void;
 
@@ -61,23 +61,22 @@ declare class AdventureImporter<
   ): Promise<void | ReturnType<Adventure.Implementation["import"]>>;
 
   /**
-   * Mirror {@linkcode Adventure.import | Adventure#import} but call {@linkcode _importContent | AdventureImporter#_importContent} and
-   * {@linkcode _prepareImportData | AdventureImport#_prepareImportData}
-   * @remarks This isn't itself deprecated but calls two deprecated methods and will likely be removed with them in v16.
+   * Mirror Adventure#import but call AdventureImporter#_importContent and AdventureImport#_prepareImportData
+   * @deprecated since v11, will be removed in v13
    */
   _importLegacy(formData: object): Promise<void>;
 
   /**
-   * @deprecated "`AdventureImporter#_prepareImportData` is deprecated. Please use
-   * {@linkcode Adventure.prepareImport Adventure#prepareImport} instead." (since v11, until v16)
+   * @deprecated since v11, will be removed in v13
+   * @remarks `"AdventureImporter#_prepareImportData is deprecated. Please use Adventure#prepareImport instead."`
    */
-  _prepareImportData(formData: object): Promise<Adventure.ImportData>;
+  _prepareImportData(formData: object): Promise<void>;
 
   /**
-   * @deprecated "`AdventureImporter#_importContent` is deprecated. Please use {@linkcode Adventure.importContent | Adventure#importContent}
-   * instead." (since v13, until v16)
+   * @deprecated since v11, will be removed in v13
+   * @remarks `"AdventureImporter#_importContent is deprecated. Please use Adventure#importContent instead."`
    */
-  _importContent(formData: object): Promise<Adventure.ImportResult>;
+  _importContent(formData: object): Promise<void>;
 }
 
 declare namespace AdventureImporter {
@@ -86,18 +85,13 @@ declare namespace AdventureImporter {
 
   interface Options extends DocumentSheet.Options<Adventure.Implementation> {}
 
-  interface Data {
+  interface AdventureImporterData {
     adventure: Adventure.Implementation;
 
     contents: ReturnType<AdventureImporter["_getContentList"]>;
 
     imported: boolean;
   }
-
-  /**
-   * @deprecated Replaced with {@linkcode AdventureImporter.Data}.
-   */
-  type AdventureImporterData = Data;
 }
 
 declare abstract class AnyAdventureImporter extends AdventureImporter<AdventureImporter.Options> {

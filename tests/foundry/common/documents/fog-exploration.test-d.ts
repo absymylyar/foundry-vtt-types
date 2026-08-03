@@ -1,27 +1,19 @@
 import { expectTypeOf } from "vitest";
-import type { AnyMutableObject } from "fvtt-types/utils";
+import type { AnyObject } from "../../../../src/utils/index.d.mts";
 
-class TestBaseFogExploration extends foundry.documents.BaseFogExploration {
-  get compendium() {
-    return this.inCompendium
-      ? (game.packs!.get(
-          this.pack!,
-        ) as foundry.documents.collections.CompendiumCollection.ForDocument<"FogExploration">)
-      : null;
-  }
-}
+class TestBaseFogExploration extends foundry.documents.BaseFogExploration {}
 
 expectTypeOf(new TestBaseFogExploration()).toEqualTypeOf<TestBaseFogExploration>();
 expectTypeOf(new TestBaseFogExploration({})).toEqualTypeOf<TestBaseFogExploration>();
 expectTypeOf(TestBaseFogExploration.create({})).toEqualTypeOf<Promise<FogExploration.Stored | undefined>>();
-expectTypeOf(TestBaseFogExploration.createDocuments([{}])).toEqualTypeOf<Promise<FogExploration.Stored[]>>();
-expectTypeOf(TestBaseFogExploration.updateDocuments([])).toEqualTypeOf<Promise<FogExploration.Stored[]>>();
-expectTypeOf(TestBaseFogExploration.deleteDocuments([])).toEqualTypeOf<Promise<FogExploration.Stored[]>>();
+expectTypeOf(TestBaseFogExploration.createDocuments()).toEqualTypeOf<Promise<FogExploration.Stored[]>>();
+expectTypeOf(TestBaseFogExploration.updateDocuments()).toEqualTypeOf<Promise<FogExploration.Implementation[]>>();
+expectTypeOf(TestBaseFogExploration.deleteDocuments()).toEqualTypeOf<Promise<FogExploration.Implementation[]>>();
 
 const fog = new TestBaseFogExploration();
 expectTypeOf(fog.explored).toEqualTypeOf<string | null>();
 
-declare const scene: Scene.Stored;
+declare const scene: Scene.Implementation;
 declare const user: User.Implementation;
 
 new TestBaseFogExploration({});
@@ -38,7 +30,7 @@ new TestBaseFogExploration({
   scene: scene,
 });
 
-// @ts-expect-error `new` must be used.
+// @ts-expect-error - `new` must be used.
 TestBaseFogExploration({ user: user });
 
 new TestBaseFogExploration({
@@ -61,8 +53,8 @@ new TestBaseFogExploration({});
 declare const data: TestBaseFogExploration;
 
 expectTypeOf(data.explored).toEqualTypeOf<string | null>();
-expectTypeOf(data.positions).toEqualTypeOf<AnyMutableObject>();
-expectTypeOf(data.scene).toEqualTypeOf<Scene.Stored | null>();
+expectTypeOf(data.positions).toEqualTypeOf<AnyObject>();
+expectTypeOf(data.scene).toEqualTypeOf<Scene.Implementation | null>();
 expectTypeOf(data.timestamp).toEqualTypeOf<number>();
-expectTypeOf(data.user).toEqualTypeOf<User.Stored | null>();
+expectTypeOf(data.user).toEqualTypeOf<User.Implementation | null>();
 expectTypeOf(data._id).toEqualTypeOf<string | null>();

@@ -1,4 +1,4 @@
-import type { DeepPartial, Identity, MaybePromise } from "#utils";
+import type { DeepPartial, Identity } from "#utils";
 import type ApplicationV2 from "./application.d.mts";
 import type FormDataExtended from "../ux/form-data-extended.d.mts";
 
@@ -24,26 +24,15 @@ declare namespace DocumentSheetV2 {
     rootId: string;
   }
 
-  interface Configuration<
-    ConcreteDocument extends Document.Any,
-    DocumentSheet extends DocumentSheetV2.Any = DocumentSheetV2.Any,
-  > extends _Configuration<DocumentSheet> {
+  interface Configuration<ConcreteDocument extends Document.Any> extends _Configuration {
     /**
      * The Document instance associated with this sheet
      */
     document: ConcreteDocument;
   }
 
-  type InputOptions<Configuration extends DocumentSheetV2.Configuration<Document.Any>> = DeepPartial<
-    Omit<Configuration, "document">
-  > & {
-    document: Configuration["document"];
-  };
-
   /** @internal */
-  interface _Configuration<
-    DocumentSheet extends DocumentSheetV2.Any = DocumentSheetV2.Any,
-  > extends ApplicationV2.Configuration<DocumentSheet> {
+  interface _Configuration extends ApplicationV2.Configuration {
     /**
      * A permission level in CONST.DOCUMENT_OWNERSHIP_LEVELS
      */
@@ -67,16 +56,13 @@ declare namespace DocumentSheetV2 {
 
   // Note(LukeAbby): This `& object` is so that the `DEFAULT_OPTIONS` can be overridden more easily
   // Without it then `static override DEFAULT_OPTIONS = { unrelatedProp: 123 }` would error.
-  type DefaultOptions<DocumentSheet extends DocumentSheetV2.Any = DocumentSheetV2.Any> = DeepPartial<
-    _Configuration<DocumentSheet>
-  > &
-    object & {
-      /**
-       * @deprecated Setting `document` in `DocumentSheetV2.DEFAULT_OPTIONS` is not supported. If you
-       * have a need for this, please file an issue.
-       */
-      document?: never;
-    };
+  interface DefaultOptions extends DeepPartial<_Configuration>, Identity<object> {
+    /**
+     * @deprecated Setting `document` in `DocumentSheetV2.DEFAULT_OPTIONS` is not supported. If you
+     * have a need for this, please file an issue.
+     */
+    document?: never;
+  }
 
   interface RenderOptions extends ApplicationV2.RenderOptions {
     /** A string with the format "\{operation\}\{documentName\}" providing context */
@@ -86,25 +72,9 @@ declare namespace DocumentSheetV2 {
     renderData: object;
   }
 
-  /** Processed and validated form data used to update a Document. */
-  type SubmitData<ConcreteDocument extends Document.Any> = foundry.data.fields.SchemaField.UpdateData<
-    ConcreteDocument["schema"]["fields"]
-  >;
-
-  /** Database operation options forwarded when creating or updating a Document. */
-  type ProcessSubmitOptions<ConcreteDocument extends Document.Any> =
-    | Document.Database.CreateDocumentsOperationForName<ConcreteDocument["documentName"]>
-    | Document.Database.UpdateOneDocumentOperationForName<ConcreteDocument["documentName"]>;
-
-  interface SubmitOptions<ConcreteDocument extends Document.Any> {
+  interface SubmitOptions {
     /** Additional data passed in if this form is submitted manually which should be merged with prepared formData. */
-    updateData: SubmitData<ConcreteDocument>;
-  }
-
-  /** The result of submitting a document form. */
-  interface SubmitResult<ConcreteDocument extends Document.Any> {
-    created?: ConcreteDocument | undefined;
-    updated?: ConcreteDocument | undefined;
+    updateData: object;
   }
 }
 
@@ -117,7 +87,7 @@ declare class DocumentSheetV2<
   Configuration extends DocumentSheetV2.Configuration<Document> = DocumentSheetV2.Configuration<Document>,
   RenderOptions extends DocumentSheetV2.RenderOptions = DocumentSheetV2.RenderOptions,
 > extends ApplicationV2<RenderContext, Configuration, RenderOptions> {
-  constructor(options: DocumentSheetV2.InputOptions<Configuration>);
+  constructor(options?: DeepPartial<Configuration>);
 
   static DEFAULT_OPTIONS: DocumentSheetV2.DefaultOptions;
 
@@ -137,7 +107,6 @@ declare class DocumentSheetV2<
    */
   get isEditable(): boolean;
 
-  // TODO(LukeAbby): This needs to be updated to use `DocumentSheetV2.InputOptions` but that breaks subclassing right now
   protected _initializeApplicationOptions(options: DeepPartial<Configuration>): Configuration;
 
   protected override _headerControlsButtons(): Generator<ApplicationV2.HeaderControlsEntry, void, undefined>;
@@ -167,11 +136,7 @@ declare class DocumentSheetV2<
 
   protected override _onClose(options: DeepPartial<RenderOptions>): void;
 
-  /**
-   * @privateRemarks Synchronous at runtime; kept as the base's `MaybePromise<void>` so async subclass overrides like
-   * {@linkcode GridConfig._onChangeForm | GridConfig#_onChangeForm} stay lint-clean.
-   */
-  protected override _onChangeForm(formConfig: ApplicationV2.FormConfiguration, event: Event): MaybePromise<void>;
+  protected override _onChangeForm(formConfig: ApplicationV2.FormConfiguration, event: Event): void;
 
   /**
    * Handle toggling the revealed state of a secret embedded in some content.
@@ -187,13 +152,14 @@ declare class DocumentSheetV2<
    * @param updateData - Additional data passed in if this form is submitted manually which should be merged with prepared formData
    * @returns Prepared submission data as an object
    * @throws Subclasses may throw validation errors here to prevent form submission
+   * @privateRemarks TODO: Improve typing for updateData & return
    */
   protected _prepareSubmitData(
     event: SubmitEvent,
     form: HTMLFormElement,
     formData: FormDataExtended,
-    updateData?: DocumentSheetV2.SubmitData<Document>,
-  ): DocumentSheetV2.SubmitData<Document>;
+    updateData?: unknown,
+  ): object;
 
   /**
    * Customize how form data is extracted into an expanded object.
@@ -203,28 +169,22 @@ declare class DocumentSheetV2<
    * @returns An expanded object of processed form data
    * @throws Subclasses may throw validation errors here to prevent form submission
    */
-  protected _processFormData(
-    event: SubmitEvent | null,
-    form: HTMLFormElement,
-    formData: FormDataExtended,
-  ): DocumentSheetV2.SubmitData<Document>;
+  protected _processFormData(event: SubmitEvent | null, form: HTMLFormElement, formData: FormDataExtended): object;
 
   /**
    * Submit a document update or creation request based on the processed form data.
-   * @param event      - The originating form submission event
-   * @param form       - The form element that was submitted
-   * @param submitData - Processed and validated form data to be used for a document update
-   * @param options    - Additional options altering the request
-   * @returns The result of the form submission that communicates whether a Document was created or updated.
-   * It is possible that neither creation nor update occurred.
-   * @throws An Error if Document creation or update was prohibited
+   * @param event    - The originating form submission event
+   * @param form     - The form element that was submitted
+   * @param formData - Processed and validated form data to be used for a document update
+   * @param options  - Additional options altering the request
+   * @privateRemarks TODO: Improve options to capture the Create and/or Update options available to the Document
    */
   protected _processSubmitData(
     event: SubmitEvent,
     form: HTMLFormElement,
-    submitData: DocumentSheetV2.SubmitData<Document>,
-    options?: DocumentSheetV2.ProcessSubmitOptions<Document>,
-  ): Promise<DocumentSheetV2.SubmitResult<Document>>;
+    formData: FormDataExtended,
+    options?: unknown,
+  ): Promise<void>;
 
   /**
    * Provide a deprecation path for converted V1 document sheets.

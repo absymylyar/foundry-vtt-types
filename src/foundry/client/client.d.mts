@@ -1,8 +1,7 @@
-import type { Mutable } from "#utils";
-
 // In Foundry itself this file contains re-exports of these other modules.
 // Therefore it has a runtime effect and uses `.mjs` instead of `.d.mts`.
 // While `.mts` could work, to avoid `import-x/no-unresolved` from erroring `.mjs` is used.
+/* eslint-disable import-x/extensions */
 
 import "#common/primitives/_module.mjs";
 import * as _CONST from "#common/constants.mjs";
@@ -27,8 +26,6 @@ import * as _data from "./data/_module.mjs";
 import * as _dice from "./dice/_module.mjs";
 import * as _nue from "./nue/_module.mjs";
 import * as _utils from "./utils/_module.mjs"; // moved here to match other client exports
-
-import * as globalConfig from "./config.mjs";
 
 /**
  * Constant definitions used throughout the Foundry Virtual Tabletop framework.
@@ -110,17 +107,6 @@ export * as nue from "./nue/_module.mjs";
 // export * as types from "./types.mjs";
 
 declare global {
-  /**
-   * Runtime configuration settings for Foundry VTT which exposes a large number of variables which determine how
-   * aspects of the software behaves.
-   *
-   * Unlike the {@linkcode CONST} analog which is frozen and immutable, the `CONFIG` object may be updated during the course of a
-   * session or modified by system and module developers to adjust how the application behaves.
-   */
-  interface CONFIG extends Mutable<typeof globalConfig> {}
-
-  const CONFIG: CONFIG;
-
   namespace foundry {
     export import Game = _Game;
 
@@ -209,20 +195,6 @@ declare global {
    */
   export import CONST = _CONST;
 
-  /**
-   * A singleton ForcedDeletion operator instance that can be reused.
-   * @privateRemarks `let` because it is created by `defineProperties` without `writable: false`
-   */
-  let _del: foundry.data.operators.ForcedDeletion;
-
-  // TODO: _loc
-
-  /**
-   * A reference for ForcedReplacement.create that can be easily referenced.
-   * @privateRemarks `let` because it is created by `defineProperties` without `writable: false`
-   */
-  let _replace: typeof foundry.data.operators.ForcedReplacement.create;
-
   // Blessed globals - will remain global without deprecation
 
   // Color is currently handled in src/foundry/client/head.d.mts
@@ -255,7 +227,6 @@ declare global {
   export import JournalEntry = foundry.documents.JournalEntry;
   export import JournalEntryCategory = foundry.documents.JournalEntryCategory;
   export import JournalEntryPage = foundry.documents.JournalEntryPage;
-  export import Level = foundry.documents.Level;
   export import Macro = foundry.documents.Macro;
   export import MeasuredTemplateDocument = foundry.documents.MeasuredTemplateDocument;
   export import NoteDocument = foundry.documents.NoteDocument;
@@ -878,6 +849,12 @@ declare global {
   export import JournalTextPageSheet = foundry.appv1.sheets.JournalTextPageSheet;
 
   /**
+   * @deprecated "You are accessing the global {@linkcode JournalTextTinyMCESheet} which is now namespaced under {@linkcode foundry.appv1.sheets.JournalTextTinyMCESheet}"
+   * (since v13 will be removed in v15)
+   */
+  export import JournalTextTinyMCESheet = foundry.appv1.sheets.JournalTextTinyMCESheet;
+
+  /**
    * @deprecated "You are accessing the global {@linkcode Canvas} which is now namespaced under {@linkcode foundry.canvas.Canvas}"
    * (since v13 will be removed in v15)
    */
@@ -1148,12 +1125,6 @@ declare global {
   export import CanvasVisionMask = foundry.canvas.layers.CanvasVisionMask;
 
   /**
-   * @deprecated "You are accessing the global {@linkcode DarknessLevelContainer} which is now namespaced under {@linkcode foundry.canvas.layers.DarknessLevelContainer}"
-   * (since v13 will be removed in v15)
-   */
-  export import DarknessLevelContainer = foundry.canvas.layers.DarknessLevelContainer;
-
-  /**
    * @deprecated "You are accessing the global {@linkcode DrawingsLayer} which is now namespaced under {@linkcode foundry.canvas.layers.DrawingsLayer}"
    * (since v13 will be removed in v15)
    */
@@ -1284,12 +1255,6 @@ declare global {
    * (since v13 will be removed in v15)
    */
   export import UnboundTransform = foundry.canvas.geometry.UnboundTransform;
-
-  /**
-   * @deprecated "You are accessing the global {@linkcode ObservableTransform} which is now namespaced under {@linkcode foundry.canvas.geometry.ObservableTransform}"
-   * (since v13 will be removed in v15)
-   */
-  export import ObservableTransform = foundry.canvas.geometry.ObservableTransform;
 
   /**
    * @deprecated "You are accessing the global {@linkcode LimitedAnglePolygon} which is now namespaced under {@linkcode foundry.canvas.geometry.LimitedAnglePolygon}"
@@ -1626,18 +1591,6 @@ declare global {
    * (since v13 will be removed in v15)
    */
   export import VoidFilter = foundry.canvas.rendering.filters.VoidFilter;
-
-  /**
-   * @deprecated "You are accessing the global {@linkcode AlphaBlurFilter} which is now namespaced under {@linkcode foundry.canvas.rendering.filters.AlphaBlurFilter}"
-   * (since v13 will be removed in v15)
-   */
-  export import AlphaBlurFilter = foundry.canvas.rendering.filters.AlphaBlurFilter;
-
-  /**
-   * @deprecated "You are accessing the global {@linkcode AlphaBlurFilterPass} which is now namespaced under {@linkcode foundry.canvas.rendering.filters.AlphaBlurFilterPass}"
-   * (since v13 will be removed in v15)
-   */
-  export import AlphaBlurFilterPass = foundry.canvas.rendering.filters.AlphaBlurFilterPass;
 
   /**
    * @deprecated "You are accessing the global {@linkcode WeatherOcclusionMaskFilter} which is now namespaced under {@linkcode foundry.canvas.rendering.filters.WeatherOcclusionMaskFilter}"
@@ -2316,7 +2269,6 @@ declare global {
    * @deprecated "You are accessing the global {@linkcode SortingHelpers} which is now namespaced under {@linkcode foundry.utils.SortingHelpers}"
    * (since v13 will be removed in v15)
    */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
   export import SortingHelpers = foundry.utils.SortingHelpers;
 
   /**
@@ -2457,7 +2409,6 @@ declare global {
   export import diffObject = _utils.diffObject;
 
   /** @deprecated since v12 will be removed in v14 */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
   export import objectsEqual = _utils.objectsEqual;
 
   /** @deprecated since v12 will be removed in v14 */

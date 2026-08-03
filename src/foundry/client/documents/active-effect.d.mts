@@ -1,23 +1,18 @@
-import type { ConfiguredActiveEffect } from "#configuration";
+import type { ConfiguredActiveEffect } from "fvtt-types/configuration";
 import type {
   AnyMutableObject,
-  Identity,
+  InexactPartial,
   IntentionalPartial,
   InterfaceToObject,
-  MaybeArray,
   Merge,
   RequiredProps,
 } from "#utils";
-import type { fields } from "#common/data/_module.d.mts";
-import type { DataModel, DatabaseBackend, Document } from "#common/abstract/_module.d.mts";
-import type { BaseActiveEffect, BaseCombat } from "#common/documents/_module.d.mts";
-import type { DialogV2 } from "#client/applications/api/_module.d.mts";
+import type { DataModel } from "#common/abstract/data.d.mts";
+import type Document from "#common/abstract/document.d.mts";
+import type { DataField, DataSchema } from "#common/data/fields.d.mts";
+import type BaseActiveEffect from "#common/documents/active-effect.d.mts";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type ClientDatabaseBackend from "#client/data/client-backend.d.mts";
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type ClientDocumentMixin from "#client/documents/abstract/client-document.d.mts";
+import fields = foundry.data.fields;
 
 declare namespace ActiveEffect {
   /**
@@ -36,15 +31,14 @@ declare namespace ActiveEffect {
   type Hierarchy = Readonly<Document.HierarchyOf<Schema>>;
 
   /**
-   * The implementation of the `ActiveEffect` document instance configured through
-   * {@linkcode CONFIG.ActiveEffect.documentClass} in Foundry and {@linkcode DocumentClassConfig} or
-   * {@linkcode ConfiguredActiveEffect | fvtt-types/configuration/ConfiguredActiveEffect} in fvtt-types.
+   * The implementation of the `ActiveEffect` document instance configured through `CONFIG.ActiveEffect.documentClass` in Foundry and
+   * {@linkcode DocumentClassConfig} or {@link ConfiguredActiveEffect | `fvtt-types/configuration/ConfiguredActiveEffect`} in fvtt-types.
    */
   type Implementation = Document.ImplementationFor<Name>;
 
   /**
-   * The implementation of the `ActiveEffect` document configured through
-   * {@linkcode CONFIG.ActiveEffect.documentClass} in Foundry and {@linkcode DocumentClassConfig} in fvtt-types.
+   * The implementation of the `ActiveEffect` document configured through `CONFIG.ActiveEffect.documentClass` in Foundry and
+   * {@linkcode DocumentClassConfig} in fvtt-types.
    */
   type ImplementationClass = Document.ImplementationClassFor<Name>;
 
@@ -52,18 +46,19 @@ declare namespace ActiveEffect {
    * A document's metadata is special information about the document ranging anywhere from its name,
    * whether it's indexed, or to the permissions a user has over it.
    */
-  interface Metadata extends Merge<
-    Document.Metadata.Default,
-    Readonly<{
-      name: "ActiveEffect";
-      collection: "effects";
-      hasTypeData: true;
-      label: "DOCUMENT.ActiveEffect";
-      labelPlural: "DOCUMENT.ActiveEffects";
-      schemaVersion: "13.341";
-      permissions: Metadata.Permissions;
-    }>
-  > {}
+  interface Metadata
+    extends Merge<
+      Document.Metadata.Default,
+      Readonly<{
+        name: "ActiveEffect";
+        collection: "effects";
+        hasTypeData: true;
+        label: string;
+        labelPlural: string;
+        schemaVersion: string;
+        permissions: Metadata.Permissions;
+      }>
+    > {}
 
   namespace Metadata {
     interface Permissions {
@@ -85,52 +80,41 @@ declare namespace ActiveEffect {
   type SubType = foundry.Game.Model.TypeNames<"ActiveEffect">;
 
   /**
-   * `ConfiguredSubType` represents the subtypes a user explicitly registered. This excludes
+   * `ConfiguredSubTypes` represents the subtypes a user explicitly registered. This excludes
    * subtypes like the Foundry builtin subtype `"base"` and the catch-all subtype for arbitrary
    * module subtypes `${string}.${string}`.
    *
    * @see {@link SubType} for more information.
    */
-  type ConfiguredSubType = Document.ConfiguredSubTypeOf<"ActiveEffect">;
+  type ConfiguredSubTypes = Document.ConfiguredSubTypesOf<"ActiveEffect">;
 
   /**
    * `Known` represents the types of `ActiveEffect` that a user explicitly registered.
    *
-   * @see {@link ConfiguredSubType} for more information.
+   * @see {@link ConfiguredSubTypes} for more information.
    */
-  type Known = ActiveEffect.OfType<ActiveEffect.ConfiguredSubType>;
+  type Known = ActiveEffect.OfType<ActiveEffect.ConfiguredSubTypes>;
 
   /**
    * `OfType` returns an instance of `ActiveEffect` with the corresponding type. This works with both the
    * builtin `ActiveEffect` class or a custom subclass if that is set up in
-   * {@linkcode ConfiguredActiveEffect | fvtt-types/configuration/ConfiguredActiveEffect}.
+   * {@link ConfiguredActiveEffect | `fvtt-types/configuration/ConfiguredActiveEffect`}.
    */
-  type OfType<Type extends SubType> = Document.Internal.DiscriminateSystem<Name, _OfType, Type, ConfiguredSubType>;
-
-  /** @internal */
-  interface _OfType extends Identity<{
-    [Type in SubType]: Type extends unknown
-      ? ConfiguredActiveEffect<Type> extends { document: infer Document }
-        ? Document
-        : // eslint-disable-next-line @typescript-eslint/no-restricted-types
-          ActiveEffect<Type>
-      : never;
-  }> {}
+  type OfType<Type extends SubType> = Document.Internal.OfType<
+    ConfiguredActiveEffect<Type>,
+    // eslint-disable-next-line @typescript-eslint/no-restricted-types
+    () => ActiveEffect<Type>
+  >;
 
   /**
    * `SystemOfType` returns the system property for a specific `ActiveEffect` subtype.
    */
-  type SystemOfType<Type extends SubType> = Document.Internal.SystemOfType<Name, _SystemMap, Type, ConfiguredSubType>;
+  type SystemOfType<Type extends SubType> = Document.Internal.SystemOfType<_SystemMap, Type>;
 
   /**
    * @internal
    */
-  interface _ModelMap extends Document.Internal.ModelMap<Name> {}
-
-  /**
-   * @internal
-   */
-  interface _SystemMap extends Document.Internal.SystemMap<Name> {}
+  interface _SystemMap extends Document.Internal.SystemMap<"ActiveEffect"> {}
 
   /**
    * A document's parent is something that can contain it.
@@ -151,6 +135,15 @@ declare namespace ActiveEffect {
   type DescendantClass = never;
 
   /**
+   * Types of `CompendiumCollection` this document might be contained in.
+   * Note that `this.pack` will always return a string; this is the type for `game.packs.get(this.pack)`
+   *
+   * Will be `never` if cannot be contained in a `CompendiumCollection`.
+   */
+  // Note: Takes any document in the heritage chain (i.e. itself or any parent, transitive or not) that can be contained in a compendium.
+  type Pack = foundry.documents.collections.CompendiumCollection.ForDocument<"Actor" | "Item">;
+
+  /**
    * An embedded document is a document contained in another.
    * For example an `Item` can be contained by an `Actor` which means `Item` can be embedded in `Actor`.
    *
@@ -161,8 +154,7 @@ declare namespace ActiveEffect {
   /**
    * The name of the world or embedded collection this document can find itself in.
    * For example an `Item` is always going to be inside a collection with a key of `items`.
-   * This is a fixed string per document type and is primarily useful for the descendant Document operation methods, e.g
-   * {@linkcode ClientDocumentMixin.AnyMixed._preCreateDescendantDocuments | ClientDocument._preCreateDescendantDocuments}.
+   * This is a fixed string per document type and is primarily useful for {@link ClientDocumentMixin | `Descendant Document Events`}.
    */
   type ParentCollectionName = Metadata["collection"];
 
@@ -180,7 +172,7 @@ declare namespace ActiveEffect {
    * An instance of `ActiveEffect` that comes from the database but failed validation meaning that
    * its `system` and `_source` could theoretically be anything.
    */
-  type Invalid = Document.Internal.Invalid<Implementation>;
+  interface Invalid extends Document.Internal.Invalid<Implementation> {}
 
   /**
    * An instance of `ActiveEffect` that comes from the database.
@@ -188,78 +180,52 @@ declare namespace ActiveEffect {
   type Stored<SubType extends ActiveEffect.SubType = ActiveEffect.SubType> = Document.Internal.Stored<OfType<SubType>>;
 
   /**
-   * The data put in {@linkcode ActiveEffect._source | ActiveEffect#_source}. This data is what was
+   * The data put in {@link ActiveEffect._source | `ActiveEffect#_source`}. This data is what was
    * persisted to the database and therefore it must be valid JSON.
    *
-   * For example a {@linkcode fields.SetField | SetField} is persisted to the database as an array
+   * For example a {@link fields.SetField | `SetField`} is persisted to the database as an array
    * but initialized as a {@linkcode Set}.
    */
   interface Source extends fields.SchemaField.SourceData<Schema> {}
 
   /**
    * The data necessary to create a document. Used in places like {@linkcode ActiveEffect.create}
-   * and {@linkcode ActiveEffect | new ActiveEffect(...)}.
+   * and {@link ActiveEffect | `new ActiveEffect(...)`}.
    *
-   * For example a {@linkcode fields.SetField | SetField} can accept any {@linkcode Iterable}
+   * For example a {@link fields.SetField | `SetField`} can accept any {@linkcode Iterable}
    * with the right values. This means you can pass a `Set` instance, an array of values,
    * a generator, or any other iterable.
    */
-  interface CreateData<SubType extends ActiveEffect.SubType = ActiveEffect.SubType> extends fields.SchemaField
-    .CreateData<Schema> {
-    type?: SubType | null | undefined;
-  }
+  interface CreateData extends fields.SchemaField.CreateData<Schema> {}
 
   /**
-   * Used in the {@linkcode ActiveEffect.create} and {@linkcode ActiveEffect.createDocuments} signatures, and
-   * {@linkcode ActiveEffect.Database.CreateOperation} and its derivative interfaces.
-   */
-  type CreateInput = CreateData | Implementation;
-
-  /**
-   * The helper type for the return of {@linkcode ActiveEffect.create}, returning (a single | an array of) (temporary | stored)
-   * `ActiveEffect`s.
-   *
-   * `| undefined` is included in the non-array branch because if a `.create` call with non-array data is cancelled by the `preCreate`
-   * method or hook, `shift`ing the return of `.createDocuments` produces `undefined`
-   */
-  type CreateReturn<Data extends MaybeArray<CreateInput>> =
-    Data extends Array<CreateInput> ? ActiveEffect.Stored[] : ActiveEffect.Stored | undefined;
-
-  /**
-   * The data after a {@linkcode Document} has been initialized, for example
-   * {@linkcode ActiveEffect.name | ActiveEffect#name}.
+   * The data after a {@link foundry.abstract.Document | `Document`} has been initialized, for example
+   * {@link ActiveEffect.name | `ActiveEffect#name`}.
    *
    * This is data transformed from {@linkcode ActiveEffect.Source} and turned into more
-   * convenient runtime data structures. For example a {@linkcode fields.SetField | SetField} is
+   * convenient runtime data structures. For example a {@link fields.SetField | `SetField`} is
    * persisted to the database as an array of values but at runtime it is a `Set` instance.
    */
   interface InitializedData extends fields.SchemaField.InitializedData<Schema> {}
 
   /**
-   * The data used to update a document, for example {@linkcode ActiveEffect.update | ActiveEffect#update}.
-   * It is a distinct type from {@linkcode ActiveEffect.CreateData | DeepPartial<ActiveEffect.CreateData>} because
+   * The data used to update a document, for example {@link ActiveEffect.update | `ActiveEffect#update`}.
+   * It is a distinct type from {@link ActiveEffect.CreateData | `DeepPartial<ActiveEffect.CreateData>`} because
    * it has different rules for `null` and `undefined`.
    */
   interface UpdateData extends fields.SchemaField.UpdateData<Schema> {}
 
   /**
-   * Used in the {@linkcode ActiveEffect.update | ActiveEffect#update} and
-   * {@linkcode ActiveEffect.updateDocuments} signatures, and {@linkcode ActiveEffect.Database.UpdateOperation}
-   * and its derivative interfaces.
-   */
-  type UpdateInput = UpdateData | Implementation;
-
-  /**
-   * The schema for {@linkcode ActiveEffect}. This is the source of truth for how an `ActiveEffect` document
+   * The schema for {@linkcode ActiveEffect}. This is the source of truth for how an ActiveEffect document
    * must be structured.
    *
    * Foundry uses this schema to validate the structure of the {@linkcode ActiveEffect}. For example
-   * a {@linkcode fields.StringField | StringField} will enforce that the value is a string. More
-   * complex fields like {@linkcode fields.SetField | SetField} goes through various conversions
+   * a {@link fields.StringField | `StringField`} will enforce that the value is a string. More
+   * complex fields like {@link fields.SetField | `SetField`} goes through various conversions
    * starting as an array in the database, initialized as a set, and allows updates with any
    * iterable.
    */
-  interface Schema extends fields.DataSchema {
+  interface Schema extends DataSchema {
     /**
      * The _id which uniquely identifies the ActiveEffect within a parent Actor or Item
      * @defaultValue `null`
@@ -270,7 +236,13 @@ declare namespace ActiveEffect {
      * The name of the ActiveEffect
      * @defaultValue `""`
      */
-    name: fields.StringField<{ required: true; blank: false; textSearch: true }>;
+    name: fields.StringField<
+      { required: true; blank: false; textSearch: true },
+      // Note(LukeAbby): Field override because `blank: false` isn't fully accounted for or something.
+      string,
+      string,
+      string
+    >;
 
     /**
      * An image path used to depict the ActiveEffect as an icon
@@ -330,17 +302,6 @@ declare namespace ActiveEffect {
     statuses: fields.SetField<fields.StringField<{ required: true; blank: false }>>;
 
     /**
-     * Should this ActiveEffect's image be prominently displayed as an icon alongside Tokens, Combatants, etc.?
-     * Defaults to a CONDITIONAL (1).
-     */
-    showIcon: fields.NumberField<{
-      required: true;
-      nullable: false;
-      choices: CONST.ACTIVE_EFFECT_SHOW_ICON[];
-      initial: typeof CONST.ACTIVE_EFFECT_SHOW_ICON.CONDITIONAL;
-    }>;
-
-    /**
      * The sort value
      * @defaultValue `0`
      */
@@ -355,7 +316,7 @@ declare namespace ActiveEffect {
     _stats: fields.DocumentStatsField;
   }
 
-  interface ChangeSchema extends fields.DataSchema {
+  interface ChangeSchema extends DataSchema {
     /**
      * The attribute path in the Actor or Item data which the change modifies
      * @defaultValue `""`
@@ -377,15 +338,12 @@ declare namespace ActiveEffect {
         required: true;
         nullable: false;
         integer: true;
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
         initial: typeof CONST.ACTIVE_EFFECT_MODES.ADD;
       },
-      // Note(LukeAbby): This will always need an override since there's no validation.
-      // eslint-disable-next-line @typescript-eslint/no-deprecated
+      // TODO: (LukeAbby): fix this when redoing DataField
+      // FIXME: Overrides required to enforce the branded type
       CONST.ACTIVE_EFFECT_MODES | null | undefined,
-      // eslint-disable-next-line @typescript-eslint/no-deprecated
       CONST.ACTIVE_EFFECT_MODES,
-      // eslint-disable-next-line @typescript-eslint/no-deprecated
       CONST.ACTIVE_EFFECT_MODES
     >;
 
@@ -396,7 +354,7 @@ declare namespace ActiveEffect {
     priority: fields.NumberField;
   }
 
-  interface DurationSchema extends fields.DataSchema {
+  interface DurationSchema extends DataSchema {
     /**
      * The world time when the active effect first started
      * @defaultValue `null`
@@ -410,10 +368,10 @@ declare namespace ActiveEffect {
     seconds: fields.NumberField<{ integer: true; min: 0 }>;
 
     /**
-     * The `_id` of the {@linkcode Combat} in which the effect first started
+     * The _id of the CombatEncounter in which the effect first started
      * @defaultValue `null`
      */
-    combat: fields.ForeignDocumentField<typeof BaseCombat>;
+    combat: fields.ForeignDocumentField<typeof foundry.documents.BaseCombat>;
 
     /**
      * The maximum duration of the effect, in combat rounds
@@ -440,518 +398,140 @@ declare namespace ActiveEffect {
     startTurn: fields.NumberField<{ integer: true; min: 0 }>;
   }
 
-  interface DurationData extends fields.SchemaField.InitializedData<DurationSchema> {}
-
   namespace Database {
-    /* ***********************************************
-     *                GET OPERATIONS                 *
-     *************************************************/
+    /** Options passed along in Get operations for ActiveEffects */
+    interface Get extends foundry.abstract.types.DatabaseGetOperation<ActiveEffect.Parent> {}
 
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.GetOperation | GetOperation} interface for
-     * `ActiveEffect` documents. Valid for passing to
-     * {@linkcode ClientDatabaseBackend._getDocuments | ClientDatabaseBackend#_getDocuments}.
-     *
-     * The {@linkcode GetDocumentsOperation} and {@linkcode BackendGetOperation} interfaces derive from this one.
-     */
-    interface GetOperation extends DatabaseBackend.GetOperation<ActiveEffect.Parent> {}
-
-    /**
-     * The interface for passing to {@linkcode ActiveEffect.get}.
-     * @see {@linkcode Document.Database.GetDocumentsOperation}
-     */
-    interface GetDocumentsOperation extends Document.Database.GetDocumentsOperation<GetOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.get | DatabaseBackend#get} for `ActiveEffect` documents.
-     * @see {@linkcode Document.Database.BackendGetOperation}
-     */
-    interface BackendGetOperation extends Document.Database.BackendGetOperation<GetOperation> {}
-
-    /* ***********************************************
-     *              CREATE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.CreateOperation | DatabaseCreateOperation}
-     * interface for `ActiveEffect` documents.
-     *
-     * See {@linkcode DatabaseBackend.CreateOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode ActiveEffect.create}. The new name for that
-     * interface is {@linkcode CreateDocumentsOperation}.
-     */
-    interface CreateOperation extends DatabaseBackend.CreateOperation<ActiveEffect.CreateInput, ActiveEffect.Parent> {
-      /**
-       * @remarks If passed as explicit `false`, the {@linkcode ActiveEffect._displayScrollingStatus | ActiveEffect#_displayScrollingStatus}
-       * call in {@linkcode ActiveEffect._onCreate | ActiveEffect#_onCreate} is prevented.
-       */
-      animate?: boolean;
-
-      /**
-       * @remarks This property is not intended to be passed by user code, this is a signal to various parts of the database code that this
-       * operation is restoring some or all of the data on a {@link TokenDocument.actor | synthetic token actor} to match its
-       * {@link TokenDocument.baseActor | base actor}, moderated by its {@linkcode ActorDelta}.
-       *
-       * It can appear in the `CreateOperation`s and `UpdateOperation`s of any documents with an associated
-       * {@linkcode fields.EmbeddedCollectionDeltaField} in the {@linkcode ActorDelta.Schema}, via
-       * {@linkcode foundry.abstract.EmbeddedCollectionDelta.restoreDocuments | EmbeddedCollectionDelta#restoreDocuments}.
-       */
-      restoreDelta?: boolean;
-    }
-
-    /**
-     * The interface for passing to {@linkcode ActiveEffect.create} or {@linkcode ActiveEffect.createDocuments}.
-     * @see {@linkcode Document.Database.CreateDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface CreateDocumentsOperation extends Document.Database.CreateDocumentsOperation<CreateOperation> {}
-
-    /**
-     * The interface for passing to the {@linkcode Document.createEmbeddedDocuments | #createEmbeddedDocuments} method of any Documents that
-     * can contain `ActiveEffect` documents. (see {@linkcode ActiveEffect.Parent})
-     * @see {@linkcode Document.Database.CreateEmbeddedOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface CreateEmbeddedOperation extends Document.Database.CreateEmbeddedOperation<CreateOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.create | DatabaseBackend#create} for `ActiveEffect` documents.
-     * @see {@linkcode Document.Database.BackendCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendCreateOperation extends Document.Database.BackendCreateOperation<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode ActiveEffect._preCreate | ActiveEffect#_preCreate} and
-     * {@link Hooks.PreCreateDocument | the `preCreateActiveEffect` hook}.
-     * @see {@linkcode Document.Database.PreCreateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreCreateOptions extends Document.Database.PreCreateOptions<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode ActiveEffect._preCreateOperation}.
-     * @see {@linkcode Document.Database.PreCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreCreateOperation extends Document.Database.PreCreateOperation<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode ActiveEffect._onCreate | ActiveEffect#_onCreate} and
-     * {@link Hooks.CreateDocument | the `createActiveEffect` hook}.
-     * @see {@linkcode Document.Database.OnCreateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnCreateOptions extends Document.Database.OnCreateOptions<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode ActiveEffect._onCreateOperation} and `ActiveEffect`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnCreateOperation extends Document.Database.OnCreateOperation<CreateOperation> {}
-
-    /* ***********************************************
-     *              UPDATE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.UpdateOperation | DatabaseUpdateOperation}
-     * interface for `ActiveEffect` documents.
-     *
-     * See {@linkcode DatabaseBackend.UpdateOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode ActiveEffect.update | ActiveEffect#update}.
-     * The new name for that interface is {@linkcode UpdateOneDocumentOperation}.
-     */
-    interface UpdateOperation extends DatabaseBackend.UpdateOperation<ActiveEffect.UpdateInput, ActiveEffect.Parent> {
-      /**
-       * @remarks If passed as explicit `false`, the {@linkcode ActiveEffect._displayScrollingStatus | ActiveEffect#_displayScrollingStatus}
-       * call in {@linkcode ActiveEffect._onUpdate | ActiveEffect#_onUpdate} is prevented.
-       */
-      animate?: boolean;
-
-      /**
-       * @remarks This property is not intended to be passed by user code, this is a signal to various parts of the database code that this
-       * operation is restoring some or all of the data on a {@link TokenDocument.actor | synthetic token actor} to match its
-       * {@link TokenDocument.baseActor | base actor}, moderated by its {@linkcode ActorDelta}.
-       *
-       * It can appear in the `CreateOperation`s and `UpdateOperation`s of any documents with an associated
-       * {@linkcode fields.EmbeddedCollectionDeltaField} in the {@linkcode ActorDelta.Schema}, via
-       * {@linkcode foundry.abstract.EmbeddedCollectionDelta.restoreDocuments | EmbeddedCollectionDelta#restoreDocuments}.
-       */
-      restoreDelta?: boolean;
-    }
-
-    /**
-     * The interface for passing to {@linkcode ActiveEffect.update | ActiveEffect#update}.
-     * @see {@linkcode Document.Database.UpdateOneDocumentOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateOneDocumentOperation extends Document.Database.UpdateOneDocumentOperation<UpdateOperation> {}
-
-    /**
-     * The interface for passing to the {@linkcode Document.updateEmbeddedDocuments | #updateEmbeddedDocuments} method of any Documents that
-     * can contain `ActiveEffect` documents (see {@linkcode ActiveEffect.Parent}). This interface is just an alias
-     * for {@linkcode UpdateOneDocumentOperation}, as the same keys are provided by the method in both cases.
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateEmbeddedOperation extends UpdateOneDocumentOperation {}
-
-    /**
-     * The interface for passing to {@linkcode ActiveEffect.updateDocuments}.
-     * @see {@linkcode Document.Database.UpdateManyDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateManyDocumentsOperation extends Document.Database.UpdateManyDocumentsOperation<UpdateOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.update | DatabaseBackend#update} for `ActiveEffect` documents.
-     * @see {@linkcode Document.Database.BackendUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendUpdateOperation extends Document.Database.BackendUpdateOperation<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode ActiveEffect._preUpdate | ActiveEffect#_preUpdate} and
-     * {@link Hooks.PreUpdateDocument | the `preUpdateActiveEffect` hook}.
-     * @see {@linkcode Document.Database.PreUpdateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreUpdateOptions extends Document.Database.PreUpdateOptions<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode ActiveEffect._preUpdateOperation}.
-     * @see {@linkcode Document.Database.PreUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreUpdateOperation extends Document.Database.PreUpdateOperation<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode ActiveEffect._onUpdate | ActiveEffect#_onUpdate} and
-     * {@link Hooks.UpdateDocument | the `updateActiveEffect` hook}.
-     * @see {@linkcode Document.Database.OnUpdateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnUpdateOptions extends Document.Database.OnUpdateOptions<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode ActiveEffect._onUpdateOperation} and `ActiveEffect`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnUpdateOperation extends Document.Database.OnUpdateOperation<UpdateOperation> {}
-
-    /* ***********************************************
-     *              DELETE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.DeleteOperation | DatabaseDeleteOperation}
-     * interface for `ActiveEffect` documents.
-     *
-     * See {@linkcode DatabaseBackend.DeleteOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode ActiveEffect.delete | ActiveEffect#delete}.
-     * The new name for that interface is {@linkcode DeleteOneDocumentOperation}.
-     */
-    interface DeleteOperation extends DatabaseBackend.DeleteOperation<ActiveEffect.Parent> {
-      /**
-       * @remarks If passed as explicit `false`, the {@linkcode ActiveEffect._displayScrollingStatus | ActiveEffect#_displayScrollingStatus}
-       * call in {@linkcode ActiveEffect._onDelete | ActiveEffect#_onDelete} is prevented.
-       */
+    /** Options passed along in Create operations for ActiveEffects */
+    interface Create<Temporary extends boolean | undefined = boolean | undefined>
+      extends foundry.abstract.types.DatabaseCreateOperation<ActiveEffect.CreateData, ActiveEffect.Parent, Temporary> {
       animate?: boolean;
     }
 
-    /**
-     * The interface for passing to {@linkcode ActiveEffect.delete | ActiveEffect#delete}.
-     * @see {@linkcode Document.Database.DeleteOneDocumentOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteOneDocumentOperation extends Document.Database.DeleteOneDocumentOperation<DeleteOperation> {}
-
-    /**
-     * The interface for passing to the {@linkcode Document.deleteEmbeddedDocuments | #deleteEmbeddedDocuments} method of any Documents that
-     * can contain `ActiveEffect` documents (see {@linkcode ActiveEffect.Parent}). This interface is just an alias
-     * for {@linkcode DeleteOneDocumentOperation}, as the same keys are provided by the method in both cases.
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteEmbeddedOperation extends DeleteOneDocumentOperation {}
-
-    /**
-     * The interface for passing to {@linkcode ActiveEffect.deleteDocuments}.
-     * @see {@linkcode Document.Database.DeleteManyDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteManyDocumentsOperation extends Document.Database.DeleteManyDocumentsOperation<DeleteOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.delete | DatabaseBackend#delete} for `ActiveEffect` documents.
-     * @see {@linkcode Document.Database.BackendDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendDeleteOperation extends Document.Database.BackendDeleteOperation<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode ActiveEffect._preDelete | ActiveEffect#_preDelete} and
-     * {@link Hooks.PreDeleteDocument | the `preDeleteActiveEffect` hook}.
-     * @see {@linkcode Document.Database.PreDeleteOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreDeleteOptions extends Document.Database.PreDeleteOptions<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode ActiveEffect._preDeleteOperation}.
-     * @see {@linkcode Document.Database.PreDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreDeleteOperation extends Document.Database.PreDeleteOperation<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode ActiveEffect._onDelete | ActiveEffect#_onDelete} and
-     * {@link Hooks.DeleteDocument | the `deleteActiveEffect` hook}.
-     * @see {@linkcode Document.Database.OnDeleteOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnDeleteOptions extends Document.Database.OnDeleteOptions<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode ActiveEffect._onDeleteOperation} and `ActiveEffect`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnDeleteOperation extends Document.Database.OnDeleteOperation<DeleteOperation> {}
-
-    namespace Internal {
-      interface OperationNameMap {
-        GetDocumentsOperation: ActiveEffect.Database.GetDocumentsOperation;
-        BackendGetOperation: ActiveEffect.Database.BackendGetOperation;
-        GetOperation: ActiveEffect.Database.GetOperation;
-
-        CreateDocumentsOperation: ActiveEffect.Database.CreateDocumentsOperation;
-        CreateEmbeddedOperation: ActiveEffect.Database.CreateEmbeddedOperation;
-        BackendCreateOperation: ActiveEffect.Database.BackendCreateOperation;
-        CreateOperation: ActiveEffect.Database.CreateOperation;
-        PreCreateOptions: ActiveEffect.Database.PreCreateOptions;
-        PreCreateOperation: ActiveEffect.Database.PreCreateOperation;
-        OnCreateOptions: ActiveEffect.Database.OnCreateOptions;
-        OnCreateOperation: ActiveEffect.Database.OnCreateOperation;
-
-        UpdateOneDocumentOperation: ActiveEffect.Database.UpdateOneDocumentOperation;
-        UpdateEmbeddedOperation: ActiveEffect.Database.UpdateEmbeddedOperation;
-        UpdateManyDocumentsOperation: ActiveEffect.Database.UpdateManyDocumentsOperation;
-        BackendUpdateOperation: ActiveEffect.Database.BackendUpdateOperation;
-        UpdateOperation: ActiveEffect.Database.UpdateOperation;
-        PreUpdateOptions: ActiveEffect.Database.PreUpdateOptions;
-        PreUpdateOperation: ActiveEffect.Database.PreUpdateOperation;
-        OnUpdateOptions: ActiveEffect.Database.OnUpdateOptions;
-        OnUpdateOperation: ActiveEffect.Database.OnUpdateOperation;
-
-        DeleteOneDocumentOperation: ActiveEffect.Database.DeleteOneDocumentOperation;
-        DeleteEmbeddedOperation: ActiveEffect.Database.DeleteEmbeddedOperation;
-        DeleteManyDocumentsOperation: ActiveEffect.Database.DeleteManyDocumentsOperation;
-        BackendDeleteOperation: ActiveEffect.Database.BackendDeleteOperation;
-        DeleteOperation: ActiveEffect.Database.DeleteOperation;
-        PreDeleteOptions: ActiveEffect.Database.PreDeleteOptions;
-        PreDeleteOperation: ActiveEffect.Database.PreDeleteOperation;
-        OnDeleteOptions: ActiveEffect.Database.OnDeleteOptions;
-        OnDeleteOperation: ActiveEffect.Database.OnDeleteOperation;
-      }
+    /** Options passed along in Delete operations for ActiveEffects */
+    interface Delete extends foundry.abstract.types.DatabaseDeleteOperation<ActiveEffect.Parent> {
+      animate?: boolean;
     }
+
+    /** Options passed along in Update operations for ActiveEffects */
+    interface Update
+      extends foundry.abstract.types.DatabaseUpdateOperation<ActiveEffect.UpdateData, ActiveEffect.Parent> {
+      animate?: boolean;
+    }
+
+    /** Operation for {@linkcode ActiveEffect.createDocuments} */
+    interface CreateDocumentsOperation<Temporary extends boolean | undefined>
+      extends Document.Database.CreateOperation<ActiveEffect.Database.Create<Temporary>> {}
+
+    /** Operation for {@linkcode ActiveEffect.updateDocuments} */
+    interface UpdateDocumentsOperation
+      extends Document.Database.UpdateDocumentsOperation<ActiveEffect.Database.Update> {}
+
+    /** Operation for {@linkcode ActiveEffect.deleteDocuments} */
+    interface DeleteDocumentsOperation
+      extends Document.Database.DeleteDocumentsOperation<ActiveEffect.Database.Delete> {}
+
+    /** Operation for {@linkcode ActiveEffect.create} */
+    interface CreateOperation<Temporary extends boolean | undefined>
+      extends Document.Database.CreateOperation<ActiveEffect.Database.Create<Temporary>> {}
+
+    /** Operation for {@link ActiveEffect.update | `ActiveEffect#update`} */
+    interface UpdateOperation extends Document.Database.UpdateOperation<Update> {}
+
+    interface DeleteOperation extends Document.Database.DeleteOperation<Delete> {}
+
+    /** Options for {@linkcode ActiveEffect.get} */
+    interface GetOptions extends Document.Database.GetOptions {}
+
+    /** Options for {@link ActiveEffect._preCreate | `ActiveEffect#_preCreate`} */
+    interface PreCreateOptions extends Document.Database.PreCreateOptions<Create> {}
+
+    /** Options for {@link ActiveEffect._onCreate | `ActiveEffect#_onCreate`} */
+    interface OnCreateOptions extends Document.Database.CreateOptions<Create> {}
+
+    /** Operation for {@linkcode ActiveEffect._preCreateOperation} */
+    interface PreCreateOperation extends Document.Database.PreCreateOperationStatic<ActiveEffect.Database.Create> {}
+
+    /** Operation for {@link ActiveEffect._onCreateOperation | `ActiveEffect#_onCreateOperation`} */
+    interface OnCreateOperation extends ActiveEffect.Database.Create {}
+
+    /** Options for {@link ActiveEffect._preUpdate | `ActiveEffect#_preUpdate`} */
+    interface PreUpdateOptions extends Document.Database.PreUpdateOptions<Update> {}
+
+    /** Options for {@link ActiveEffect._onUpdate | `ActiveEffect#_onUpdate`} */
+    interface OnUpdateOptions extends Document.Database.UpdateOptions<Update> {}
+
+    /** Operation for {@linkcode ActiveEffect._preUpdateOperation} */
+    interface PreUpdateOperation extends ActiveEffect.Database.Update {}
+
+    /** Operation for {@link ActiveEffect._onUpdateOperation | `ActiveEffect._preUpdateOperation`} */
+    interface OnUpdateOperation extends ActiveEffect.Database.Update {}
+
+    /** Options for {@link ActiveEffect._preDelete | `ActiveEffect#_preDelete`} */
+    interface PreDeleteOptions extends Document.Database.PreDeleteOperationInstance<Delete> {}
+
+    /** Options for {@link ActiveEffect._onDelete | `ActiveEffect#_onDelete`} */
+    interface OnDeleteOptions extends Document.Database.DeleteOptions<Delete> {}
+
+    /** Options for {@link ActiveEffect._preDeleteOperation | `ActiveEffect#_preDeleteOperation`} */
+    interface PreDeleteOperation extends ActiveEffect.Database.Delete {}
+
+    /** Options for {@link ActiveEffect._onDeleteOperation | `ActiveEffect#_onDeleteOperation`} */
+    interface OnDeleteOperation extends ActiveEffect.Database.Delete {}
+
+    /** Context for {@linkcode ActiveEffect._onDeleteOperation} */
+    interface OnDeleteDocumentsContext extends Document.ModificationContext<ActiveEffect.Parent> {}
+
+    /** Context for {@linkcode ActiveEffect._onCreateDocuments} */
+    interface OnCreateDocumentsContext extends Document.ModificationContext<ActiveEffect.Parent> {}
+
+    /** Context for {@linkcode ActiveEffect._onUpdateDocuments} */
+    interface OnUpdateDocumentsContext extends Document.ModificationContext<ActiveEffect.Parent> {}
+
+    /**
+     * Options for {@link ActiveEffect._preCreateDescendantDocuments | `ActiveEffect#_preCreateDescendantDocuments`}
+     * and {@link ActiveEffect._onCreateDescendantDocuments | `ActiveEffect#_onCreateDescendantDocuments`}
+     */
+    interface CreateOptions extends Document.Database.CreateOptions<ActiveEffect.Database.Create> {}
+
+    /**
+     * Options for {@link ActiveEffect._preUpdateDescendantDocuments | `ActiveEffect#_preUpdateDescendantDocuments`}
+     * and {@link ActiveEffect._onUpdateDescendantDocuments | `ActiveEffect#_onUpdateDescendantDocuments`}
+     */
+    interface UpdateOptions extends Document.Database.UpdateOptions<ActiveEffect.Database.Update> {}
+
+    /**
+     * Options for {@link ActiveEffect._preDeleteDescendantDocuments | `ActiveEffect#_preDeleteDescendantDocuments`}
+     * and {@link ActiveEffect._onDeleteDescendantDocuments | `ActiveEffect#_onDeleteDescendantDocuments`}
+     */
+    interface DeleteOptions extends Document.Database.DeleteOptions<ActiveEffect.Database.Delete> {}
+
+    /**
+     * Create options for {@linkcode ActiveEffect.createDialog}.
+     */
+    interface DialogCreateOptions extends InexactPartial<Create> {}
   }
-
-  /**
-   * If `Temporary` is true then {@linkcode ActiveEffect.Implementation}, otherwise {@linkcode ActiveEffect.Stored}.
-   * @deprecated `Document.create`/`Documents` can no longer return temporary documents as of v14. This type will be removed in v15.
-   */
-  type TemporaryIf<Temporary extends boolean | undefined> =
-    true extends Extract<Temporary, true> ? ActiveEffect.Implementation : ActiveEffect.Stored;
 
   /**
    * The flags that are available for this document in the form `{ [scope: string]: { [key: string]: unknown } }`.
    */
-  interface Flags extends Document.Internal.ConfiguredFlagsForName<Name>, CoreFlags {}
+  interface Flags extends Document.ConfiguredFlagsForName<Name> {}
 
   namespace Flags {
     /**
      * The valid scopes for the flags on this document e.g. `"core"` or `"dnd5e"`.
      */
-    type Scope = Document.Internal.FlagKeyOf<Flags>;
+    type Scope = Document.FlagKeyOf<Flags>;
 
     /**
      * The valid keys for a certain scope for example if the scope is "core" then a valid key may be `"sheetLock"` or `"viewMode"`.
      */
-    type Key<Scope extends Flags.Scope> = Document.Internal.FlagKeyOf<Document.Internal.FlagGetKey<Flags, Scope>>;
+    type Key<Scope extends Flags.Scope> = Document.FlagKeyOf<Document.FlagGetKey<Flags, Scope>>;
 
     /**
      * Gets the type of a particular flag given a `Scope` and a `Key`.
      */
-    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.Internal.GetFlag<Flags, Scope, Key>;
+    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.GetFlag<Name, Scope, Key>;
   }
 
   /**
@@ -961,70 +541,34 @@ declare namespace ActiveEffect {
     core?: { overlay?: boolean };
   }
 
-  /* ***********************************************
-   *       CLIENT DOCUMENT TEMPLATE TYPES          *
-   *************************************************/
-
-  /** The interface {@linkcode ActiveEffect.fromDropData} receives */
   interface DropData extends Document.Internal.DropData<Name> {}
+  interface DropDataOptions extends Document.DropDataOptions {}
 
-  /**
-   * @deprecated Foundry prior to v13 had a completely unused `options` parameter in the {@linkcode ActiveEffect.fromDropData}
-   * signature that has since been removed. This type will be removed in v14.
-   */
-  type DropDataOptions = never;
+  interface DurationData {
+    /** The world time when the active effect first started */
+    startTime?: number | null | undefined;
 
-  /**
-   * The interface for passing to {@linkcode ActiveEffect.defaultName}
-   * @see {@linkcode Document.DefaultNameContext}
-   */
-  interface DefaultNameContext extends Document.DefaultNameContext<Name, Parent> {}
+    /** The maximum duration of the effect, in seconds */
+    seconds?: number | null | undefined;
 
-  /**
-   * The interface for passing to {@linkcode ActiveEffect.createDialog}'s first parameter
-   * @see {@linkcode Document.CreateDialogData}
-   */
-  interface CreateDialogData extends Document.CreateDialogData<CreateData> {}
+    /** The _id of the CombatEncounter in which the effect first started */
+    combat?: string | null | undefined;
 
-  /**
-   * @deprecated This is for a deprecated signature, and will be removed in v15.
-   * The interface for passing to {@linkcode ActiveEffect.createDialog}'s second parameter that still includes partial Dialog
-   * options, instead of being purely a {@linkcode Database.CreateDocumentsOperation | CreateDocumentsOperation}.
-   */
-  interface CreateDialogDeprecatedOptions
-    extends Database.CreateDocumentsOperation, Document._PartialDialogV1OptionsForCreateDialog {}
+    /** The maximum duration of the effect, in combat rounds */
+    rounds?: number | null | undefined;
 
-  /**
-   * The interface for passing to {@linkcode ActiveEffect.createDialog}'s third parameter
-   * @see {@linkcode Document.CreateDialogOptions}
-   */
-  interface CreateDialogOptions extends Document.CreateDialogOptions<Name> {}
+    /** The maximum duration of the effect, in combat turns */
+    turns?: number | null | undefined;
 
-  /**
-   * The return type for {@linkcode ActiveEffect.createDialog}.
-   * @see {@linkcode Document.CreateDialogReturn}
-   */
-  type CreateDialogReturn<Config extends ActiveEffect.CreateDialogOptions | undefined> = Document.CreateDialogReturn<
-    ActiveEffect.Stored,
-    Config
-  >;
+    /** The round of the CombatEncounter in which the effect first started */
+    startRound?: number | null | undefined;
 
-  /**
-   * The return type for {@linkcode ActiveEffect.deleteDialog | ActiveEffect#deleteDialog}.
-   * @see {@linkcode Document.DeleteDialogReturn}
-   */
-  type DeleteDialogReturn<Config extends DialogV2.ConfirmConfig | undefined> = Document.DeleteDialogReturn<
-    ActiveEffect.Stored,
-    Config
-  >;
-
-  /* ***********************************************
-   *         ACTIVE-EFFECT-SPECIFIC TYPES          *
-   *************************************************/
+    /** The turn of the CombatEncounter in which the effect first started */
+    startTurn?: number | null | undefined;
+  }
 
   type DurationType = "seconds" | "turns" | "none";
 
-  // TODO: figure out what reference should finish the following comment
   // Must be kept in sync with
   interface Duration extends DurationData {
     /** The duration type, either "seconds", "turns", or "none" */
@@ -1046,7 +590,6 @@ declare namespace ActiveEffect {
     _combatTime?: number;
   }
 
-  /** Despite Foundry's typing, only `type` is actually guaranteed to be in the return. */
   interface PrepareDurationReturn extends RequiredProps<IntentionalPartial<Duration>, "type"> {}
 
   interface InitialDurationData {
@@ -1081,35 +624,36 @@ declare namespace ActiveEffect {
 
     /**
      * The modification mode with which the change is applied
-     * @defaultValue {@linkcode CONST.ACTIVE_EFFECT_MODES.ADD}
+     * @defaultValue `CONST.ACTIVE_EFFECT_MODES.ADD`
+     * @privateRemarks `undefined` is not actually a possible value, included here due to fvtt-types handling of `initial` values
      */
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    mode: CONST.ACTIVE_EFFECT_MODES;
+    mode: CONST.ACTIVE_EFFECT_MODES | null | undefined;
 
     /**
      * The priority level with which this change is applied
      * @defaultValue `null`
+     * @privateRemarks `undefined` is not actually a possible value, included here due to fvtt-types handling of `initial` values
      */
     priority: number | null | undefined;
   }
 
-  type ApplyFieldReturn<Field extends fields.DataField.Any | undefined> = Field extends fields.DataField.Any
-    ? fields.DataField.InitializedTypeFor<Field>
+  type ApplyFieldReturn<Field extends DataField.Any | null | undefined> = Field extends DataField.Any
+    ? DataField.InitializedTypeFor<Field>
     : unknown;
+
+  interface DefaultNameContext extends Document.DefaultNameContext<Name, Parent> {}
+
+  interface CreateDialogData extends Document.CreateDialogData<CreateData> {}
+  interface CreateDialogOptions extends Document.CreateDialogOptions<Name> {}
 
   /**
    * The arguments to construct the document.
    *
-   * @deprecated Writing the signature directly has helped reduce circularities and therefore is
-   * now recommended. This type will be removed in v14.
+   * @deprecated - Writing the signature directly has helped reduce circularities and therefore is
+   * now recommended.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   type ConstructorArgs = Document.ConstructorParameters<CreateData, Parent>;
-
-  /**
-   * @deprecated Replaced with {@linkcode ActiveEffect.ConfiguredSubType} (will be removed in v14).
-   */
-  type ConfiguredSubTypes = ConfiguredSubType;
 }
 
 /**
@@ -1127,7 +671,7 @@ declare class ActiveEffect<out SubType extends ActiveEffect.SubType = ActiveEffe
    * @param data    - Initial data from which to construct the `ActiveEffect`
    * @param context - Construction context options
    */
-  constructor(data: ActiveEffect.CreateData<SubType>, context?: ActiveEffect.ConstructionContext);
+  constructor(data: ActiveEffect.CreateData, context?: ActiveEffect.ConstructionContext);
 
   /**
    * Create an ActiveEffect instance from some status effect ID.
@@ -1163,15 +707,12 @@ declare class ActiveEffect<out SubType extends ActiveEffect.SubType = ActiveEffe
 
   /**
    * Is there some system logic that makes this active effect ineligible for application?
-   * @remarks Core's implementation defers to `system.isSuppressed` on a `TypeDataModel`, else `false`. As such all overrides should
-   * begin with `if (super.isSuppressed) return true;`.
+   * @remarks Core's implementation defers to `system.isSuppressed` on a `TypeDataModel`, else `false`. As such all overrides should begin with `if (super.isSuppressed) return true;`
    */
   get isSuppressed(): boolean;
 
   /**
    * Retrieve the Document that this ActiveEffect targets for modification.
-   * @privateRemarks This could be reasonably narrowed to `Actor.Implementation | null` for how core uses them, but Foundry types it as just
-   * `Document|null`, and some systems make AEs apply to Items directly, so it's been left as-is.
    */
   get target(): Document.Any | null;
 
@@ -1201,10 +742,7 @@ declare class ActiveEffect<out SubType extends ActiveEffect.SubType = ActiveEffe
    */
   protected _requiresDurationUpdate(): boolean;
 
-  /**
-   * Compute derived data related to active effect duration
-   * @internal
-   */
+  /** @internal */
   protected _prepareDuration(): ActiveEffect.PrepareDurationReturn;
 
   /**
@@ -1213,18 +751,18 @@ declare class ActiveEffect<out SubType extends ActiveEffect.SubType = ActiveEffe
    * @param turn   - The turn number
    * @param nTurns - The maximum number of turns in the encounter
    * @returns The decimal representation
-   * @internal
+   * @private
    */
-  _getCombatTime(round: number, turn: number, nTurns?: number): number;
+  protected _getCombatTime(round: number, turn: number, nTurns?: number): number;
 
   /**
    * Format a number of rounds and turns into a human-readable duration label
    * @param rounds - The number of rounds
    * @param turns  - The number of turns
    * @returns The formatted label
-   * @internal
+   * @private
    */
-  _getDurationLabel(rounds: number, turns: number): string;
+  protected _getDurationLabel(rounds: number, turns: number): string;
 
   /**
    * Describe whether the ActiveEffect has a temporary duration based on combat turns or rounds.
@@ -1247,7 +785,7 @@ declare class ActiveEffect<out SubType extends ActiveEffect.SubType = ActiveEffe
    *
    * @remarks `field` default provided by `??= model.schema.getField(change.key)`
    */
-  static applyField<Field extends fields.DataField.Any | undefined = undefined>(
+  static applyField<Field extends DataField.Any | null | undefined = undefined>(
     model: DataModel.Any,
     change: ActiveEffect.ChangeData,
     field?: Field,
@@ -1384,28 +922,7 @@ declare class ActiveEffect<out SubType extends ActiveEffect.SubType = ActiveEffe
    */
   static getInitialDuration(): ActiveEffect.GetInitialDurationReturn;
 
-  // For type simplicity the following real override(s) are commented out.
-  // These methods historically have been the source of a large amount of computation from tsc.
-
-  // protected override _preCreate(
-  //   data: ActiveEffect.CreateData,
-  //   options: ActiveEffect.Database.PreCreateOptions,
-  //   user: User.Stored,
-  // ): Promise<boolean | void>;
-
-  // protected override _onCreate(
-  //   data: ActiveEffect.CreateData,
-  //   options: ActiveEffect.Database.OnCreateOptions,
-  //   userId: string,
-  // ): void;
-
-  // protected override _onUpdate(
-  //   changed: ActiveEffect.UpdateData,
-  //   options: ActiveEffect.Database.OnUpdateOptions,
-  //   userId: string,
-  // ): void;
-
-  // protected override _onDelete(options: ActiveEffect.Database.OnDeleteOptions, userId: string): void;
+  // _preCreate, _onCreate, _onUpdate, and _onDelete are all overridden but with no signature changes from BaseActiveEffect.
 
   /**
    * Display changes to active effects as scrolling Token status text.
@@ -1427,53 +944,29 @@ declare class ActiveEffect<out SubType extends ActiveEffect.SubType = ActiveEffe
 
   // Descendant Document operations have been left out because ActiveEffect does not have any descendant documents.
 
-  // TODO: update to include 'pack' in v14
-  // `context` must contain a `parent`, so is required.
+  /** @remarks `context` must contain a `pack` or `parent`. */
   static override defaultName(context: ActiveEffect.DefaultNameContext): string;
 
-  // TODO: update to include 'pack' in v14
-  // `createOptions` must contain a `parent`, so is required.
-  static override createDialog<Options extends ActiveEffect.CreateDialogOptions | undefined = undefined>(
+  /** @remarks `createOptions` must contain a `pack` or `parent`. */
+  static override createDialog(
     data: ActiveEffect.CreateDialogData | undefined,
-    createOptions: ActiveEffect.Database.CreateDocumentsOperation,
-    options?: Options,
-  ): Promise<ActiveEffect.CreateDialogReturn<Options>>;
+    createOptions: ActiveEffect.Database.DialogCreateOptions,
+    options?: ActiveEffect.CreateDialogOptions,
+  ): Promise<ActiveEffect.Stored | null | undefined>;
 
-  /**
-   * @deprecated "The `ClientDocument.createDialog` signature has changed. It now accepts database operation options in its second
-   * parameter, and options for {@linkcode DialogV2.prompt} in its third parameter." (since v13, until v15)
-   *
-   * @see {@linkcode ActiveEffect.CreateDialogDeprecatedOptions}
-   */
-  static override createDialog<Options extends ActiveEffect.CreateDialogOptions | undefined = undefined>(
-    data: ActiveEffect.CreateDialogData | undefined,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    createOptions: ActiveEffect.CreateDialogDeprecatedOptions,
-    options?: Options,
-  ): Promise<ActiveEffect.CreateDialogReturn<Options>>;
+  override deleteDialog(
+    options?: InexactPartial<foundry.applications.api.DialogV2.ConfirmConfig>,
+    operation?: ActiveEffect.Database.DeleteOperation,
+  ): Promise<this | false | null | undefined>;
 
-  override deleteDialog<Options extends DialogV2.ConfirmConfig | undefined = undefined>(
-    options?: Options,
-    operation?: ActiveEffect.Database.DeleteOneDocumentOperation,
-  ): Promise<ActiveEffect.DeleteDialogReturn<Options>>;
-
-  /**
-   * @deprecated "`options` is now an object containing entries supported by {@linkcode DialogV2.confirm | DialogV2.confirm}."
-   * (since v13, until v15)
-   *
-   * @see {@linkcode Document.DeleteDialogDeprecatedConfig}
-   */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  override deleteDialog<Options extends Document.DeleteDialogDeprecatedConfig | undefined = undefined>(
-    options?: Options,
-    operation?: ActiveEffect.Database.DeleteOneDocumentOperation,
-  ): Promise<ActiveEffect.DeleteDialogReturn<Options>>;
-
-  static override fromDropData(data: ActiveEffect.DropData): Promise<ActiveEffect.Implementation | undefined>;
+  static override fromDropData(
+    data: ActiveEffect.DropData,
+    options?: ActiveEffect.DropDataOptions,
+  ): Promise<ActiveEffect.Implementation | undefined>;
 
   static override fromImport(
     source: ActiveEffect.Source,
-    context?: Document.FromImportContext<ActiveEffect.Parent>,
+    context?: Document.FromImportContext<ActiveEffect.Parent> | null,
   ): Promise<ActiveEffect.Implementation>;
 
   override _onClickDocumentLink(event: MouseEvent): ClientDocument.OnClickDocumentLinkReturn;

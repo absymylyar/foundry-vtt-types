@@ -4,7 +4,6 @@
 import type { documents } from "../foundry/client/client.d.mts";
 import type { Document } from "../foundry/common/abstract/_module.d.mts";
 import type { InterfaceToObject, MakeConform, MustConform, FixedInstanceType } from "#utils";
-import type * as configuration from "#configuration";
 
 type DocumentConform<T> = MakeConform<T, Document.AnyConstructor>;
 
@@ -25,7 +24,6 @@ interface DefaultDocumentClasses {
   JournalEntryCategory: typeof JournalEntryCategory;
   JournalEntryPage: typeof JournalEntryPage;
   JournalEntry: typeof JournalEntry;
-  Level: typeof Level;
   Macro: typeof Macro;
   PlaylistSound: typeof PlaylistSound;
   Playlist: typeof Playlist;
@@ -63,7 +61,6 @@ interface DefaultDocumentInstance {
   JournalEntryCategory: JournalEntryCategory;
   JournalEntryPage: JournalEntryPage;
   JournalEntry: JournalEntry;
-  Level: Level;
   Macro: Macro;
   PlaylistSound: PlaylistSound;
   Playlist: Playlist;
@@ -99,11 +96,9 @@ type GetDocumentClass<ConcreteDocumentType extends Document.Type> =
     : DefaultDocumentClasses[ConcreteDocumentType];
 
 type GetDocumentInstance<ConcreteDocumentType extends Document.Type> =
-  ConcreteDocumentType extends keyof configuration.DocumentInstanceConfig
-    ? configuration.DocumentInstanceConfig[ConcreteDocumentType]
-    : ConcreteDocumentType extends keyof DocumentClassConfig
-      ? FixedInstanceType<DocumentClassConfig[ConcreteDocumentType]>
-      : DefaultDocumentInstance[ConcreteDocumentType];
+  ConcreteDocumentType extends keyof DocumentClassConfig
+    ? FixedInstanceType<DocumentClassConfig[ConcreteDocumentType]>
+    : DefaultDocumentInstance[ConcreteDocumentType];
 
 // This interface exists as a way to catch circular errors easier.
 // This makes it more verbose than it might seem it has to be but it's important to stay this way.
@@ -124,7 +119,6 @@ export interface ConfiguredDocumentClass {
   JournalEntryCategory: GetDocumentClass<"JournalEntryCategory">;
   JournalEntryPage: GetDocumentClass<"JournalEntryPage">;
   JournalEntry: GetDocumentClass<"JournalEntry">;
-  Level: GetDocumentClass<"Level">;
   Macro: GetDocumentClass<"Macro">;
   PlaylistSound: GetDocumentClass<"PlaylistSound">;
   Playlist: GetDocumentClass<"Playlist">;
@@ -163,7 +157,6 @@ export interface ConfiguredDocumentInstance {
   JournalEntryCategory: GetDocumentInstance<"JournalEntryCategory">;
   JournalEntryPage: GetDocumentInstance<"JournalEntryPage">;
   JournalEntry: GetDocumentInstance<"JournalEntry">;
-  Level: GetDocumentInstance<"Level">;
   Macro: GetDocumentInstance<"Macro">;
   PlaylistSound: GetDocumentInstance<"PlaylistSound">;
   Playlist: GetDocumentInstance<"Playlist">;
@@ -215,7 +208,6 @@ export interface ConfiguredMetadata {
   JournalEntryCategory: JournalEntryCategory.Metadata;
   JournalEntryPage: JournalEntryPage.Metadata;
   JournalEntry: JournalEntry.Metadata;
-  Level: Level.Metadata;
   Macro: Macro.Metadata;
   MeasuredTemplate: MeasuredTemplateDocument.Metadata;
   Note: NoteDocument.Metadata;

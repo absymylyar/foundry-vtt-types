@@ -1,13 +1,7 @@
 import { expectTypeOf } from "vitest";
 
 // This exists to make the class non-abstract.
-class TestBaseTableResult extends foundry.documents.BaseTableResult {
-  get compendium() {
-    return this.inCompendium
-      ? (game.packs!.get(this.pack!) as foundry.documents.collections.CompendiumCollection.ForDocument<"TableResult">)
-      : null;
-  }
-}
+class TestBaseTableResult extends foundry.documents.BaseTableResult {}
 
 // @ts-expect-error range is a required field
 new TestBaseTableResult();

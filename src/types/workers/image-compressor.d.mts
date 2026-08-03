@@ -6,7 +6,7 @@ export declare const FORMATS: {
 };
 
 /** @internal */
-interface _CommonOptionalProperties {
+type _CommonOptionalProperties = InexactPartial<{
   /**
    * Debug option.
    * @remarks Enables logging via `console.debug`
@@ -18,10 +18,10 @@ interface _CommonOptionalProperties {
 
   /** Skip hash? */
   skipHash: boolean;
-}
+}>;
 
 /** @internal */
-interface _ProcessBufferToBase64Options {
+type _ProcessBufferToBase64Options = InexactPartial<{
   /**
    * The required image type.
    * @defaultValue `"image/png"`
@@ -33,7 +33,7 @@ interface _ProcessBufferToBase64Options {
    * @defaultValue `1`
    */
   quality: number;
-}
+}>;
 
 /** @internal */
 interface _CommonRequiredProperties {
@@ -44,40 +44,43 @@ interface _CommonRequiredProperties {
   height: number;
 }
 
-interface _Out {
+type _Out = InexactPartial<{
   /** The output buffer. */
   out: ArrayBuffer;
-}
+}>;
 
 export interface ProcessBufferToBase64Options
-  extends
-    InexactPartial<_ProcessBufferToBase64Options>,
+  extends _ProcessBufferToBase64Options,
     _CommonRequiredProperties,
-    InexactPartial<_CommonOptionalProperties> {
+    _CommonOptionalProperties {
   /** Buffer used to create the image data. */
   buffer: Uint8ClampedArray;
 }
 
 export interface ProcessBufferRedToBufferRGBAOptions
-  extends InexactPartial<_Out>, _CommonRequiredProperties, InexactPartial<_CommonOptionalProperties> {
+  extends _Out,
+    _CommonRequiredProperties,
+    _CommonOptionalProperties {
   /** Buffer to expand. */
   buffer: Uint8ClampedArray;
 }
 
 export interface ProcessBufferRGBAToBufferRedOptions
-  extends InexactPartial<_Out>, _CommonRequiredProperties, InexactPartial<_CommonOptionalProperties> {
+  extends _Out,
+    _CommonRequiredProperties,
+    _CommonOptionalProperties {
   /** Buffer to reduce. */
   buffer: Uint8ClampedArray;
 }
 
-export interface CopyBufferOptions extends InexactPartial<_CommonOptionalProperties>, InexactPartial<_Out> {
+export interface CopyBufferOptions extends _CommonOptionalProperties, _Out {
   /** Buffer to copy. */
   buffer: Uint8ClampedArray;
 }
 
-export interface Debug extends InexactPartial<Pick<_CommonOptionalProperties, "debug">> {}
+export interface Debug extends Pick<_CommonOptionalProperties, "debug"> {}
 
-export interface ExpandOrReduceBufferOptions extends Debug, InexactPartial<_Out> {}
+export interface ExpandOrReduceBufferOptions extends Debug, _Out {}
 
 /** @internal */
 interface _CommonResultProperties {

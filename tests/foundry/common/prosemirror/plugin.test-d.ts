@@ -1,11 +1,13 @@
+/* eslint-disable import-x/extensions */
 import { expectTypeOf } from "vitest";
 import { Schema } from "prosemirror-model";
 import { Plugin } from "prosemirror-state";
-import type { AnyObject } from "fvtt-types/utils";
+import ProseMirrorPlugin from "../../../../src/foundry/common/prosemirror/plugin.mjs";
+import type { AnyObject } from "#utils";
 
 declare const schema: foundry.prosemirror.Schema;
 
-declare class MyPlugin extends foundry.prosemirror.ProseMirrorPlugin {
+declare class MyPlugin extends ProseMirrorPlugin {
   static override build(schema: Schema, options: AnyObject): Plugin;
 }
 

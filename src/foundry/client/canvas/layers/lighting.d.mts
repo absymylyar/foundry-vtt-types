@@ -1,13 +1,12 @@
-import type { FixedInstanceType, HandleEmptyObject, Identity } from "#utils";
+import type { HandleEmptyObject, Identity } from "#utils";
 import type { Canvas } from "#client/canvas/_module.d.mts";
 import type { PlaceablesLayer } from "./_module.d.mts";
 import type { AmbientLight } from "#client/canvas/placeables/_module.d.mts";
-import type { SceneControls } from "#client/applications/ui/_module.d.mts";
 
 declare module "#configuration" {
   namespace Hooks {
     interface PlaceablesLayerConfig {
-      LightingLayer: LightingLayer.Implementation;
+      LightingLayer: LightingLayer.Any;
     }
   }
 }
@@ -30,7 +29,7 @@ declare class LightingLayer extends PlaceablesLayer<"AmbientLight"> {
 
   /**
    * @defaultValue
-   * ```js
+   * ```
    * foundry.utils.mergeObject(super.layerOptions, {
    *  name: "lighting",
    *  rotatableObjects: true,
@@ -42,13 +41,7 @@ declare class LightingLayer extends PlaceablesLayer<"AmbientLight"> {
 
   override get hookName(): "LightingLayer";
 
-  // fake type override
-  override draw(options?: HandleEmptyObject<LightingLayer.DrawOptions>): Promise<this>;
-
   protected override _draw(options: HandleEmptyObject<LightingLayer.DrawOptions>): Promise<void>;
-
-  // fake type override
-  override tearDown(options?: HandleEmptyObject<LightingLayer.TearDownOptions>): Promise<this>;
 
   protected override _tearDown(options: HandleEmptyObject<LightingLayer.TearDownOptions>): Promise<void>;
 
@@ -59,8 +52,6 @@ declare class LightingLayer extends PlaceablesLayer<"AmbientLight"> {
 
   protected override _activate(): void;
 
-  static override prepareSceneControls(): SceneControls.Control;
-
   protected override _canDragLeftStart(user: User.Implementation, event: Canvas.Event.Pointer): boolean;
 
   protected override _onDragLeftStart(event: Canvas.Event.Pointer): void;
@@ -69,50 +60,29 @@ declare class LightingLayer extends PlaceablesLayer<"AmbientLight"> {
 
   protected override _onDragLeftCancel(event: Canvas.Event.Pointer): void;
 
+  // @ts-expect-error Foundry is changing the return type here from Promise<PlaceableObject[]> to just Promise<AmbientLight>
   protected _onMouseWheel(event: Canvas.Event.Wheel): Promise<AmbientLight.Implementation>;
 
   /**
    * Actions to take when the darkness level of the Scene is changed
    * @param event - An event
-   * @internal
    */
-  _onDarknessChange(event: Canvas.Event.DarknessChange): void;
-
-  #LightingLayer: true;
+  protected _onDarknessChange(event: Canvas.Event.DarknessChange): void;
 }
 
 declare namespace LightingLayer {
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode Implementation} instead. This type will be removed in v15.
-   */
-  type Any = Internal.Any;
-
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode ImplementationClass} instead. This type will be removed in v15.
-   */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyLightingLayer {}
-    interface AnyConstructor extends Identity<typeof AnyLightingLayer> {}
-  }
-
-  interface ImplementationClass extends Identity<typeof CONFIG.Canvas.layers.lighting.layerClass> {}
-  interface Implementation extends FixedInstanceType<ImplementationClass> {}
-
-  interface LayerOptions extends PlaceablesLayer.LayerOptions<AmbientLight.ImplementationClass> {
-    name: "lighting";
-    rotatableObjects: true;
-
-    /** @defaultValue `900` */
-    zIndex: number;
-  }
+  interface Any extends AnyLightingLayer {}
+  interface AnyConstructor extends Identity<typeof AnyLightingLayer> {}
 
   interface DrawOptions extends PlaceablesLayer.DrawOptions {}
 
   interface TearDownOptions extends PlaceablesLayer.TearDownOptions {}
+
+  interface LayerOptions extends PlaceablesLayer.LayerOptions<AmbientLight.ImplementationClass> {
+    name: "lighting";
+    rotatableObjects: true;
+    zIndex: 900;
+  }
 }
 
 export default LightingLayer;

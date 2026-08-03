@@ -1,4 +1,5 @@
 import { expectTypeOf } from "vitest";
+import type { Container, DisplayObject } from "pixi.js";
 
 import AmbientLight = foundry.canvas.placeables.AmbientLight;
 import BasePlaceableHUD = foundry.applications.hud.BasePlaceableHUD;
@@ -8,31 +9,21 @@ import Document = foundry.abstract.Document;
 import EmbeddedCollection = foundry.abstract.EmbeddedCollection;
 import PlaceablesLayer = foundry.canvas.layers.PlaceablesLayer;
 import PlaceableObject = foundry.canvas.placeables.PlaceableObject;
-import EffectsCanvasGroup = foundry.canvas.groups.EffectsCanvasGroup;
-
-declare global {
-  namespace CONFIG.Canvas {
-    interface Layers {
-      testPlaceablesLayer: CONFIG.Canvas.LayerDefinition<typeof SomeLightLayer, "primary">;
-    }
-  }
-}
 
 type CAL = AmbientLight.Implementation;
 type CALDoc = AmbientLightDocument.Implementation;
-type SAL = AmbientLightDocument.Stored;
 
 class SomeLightLayer extends PlaceablesLayer<"AmbientLight"> {
   static override get layerOptions() {
     return foundry.utils.mergeObject(super.layerOptions, {
-      name: "testPlaceablesLayer",
+      name: "myLighting",
     });
   }
 
   override options: PlaceablesLayer.LayerOptions<AmbientLight.ImplementationClass> = SomeLightLayer.layerOptions;
 }
 
-expectTypeOf(SomeLightLayer.instance).toEqualTypeOf<CanvasLayer | EffectsCanvasGroup.Implementation | undefined>();
+expectTypeOf(SomeLightLayer.instance).toEqualTypeOf<CanvasLayer | Container<DisplayObject> | undefined>();
 // The following fails as the static `layerOptions` can't access the `DocumentName` type param
 // expectTypeOf(SomeLightLayer.layerOptions).toEqualTypeOf<PlaceablesLayer.LayerOptions<AmbientLight.ImplementationClass>>();
 
@@ -52,29 +43,31 @@ if (firstHistoryEntry.type === "create") {
 } else if (firstHistoryEntry.type === "update") {
   expectTypeOf(firstHistoryEntry.data).toEqualTypeOf<Array<AmbientLightDocument.UpdateData & { _id: string }>>();
 } else {
-  expectTypeOf(firstHistoryEntry.data).toEqualTypeOf<Array<AmbientLightDocument.CreateData & { _id: string }>>();
+  expectTypeOf(firstHistoryEntry.data).toEqualTypeOf<Array<AmbientLightDocument.UpdateData & { _id: string }>>();
 }
 
 expectTypeOf(layer.options.objectClass).toEqualTypeOf<AmbientLight.ImplementationClass>();
 expectTypeOf(layer.objects).toEqualTypeOf<PIXI.Container | null>();
 expectTypeOf(layer.preview).toEqualTypeOf<PIXI.Container | null>();
 expectTypeOf(layer.quadtree).toExtend<CanvasQuadtree<AmbientLight.Implementation> | null>();
-expectTypeOf(layer.documentCollection).toEqualTypeOf<EmbeddedCollection<SAL, Scene.Implementation> | null>();
+expectTypeOf(layer.documentCollection).toEqualTypeOf<EmbeddedCollection<CALDoc, Scene.Implementation> | null>();
 // eslint-disable-next-line @typescript-eslint/no-deprecated
 expectTypeOf(layer.gridPrecision).toEqualTypeOf<number>();
 expectTypeOf(layer.hud).toEqualTypeOf<BasePlaceableHUD<CAL> | null>();
 expectTypeOf(layer.placeables).toEqualTypeOf<CAL[]>();
 expectTypeOf(layer.controlled).toEqualTypeOf<CAL[]>();
-expectTypeOf(layer.getDocuments()).toEqualTypeOf<EmbeddedCollection<SAL, Scene.Implementation> | []>();
+expectTypeOf(layer.getDocuments()).toEqualTypeOf<
+  EmbeddedCollection<AmbientLightDocument.Implementation, Scene.Implementation> | []
+>();
 
 expectTypeOf(layer.draw()).toEqualTypeOf<Promise<SomeLightLayer>>();
 declare const someLight: CALDoc;
 expectTypeOf(layer.createObject(someLight)).toEqualTypeOf<CAL>();
 
-// @ts-expect-error A LightLayer needs an AmbientLightDocument.
+// @ts-expect-error - A LightLayer needs an AmbientLightDocument.
 layer.createObject({});
 
-// @ts-expect-error A LightLayer needs an AmbientLightDocument.
+// @ts-expect-error - A LightLayer needs an AmbientLightDocument.
 layer.createObject();
 
 expectTypeOf(layer.tearDown()).toEqualTypeOf<Promise<SomeLightLayer>>();
@@ -89,6 +82,7 @@ expectTypeOf(layer.controlAll({ releaseOthers: true })).toEqualTypeOf<CAL[]>();
 
 expectTypeOf(layer.releaseAll()).toEqualTypeOf<number>();
 expectTypeOf(layer.releaseAll({})).toEqualTypeOf<number>();
+expectTypeOf(layer.releaseAll({ trigger: true })).toEqualTypeOf<number>();
 
 expectTypeOf(
   layer.rotateMany({
@@ -107,31 +101,27 @@ expectTypeOf(
 expectTypeOf(layer.moveMany()).toEqualTypeOf<Promise<CAL[]> | undefined>();
 expectTypeOf(layer.moveMany({})).toEqualTypeOf<Promise<CAL[]> | undefined>();
 expectTypeOf(
-  layer.moveMany({ dx: undefined, dy: -1, rotate: true, ids: ["abc", "def"], includeLocked: undefined }),
+  layer.moveMany({ dx: undefined, dy: -1, rotate: true, ids: ["abc", "def"], includeLocked: null }),
 ).toEqualTypeOf<Promise<CAL[]> | undefined>();
 
-expectTypeOf(layer.undoHistory()).toEqualTypeOf<Promise<SAL[]>>();
-expectTypeOf(layer.deleteAll()).toEqualTypeOf<Promise<"yes" | false | null>>();
+expectTypeOf(layer.undoHistory()).toEqualTypeOf<Promise<CALDoc[]>>();
+expectTypeOf(layer.deleteAll()).toEqualTypeOf<Promise<undefined | false | null>>();
 
-expectTypeOf(layer.storeHistory("create", [{ _id: someLight.id ?? "XXXXXSomeIDXXXXX" }])).toEqualTypeOf<void>();
+expectTypeOf(layer.storeHistory("create", { _id: someLight.id ?? "XXXXXSomeIDXXXXX" })).toEqualTypeOf<void>();
 expectTypeOf(
-  layer.storeHistory("update", [
-    {
-      ...someLight.toObject(), // TODO: make this a subset of known properties of the schema after docs v2
-      _id: someLight.id ?? "XXXXXSomeIDXXXXX",
-    },
-  ]),
+  layer.storeHistory("update", {
+    ...someLight.toObject(), // TODO: make this a subset of known properties of the schema after docs v2
+    _id: someLight.id ?? "XXXXXSomeIDXXXXX",
+  }),
 ).toEqualTypeOf<void>();
 expectTypeOf(
-  layer.storeHistory("delete", [
-    {
-      ...someLight.toObject(), // TODO: make this a subset of known properties of the schema after docs v2
-      _id: someLight.id ?? "XXXXXSomeIDXXXXX",
-    },
-  ]),
+  layer.storeHistory("delete", {
+    ...someLight.toObject(), // TODO: make this a subset of known properties of the schema after docs v2
+    _id: someLight.id ?? "XXXXXSomeIDXXXXX",
+  }),
 ).toEqualTypeOf<void>();
 
-// @ts-expect-error "new" is not a valid history type.
+// @ts-expect-error - "new" is not a valid history type.
 layer.storeHistory("new", new AmbientLightDocument.implementation());
 
 expectTypeOf(layer.copyObjects()).toEqualTypeOf<CAL[]>();
@@ -142,7 +132,7 @@ expectTypeOf(layer.pasteObjects({ x: 10, y: 10 }, { hidden: true, snap: false })
 expectTypeOf(layer.pasteObjects({ x: 10, y: 10 }, { hidden: false })).toEqualTypeOf<Promise<CALDoc[]>>();
 expectTypeOf(layer.pasteObjects({ x: 10, y: 10 }, { snap: true })).toEqualTypeOf<Promise<CALDoc[]>>();
 
-expectTypeOf(layer.selectObjects({ x: 0, y: 0, width: 200, height: 500 })).toEqualTypeOf<boolean>();
+expectTypeOf(layer.selectObjects({ width: 200, height: 500 })).toEqualTypeOf<boolean>();
 expectTypeOf(
   layer.selectObjects(
     {
@@ -170,6 +160,6 @@ expectTypeOf(layer.updateAll(transformer, null, {})).toEqualTypeOf<Promise<CALDo
 expectTypeOf(layer.updateAll(transformer, filter)).toEqualTypeOf<Promise<CALDoc[]>>();
 expectTypeOf(layer.updateAll(transformer, filter, { diff: true, noHook: true })).toEqualTypeOf<Promise<CALDoc[]>>();
 
-// @ts-expect-error An x and y coordinate is required
+// @ts-expect-error - An x and y coordinate is required
 // This actually currently errors just on unknown key, not x/y requiredness
 layer.updateAll({ no_light_data: 0 });

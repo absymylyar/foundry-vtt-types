@@ -1,6 +1,5 @@
+/* eslint-disable import-x/extensions */
 import { expectTypeOf } from "vitest";
-
-// Import necessary as this is otherwise inaccessible.
 import {
   onlyInlineContent,
   isElementEmpty,
@@ -8,7 +7,7 @@ import {
   mergeStyle,
   classesFromString,
   mergeClass,
-} from "../../../../../src/foundry/common/prosemirror/schema/utils.mts";
+} from "../../../../../src/foundry/common/prosemirror/schema/utils.mjs";
 
 declare const el: HTMLElement;
 expectTypeOf(onlyInlineContent(el)).toEqualTypeOf<boolean>();

@@ -1,23 +1,10 @@
 import { expectTypeOf } from "vitest";
-
-import CanvasLayer = foundry.canvas.layers.CanvasLayer;
-import EffectsCanvasGroup = foundry.canvas.groups.EffectsCanvasGroup;
-
-declare global {
-  namespace CONFIG.Canvas {
-    interface Layers {
-      testCanvasLayer: CONFIG.Canvas.LayerDefinition<typeof MyCanvasLayer, "primary">;
-    }
-  }
-}
+import type { HandleEmptyObject } from "#utils";
+import { CanvasLayer } from "#client/canvas/layers/_module.mjs";
 
 interface MyLayerOptions extends CanvasLayer.LayerOptions {
-  name: "testCanvasLayer";
+  name: "MyLayer";
   baseClass: typeof MyCanvasLayer;
-}
-
-interface MyDrawOptions extends CanvasLayer.DrawOptions {
-  foo?: boolean;
 }
 
 declare class MyCanvasLayer extends CanvasLayer {
@@ -25,15 +12,16 @@ declare class MyCanvasLayer extends CanvasLayer {
 
   static override get layerOptions(): MyLayerOptions;
 
-  protected override _draw(_options: MyDrawOptions): Promise<void>;
+  protected override _draw(_options: HandleEmptyObject<CanvasLayer.DrawOptions>): Promise<void>;
 }
 
-expectTypeOf(MyCanvasLayer.instance).toEqualTypeOf<CanvasLayer.Any | EffectsCanvasGroup.Implementation | undefined>;
+expectTypeOf(MyCanvasLayer.instance).toEqualTypeOf<CanvasLayer.Any | PIXI.Container | undefined>;
 
 const layer = new MyCanvasLayer();
 
 expectTypeOf(layer.name).toEqualTypeOf<string>();
 expectTypeOf(layer.hookName).toEqualTypeOf<string>();
+expectTypeOf(layer.options.baseClass).toExtend<CanvasLayer.AnyConstructor>();
 expectTypeOf(layer.options.baseClass).toEqualTypeOf<typeof MyCanvasLayer>();
 expectTypeOf(layer.draw()).toEqualTypeOf<Promise<MyCanvasLayer>>();
 expectTypeOf(layer["_draw"]({})).toEqualTypeOf<Promise<void>>();

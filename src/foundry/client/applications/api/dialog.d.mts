@@ -24,10 +24,8 @@ declare module "#configuration" {
   }
 }
 
-// `Node` (e.g. the `HTMLDivElement` used by `Configuration.content`) is excluded from recursion:
-// its circular DOM properties cause "Excessive stack depth comparing types" crashes.
 type DeepInexactPartial<T> = T extends object
-  ? T extends AnyArray | AnyFunction | AnyConstructor | Node
+  ? T extends AnyArray | AnyFunction | AnyConstructor
     ? T
     : {
         [K in keyof T]?: DeepInexactPartial<T[K]> | undefined;
@@ -100,7 +98,7 @@ declare class DialogV2<
   Configuration extends DialogV2.Configuration = DialogV2.Configuration<any>,
   RenderOptions extends DialogV2.RenderOptions = DialogV2.RenderOptions,
 > extends ApplicationV2<RenderContext, Configuration, RenderOptions> {
-  static override DEFAULT_OPTIONS: DialogV2.DefaultOptions;
+  static override DEFAULT_OPTIONS: DeepPartial<ApplicationV2.Configuration> & object;
 
   protected override _initializeApplicationOptions(options: DeepPartial<Configuration>): Configuration;
 
@@ -278,12 +276,12 @@ declare class DialogV2<
    * @see {@link DialogV2.wait}
    *
    * @remarks The callbacks within `config.buttons` are called with an instance of the current class.
-   * While many users likely will not notice, if this ends up affecting you then you will need to
+   * While many users likely will not notice, if this ends up effecting you then you will need to
    * make an override to provide the current class. For example:
    * ```typescript
    * class YourDialog extends DialogV2 {
    *   static query<T extends DialogV2.Type, const Options extends DialogV2.QueryConfig<T>>(
-   *     user: User.Stored | string,
+   *     user: User.Implementation | string,
    *     type: T,
    *     config: Options,
    *   ): Promise<DialogV2.QueryReturn<T, Options>> {
@@ -293,7 +291,7 @@ declare class DialogV2<
    * ```
    */
   static query<T extends DialogV2.Type, const Options extends DialogV2.QueryConfig<T>>(
-    user: User.Stored | string,
+    user: User.Implementation | string,
     type: T,
     config: Options,
   ): Promise<DialogV2.QueryReturn<T, Options>>;
@@ -366,7 +364,7 @@ declare namespace DialogV2 {
 
   interface RenderContext extends ApplicationV2.RenderContext {}
 
-  interface Configuration<Dialog extends DialogV2.Any = DialogV2.Any> extends ApplicationV2.Configuration<Dialog> {
+  interface Configuration<Dialog extends DialogV2.Any = DialogV2.Any> extends ApplicationV2.Configuration {
     /**
      * Modal dialogs prevent interaction with the rest of the UI until they are dismissed or submitted.
      */
@@ -394,10 +392,6 @@ declare namespace DialogV2 {
     // TODO(LukeAbby): This will probably never be sufficiently typed.
     submit?: SubmitCallback<unknown, Dialog> | null | undefined;
   }
-
-  // Note(LukeAbby): This `& object` is so that the `DEFAULT_OPTIONS` can be overridden more easily
-  // Without it then `static override DEFAULT_OPTIONS = { unrelatedProp: 123 }` would error.
-  type DefaultOptions<Dialog extends DialogV2.Any = DialogV2.Any> = DeepPartial<Configuration<Dialog>> & object;
 
   interface RenderOptions extends ApplicationV2.RenderOptions {}
 
@@ -438,7 +432,8 @@ declare namespace DialogV2 {
 
   /** @internal */
   interface _PartialButtons<Dialog extends DialogV2.Any = DialogV2.Any>
-    extends Omit<WaitOptions<Dialog>, "buttons">, InexactPartial<Pick<WaitOptions<Dialog>, "buttons">> {}
+    extends Omit<WaitOptions<Dialog>, "buttons">,
+      InexactPartial<Pick<WaitOptions<Dialog>, "buttons">> {}
 
   // Note(LukeAbby): `IntentionalPartial` is used for all the buttons because `mergeObject` is
   // called. For example `{ action: undefined }` would be a logical bug.
@@ -457,6 +452,7 @@ declare namespace DialogV2 {
 
   type FormContent<FormData extends object> = (string | HTMLDivElement) & { " __fvtt_types_form_data": FormData };
 
+  /** @typeParam FD - The form data */
   interface InputConfig<Dialog extends DialogV2.Any = DialogV2.Any> extends PromptConfig<Dialog> {}
 
   type Type = "prompt" | "confirm" | "wait" | "input";
@@ -489,14 +485,14 @@ declare namespace DialogV2 {
     callback: () => false;
   }
 
-  type ConfirmReturn<Options extends ConfirmConfig<never> | undefined = undefined> =
+  type ConfirmReturn<Options extends ConfirmConfig<never> | undefined> =
     Options extends ConfirmConfig<never>
       ? WaitReturn<
           {
             buttons: [
-              Internal.MergePartial<ConfirmYesButton, GetKey<Options, "yes", undefined>>,
-              Internal.MergePartial<ConfirmNoButton, GetKey<Options, "no", undefined>>,
-              ...Coalesce<GetKey<Options, "buttons", undefined>, []>,
+              Internal.MergePartial<ConfirmYesButton, Options["yes"]>,
+              Internal.MergePartial<ConfirmNoButton, Options["no"]>,
+              ...Coalesce<Options["buttons"], []>,
             ];
           } & Omit<Options, "buttons">
         >
@@ -563,7 +559,7 @@ declare namespace DialogV2 {
       ? never
       : "close" extends keyof Options
         ? Options["close"] extends (...args: never) => infer Return
-          ? NullishCoalesce<Return, null>
+          ? Return | null
           : null
         : null;
 
@@ -574,9 +570,7 @@ declare namespace DialogV2 {
           : never
         : undefined;
 
-    type OneButtonReturnType<Callback, Action> = Callback extends (...args: never) => infer Return
-      ? NullishCoalesce<Awaited<Return>, Action>
-      : Action;
+    type OneButtonReturnType<Callback, Action> = Callback extends () => infer Return ? Return : Action;
 
     type ConfirmReturnType<Options extends ConfirmConfig<never> | undefined> =
       | (Options extends { readonly yes: { readonly callback: ButtonCallback<infer YesReturn> } }
@@ -631,7 +625,7 @@ declare namespace DialogV2 {
           // `exactOptionalPropertyTypes` set to false. Otherwise would cause a required prop like
           // `{ action: string }` to be able to be `{ action: string | undefined }`.
           V & {}
-        : T[K] | NonNullable<GetKey<U, K>>;
+        : T[K] | (U extends { readonly [_ in K]?: infer V } ? V & {} : never);
     } & Omit<U, keyof T>;
 
     class FormContent<Content extends AnyObject> {

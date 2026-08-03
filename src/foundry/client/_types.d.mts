@@ -1,6 +1,3 @@
-import type { Canvas } from "#client/canvas/_module.d.mts";
-import Token = foundry.canvas.placeables.Token;
-
 /* eslint-disable @typescript-eslint/no-unused-vars */
 // After seeing that none of these types add anything or are even exported a
 // very reasonable question may be: Why on earth does this file exist?
@@ -18,7 +15,7 @@ type RulerWaypoint = unknown;
 
 type TokenFindMovementPathWaypoint = unknown;
 
-type TokenConstrainMovementPathWaypoint = Token.ConstrainMovementPathWaypoint;
+type TokenConstrainMovementPathWaypoint = unknown;
 
 type TokenConstrainMovementPathOptions = unknown;
 
@@ -26,13 +23,13 @@ type TokenFindMovementPathOptions = unknown;
 
 type TokenFindMovementPathJob = unknown;
 
-type TokenGetTerrainMovementPathWaypoint = Omit<TokenDocument.GetCompleteMovementPathWaypoint, "terrain">;
+type TokenGEtTerrainMovementPathWaypoint = unknown;
 
-type TokenTerrainMovementWaypoint = TokenDocument.CompleteMovementWaypoint;
+type TokenTerrainMovementWaypoint = unknown;
 
 type TokenRulerData = foundry.canvas.placeables.tokens.TokenRuler.Data;
 
-type TokenPlannedMovement = Token.PlannedMovement;
+type TokenPlannedMovement = unknown;
 
 type TokenRulerWaypointData = foundry.canvas.placeables.tokens.TokenRuler.WaypointData;
 
@@ -52,7 +49,7 @@ type TokenMovementActionCostFunction = unknown;
 
 type TokenMovementActionConfig = unknown;
 
-type CanvasViewPosition = Canvas.PartialViewPosition;
+type CanvasViewPosition = unknown;
 
 type CanvasVisibilityTest = foundry.canvas.groups.CanvasVisibility.Test;
 
@@ -64,13 +61,13 @@ type ReticuleOptions = unknown;
 
 type ActivityData = unknown;
 
-type CanvasPerformanceSettings = Canvas.PerformanceSettings;
+type CanvasPerformanceSettings = unknown;
 
-type CanvasSupportedComponents = Canvas.SupportedComponents;
+type CanvasSupportedComponents = unknown;
 
 type CanvasDimensions = unknown;
 
-type JournalEntryPageHeading = JournalEntryPage.Heading;
+type JournalEntryPageHeading = unknown;
 
 type SearchableField = foundry.data.fields.DataField.Any | Record<string, foundry.data.fields.DataField.Any>;
 
@@ -82,9 +79,9 @@ type ManageCompendiumRequest = unknown;
 
 type ManageCompendiumResponse = unknown;
 
-type WorldCompendiumPackConfiguration = foundry.documents.collections.CompendiumCollection.Configuration;
+type WorldCompendiumPackConfiguration = unknown;
 
-type WorldCompendiumConfiguration = foundry.documents.collections.CompendiumCollection.SettingData;
+type WorldCompendiumConfiguration = Record<string, WorldCompendiumPackConfiguration>;
 
 type SettingConfig = foundry.helpers.ClientSettings.SettingConfig;
 

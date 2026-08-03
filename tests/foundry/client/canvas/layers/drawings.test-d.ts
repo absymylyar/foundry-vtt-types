@@ -1,9 +1,9 @@
 import { expectTypeOf } from "vitest";
+import { DrawingsLayer } from "#client/canvas/layers/_module.mjs";
+import type { Drawing } from "#client/canvas/placeables/_module.d.mts";
 
-import DrawingsLayer = foundry.canvas.layers.DrawingsLayer;
 import Canvas = foundry.canvas.Canvas;
 import DrawingHUD = foundry.applications.hud.DrawingHUD;
-import Drawing = foundry.canvas.placeables.Drawing;
 
 expectTypeOf(DrawingsLayer.documentName).toEqualTypeOf<"Drawing">();
 expectTypeOf(DrawingsLayer.instance).toEqualTypeOf<DrawingsLayer | undefined>();
@@ -29,7 +29,7 @@ expectTypeOf(layer.configureDefault()).toEqualTypeOf<void>();
 expectTypeOf(layer["_deactivate"]()).toBeVoid();
 expectTypeOf(layer["_draw"]({})).toEqualTypeOf<Promise<void>>();
 
-expectTypeOf(layer["_getNewDrawingData"](somePoint)).toEqualTypeOf<DrawingDocument.CreateData>();
+expectTypeOf(layer._getNewDrawingData(somePoint)).toEqualTypeOf<DrawingDocument.CreateData>();
 
 declare const pointerEvent: foundry.canvas.Canvas.Event.Pointer;
 expectTypeOf(layer["_onClickLeft"](pointerEvent)).toBeVoid();

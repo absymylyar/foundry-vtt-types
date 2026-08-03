@@ -1,10 +1,6 @@
-import type { DeepPartial, Identity } from "#utils";
-import type {
-  ApplicationV2,
-  DocumentSheetV2,
-  HandlebarsApplicationMixin,
-} from "#client/applications/api/_module.d.mts";
-import type { ClientDocumentMixin } from "#client/documents/abstract/_module.d.mts";
+import type { Identity } from "#utils";
+import type DocumentSheetV2 from "../api/document-sheet.d.mts";
+import type HandlebarsApplicationMixin from "../api/handlebars-application.d.mts";
 
 declare module "#configuration" {
   namespace Hooks {
@@ -16,6 +12,7 @@ declare module "#configuration" {
 
 /**
  * The Application responsible for configuring a single Folder document.
+ * @remarks TODO: Stub
  */
 declare class FolderConfig<
   RenderContext extends FolderConfig.RenderContext = FolderConfig.RenderContext,
@@ -26,94 +23,21 @@ declare class FolderConfig<
   RenderContext,
   Configuration,
   RenderOptions
-> {
-  /**
-   * @defaultValue
-   * ```js
-   * {
-   *   classes: ["folder-config"],
-   *   canCreate: true,
-   *   canImport: false,
-   *   window: {
-   *     contentClasses: ["standard-form"],
-   *     icon: "fa-solid fa-folder"
-   *   },
-   *   position: {width: 480},
-   *   form: {
-   *     closeOnSubmit: true
-   *   }
-   * }
-   * ```
-   */
-  static override DEFAULT_OPTIONS: DocumentSheetV2.DefaultOptions;
-
-  /**
-   * @defaultValue
-   * ```js
-   * {
-   *   body: {template: "templates/sheets/folder-config.hbs"},
-   *   footer: {template: "templates/generic/form-footer.hbs"}
-   * }
-   * ```
-   */
-  static override PARTS: Record<string, HandlebarsApplicationMixin.HandlebarsTemplatePart>;
-
-  protected override _prepareContext(
-    options: DeepPartial<RenderOptions> & { isFirstRender: boolean },
-  ): Promise<RenderContext>;
-
-  // `_formConfig` is unused by Foundry
-  protected override _onChangeForm(_formConfig: ApplicationV2.FormConfiguration, event: Event): void;
-
-  protected override _processFormData(
-    event: SubmitEvent | null,
-    form: HTMLFormElement,
-    formData: foundry.applications.ux.FormDataExtended,
-  ): Folder.UpdateData;
-
-  protected override _processSubmitData(
-    event: SubmitEvent,
-    form: HTMLFormElement,
-    submitData: Folder.UpdateData,
-    options?: foundry.applications.api.DocumentSheetV2.ProcessSubmitOptions<Folder.Implementation>,
-  ): Promise<foundry.applications.api.DocumentSheetV2.SubmitResult<Folder.Implementation>>;
-
-  protected override _onClose(options: DeepPartial<RenderOptions>): void;
-}
+> {}
 
 declare namespace FolderConfig {
   interface Any extends AnyFolderConfig {}
   interface AnyConstructor extends Identity<typeof AnyFolderConfig> {}
 
   interface RenderContext
-    extends HandlebarsApplicationMixin.RenderContext, DocumentSheetV2.RenderContext<Folder.Implementation> {
-    /**
-     * @remarks Uses the Folder's `_source.name` if this sheet is for a persisted folder, otherwise defaults to `""`.
-     */
-    name: string;
-
-    /**
-     * @remarks Uses the Folder's `_source.name` if this sheet is for a persisted folder, otherwise defaults to
-     * {@linkcode Folder.defaultName | folder.constructor.defaultName}`({pack: folder.pack})}`.
-     */
-    namePlaceholder: string;
-
-    buttons: ApplicationV2.FormFooterButton[];
-  }
+    extends HandlebarsApplicationMixin.RenderContext,
+      DocumentSheetV2.RenderContext<Folder.Implementation> {}
 
   interface Configuration
-    extends HandlebarsApplicationMixin.Configuration, DocumentSheetV2.Configuration<Folder.Implementation> {
-    /**
-     * @remarks Called with the updated Folder on successful submission, or with `null` on submission
-     * failure or close (see {@linkcode FolderConfig._processSubmitData | #_processSubmitData} and
-     * {@linkcode FolderConfig._onClose | #_onClose})
-     */
-    resolve: ResolveFunction;
-  }
+    extends HandlebarsApplicationMixin.Configuration,
+      DocumentSheetV2.Configuration<Folder.Implementation> {}
 
   interface RenderOptions extends HandlebarsApplicationMixin.RenderOptions, DocumentSheetV2.RenderOptions {}
-
-  type ResolveFunction = (doc: ClientDocumentMixin.AnyMixed | null) => void;
 }
 
 declare abstract class AnyFolderConfig extends FolderConfig<

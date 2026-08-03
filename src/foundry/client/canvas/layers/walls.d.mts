@@ -1,13 +1,13 @@
-import type { Identity, FixedInstanceType, InexactPartial, HandleEmptyObject } from "#utils";
+import type { Coalesce, HandleEmptyObject, Identity, NullishProps } from "#utils";
 import type { Canvas } from "#client/canvas/_module.d.mts";
+import type { Ray, PointSourcePolygon } from "#client/canvas/geometry/_module.d.mts";
 import type { PlaceablesLayer } from "./_module.d.mts";
 import type { PlaceableObject, Wall } from "#client/canvas/placeables/_module.d.mts";
-import type { SceneControls } from "#client/applications/ui/_module.d.mts";
 
 declare module "#configuration" {
   namespace Hooks {
     interface PlaceablesLayerConfig {
-      WallsLayer: WallsLayer.Implementation;
+      WallsLayer: WallsLayer.Any;
     }
   }
 }
@@ -26,28 +26,28 @@ declare class WallsLayer extends PlaceablesLayer<"Wall"> {
   /**
    * Track whether we are currently within a chained placement workflow
    * @defaultValue `false`
-   * @internal
    */
-  _chain: boolean;
+  protected _chain: boolean;
 
   /**
    * Track the most recently created or updated wall data for use with the clone tool
    * @defaultValue `null`
-   * @internal
+   * @remarks Foundry marked `@private`, is set via {@link Wall#_onCreate} and {@link Wall#_onUpdate}
    */
-  _cloneType: WallDocument.Source | null;
+  protected _cloneType: WallDocument.Source | null;
 
   /**
    * Reference the last interacted wall endpoint for the purposes of chaining
    * @defaultValue `{ point: null }`
-   * @internal
+   * @remarks Foundry marked `@private`, is set via {@link Wall#_onHoverIn}, {@link Wall#_onHoverOut}, and {@link Wall#_prepareDragLeftDropUpdates}
    */
-  _last: WallsLayer.LastPoint;
+  protected last: {
+    point: Canvas.PointTuple | null;
+  };
 
-  /** @deprecated Foundry replaced with {@linkcode _last} in v13. This warning will be removed in v14. */
-  last: never;
-
-  // Fake type override
+  /**
+   * @privateRemarks This is not overridden in foundry but reflects the real behavior.
+   */
   static get instance(): Canvas["walls"];
 
   /**
@@ -62,7 +62,7 @@ declare class WallsLayer extends PlaceablesLayer<"Wall"> {
    */
   static override get layerOptions(): WallsLayer.LayerOptions;
 
-  // Fake type override
+  /** @privateRemarks This is not overridden in foundry but reflects the real behavior. */
   override options: WallsLayer.LayerOptions;
 
   static override documentName: "Wall";
@@ -75,9 +75,6 @@ declare class WallsLayer extends PlaceablesLayer<"Wall"> {
   get doors(): Wall.Implementation[];
 
   override getSnappedPoint(point: Canvas.Point): Canvas.Point;
-
-  // fake type override
-  override draw(options?: HandleEmptyObject<WallsLayer.DrawOptions>): Promise<this>;
 
   protected override _draw(options: HandleEmptyObject<WallsLayer.DrawOptions>): Promise<void>;
 
@@ -93,22 +90,40 @@ declare class WallsLayer extends PlaceablesLayer<"Wall"> {
 
   override releaseAll(options?: PlaceableObject.ReleaseOptions): number;
 
-  /**  @deprecated Removed without replacement in v13. This warning will be removed in v14. */
-  protected _panCanvasEdge(...args: never): never;
+  /** @remarks `options` is unused */
+  protected override _pasteObject(
+    copy: Wall.Implementation,
+    offset: Canvas.Point,
+    options?: PlaceablesLayer.PasteOptions | null,
+  ): Omit<WallDocument.Source, "_id">;
+
+  /**
+   * Pan the canvas view when the cursor position gets close to the edge of the frame
+   * @param event - The originating mouse movement event
+   * @param x     - The x-coordinate
+   * @param y     - The y-coordinate
+   * @remarks Foundry marked `@private`
+   */
+  protected _panCanvasEdge(event: MouseEvent, x: number, y: number): Promise<boolean> | void;
 
   /**
    * Get the wall endpoint coordinates for a given point.
    * @param  point - The candidate wall endpoint.
    * @returns The wall endpoint coordinates.
-   * @internal
+   * @remarks Foundry marked `@internal`, is called externally in {@link Wall#_onDragLeftMove} and {@link Wall#_prepareDragLeftDropUpdates}
    */
-  _getWallEndpointCoordinates(
+  protected _getWallEndpointCoordinates(
     point: Canvas.Point,
-    options?: WallsLayer.GetWallEndpointCoordinatesOptions,
+    options?: WallsLayer.GetWallEndpointCoordinatesOptions, // not:null (destructured)
   ): Canvas.PointTuple;
 
-  /** @deprecated Made hard private in v13. This warning will be removed in v14.*/
-  protected _getWallDataFromActiveTool(tool?: never): never;
+  /**
+   * The Scene Controls tools provide several different types of prototypical Walls to choose from
+   * This method helps to translate each tool into a default wall data configuration for that type
+   * @param tool - The active canvas tool
+   * @remarks If a tool is not provided, returns an object with `light`, `sight`, `sound`, and `move` keys, all with the value `CONST.WALL_SENSE_TYPES.NORMAL`
+   */
+  protected _getWallDataFromActiveTool(tool?: WallsLayer.WallTools | null): WallDocument.Source;
 
   /**
    * Identify the interior enclosed by the given walls.
@@ -117,8 +132,6 @@ declare class WallsLayer extends PlaceablesLayer<"Wall"> {
    * @remarks Foundry marked `@license MIT`
    */
   identifyInteriorArea(walls: Wall.Implementation[]): PIXI.Polygon[];
-
-  static override prepareSceneControls(): SceneControls.Control;
 
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   protected override _onDragLeftStart(event: Canvas.Event.Pointer): Promise<Wall.Implementation>;
@@ -129,88 +142,73 @@ declare class WallsLayer extends PlaceablesLayer<"Wall"> {
 
   protected override _onDragLeftCancel(event: Canvas.Event.Pointer): void;
 
-  /**
-   * Custom undo for wall creation while chaining is active.
-   */
-  protected override _onUndoCreate(event: PlaceablesLayer.CreationHistoryEntry<"Wall">): Promise<WallDocument.Stored[]>;
-
   protected override _onClickRight(event: Canvas.Event.Pointer): void;
+
+  /**
+   * @deprecated since v11, will be removed in v13
+   * @remarks "WallsLayer#checkCollision is obsolete. Prefer calls to testCollision from CONFIG.Canvas.polygonBackends[type]"
+   */
+  checkCollision<Mode extends PointSourcePolygon.CollisionModes | undefined = undefined>(
+    ray: Ray,
+    options: PointSourcePolygon.TestCollisionOptions<Mode>,
+  ): PointSourcePolygon.TestCollision<Coalesce<Mode, "all">>;
+
+  /**
+   * @deprecated since v11, will be removed in v13
+   * @remarks "The WallsLayer#highlightControlledSegments function is deprecated in favor of calling wall.renderFlags.set(\"refreshHighlight\") on individual Wall objects"
+   */
+  highlightControlledSegments(): void;
 
   /**
    * Perform initialization steps for the WallsLayer whenever the composition of walls in the Scene is changed.
    * Cache unique wall endpoints and identify interior walls using overhead roof tiles.
-   * @deprecated "`WallsLayer#initialize` is deprecated in favor of
-   * {@linkcode foundry.canvas.geometry.edges.CanvasEdges.initialize | Canvas#edges#initialize}" (since v12, until v14)
+   * @deprecated since v12 until v14
+   * @remarks "WallsLayer#initialize is deprecated in favor of Canvas#edges#initialize"
    */
   initialize(): void;
 
   /**
    * Identify walls which are treated as "interior" because they are contained fully within a roof tile.
-   * @deprecated "`WallsLayer#identifyInteriorWalls` has been deprecated. It has no effect anymore and there's no replacement."
-   * (since v12, until v14)
+   * @deprecated since v12 until v14
+   * @remarks "WallsLayer#identifyInteriorWalls has been deprecated. It has no effect anymore and there's no replacement."
    */
   identifyInteriorWalls(): void;
 
   /**
    * Initialization to identify all intersections between walls.
    * These intersections are cached and used later when computing point source polygons.
-   * @deprecated "`WallsLayer#identifyWallIntersections` is deprecated in favor of
-   * {@linkcode foundry.canvas.geometry.edges.Edge.identifyEdgeIntersections} and has no effect." (since v12, until v14)
+   * @deprecated since v12 until v14
+   * @remarks "WallsLayer#identifyWallIntersections is deprecated in favor of foundry.canvas.geometry.edges.Edge.identifyEdgeIntersections and has no effect."
    */
   identifyWallIntersections(): void;
-
-  #WallsLayer: true;
 }
 
 declare namespace WallsLayer {
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode Implementation} instead. This type will be removed in v15.
-   */
-  type Any = Internal.Any;
+  interface Any extends AnyWallsLayer {}
+  interface AnyConstructor extends Identity<typeof AnyWallsLayer> {}
 
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode ImplementationClass} instead. This type will be removed in v15.
-   */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyWallsLayer {}
-    interface AnyConstructor extends Identity<typeof AnyWallsLayer> {}
-  }
-
-  interface ImplementationClass extends Identity<typeof CONFIG.Canvas.layers.walls.layerClass> {}
-  interface Implementation extends FixedInstanceType<ImplementationClass> {}
+  interface DrawOptions extends PlaceablesLayer.DrawOptions {}
 
   interface LayerOptions extends PlaceablesLayer.LayerOptions<Wall.ImplementationClass> {
     name: "walls";
     controllableObjects: true;
     objectClass: Wall.ImplementationClass;
-
-    /** @defaultValue `700` */
-    zIndex: number;
-  }
-
-  interface DrawOptions extends PlaceablesLayer.DrawOptions {}
-
-  // `WallsLayer` has no `_tearDown` override, this exists for consistency
-  interface TearDownOptions extends PlaceablesLayer.TearDownOptions {}
-
-  interface LastPoint {
-    point: Canvas.PointTuple | null;
+    zIndex: 700;
   }
 
   /** @internal */
-  interface _Snap {
+  type _Snap = NullishProps<{
     /**
      * Snap to the grid?
      * @defaultValue `true`
      */
     snap: boolean;
-  }
+  }>;
 
-  interface GetWallEndpointCoordinatesOptions extends InexactPartial<_Snap> {}
+  /** @remarks The types handled by {@link Wall#_getWallDataFromActiveTool} */
+  type WallTools = "clone" | "invisible" | "terrain" | "ethereal" | "doors" | "secret" | "window";
+
+  interface GetWallEndpointCoordinatesOptions extends _Snap {}
 }
 
 export default WallsLayer;

@@ -1,4 +1,4 @@
-import type { Identity, InexactPartial } from "#utils";
+import type { Identity, InexactPartial, NullishProps } from "#utils";
 import type { TranscoderWorker } from "@pixi/basis";
 
 /**
@@ -71,7 +71,7 @@ declare class TextureLoader {
    * @param src     - The resource URL
    * @param options - Options to configure the loading behaviour.
    * @returns A Blob containing the loaded data
-   * @remarks As of v13, simply forwards to {@linkcode foundry.utils.fetchResource}; Foundry comments "TODO \@deprecated in v14"
+   * @remarks As of v13, simply forwards to {@linkcode foundry.utils.fetchResource}; Foundry comments `TODO @deprecated in v14`
    */
   static fetchResource(src: string, options?: TextureLoader.FetchResourceOptions): Promise<Blob>;
 
@@ -98,7 +98,7 @@ declare class TextureLoader {
    * Return a URL with a cache-busting query parameter appended.
    * @param src - The source URL being attempted
    * @returns The new URL, or false on a failure.
-   * @remarks As of v13, simply forwards to {@linkcode foundry.utils.getCacheBustURL}; Foundry comments "TODO \@deprecated in v14"
+   * @remarks As of v13, simply forwards to {@linkcode foundry.utils.getCacheBustURL}; Foundry comments `TODO @deprecated in v14`
    */
   static getCacheBustURL(src: string): string | false;
 
@@ -171,7 +171,7 @@ declare namespace TextureLoader {
   }
 
   /** @internal */
-  interface _LoadSceneTexturesOptions {
+  type _LoadSceneTexturesOptions = InexactPartial<{
     /**
      * Destroy other expired textures
      * @defaultValue `true`
@@ -188,16 +188,13 @@ declare namespace TextureLoader {
      * The maximum number of textures that can be loaded concurrently
      */
     maxConcurrent: number;
-  }
+  }>;
 
   /** Options for {@linkcode TextureLoader.loadSceneTextures}*/
-  interface LoadSceneTexturesOptions extends InexactPartial<_LoadSceneTexturesOptions> {}
+  interface LoadSceneTexturesOptions extends _LoadSceneTexturesOptions {}
 
-  /**
-   * Can't Pick `expireCache`, despite it existing on `LoadSceneTexturesOptions`, as it has a different default here
-   * @internal
-   */
-  interface _LoadOptions extends Pick<LoadSceneTexturesOptions, "maxConcurrent"> {
+  /** @internal */
+  type _LoadOptions = InexactPartial<{
     /**
      * The status message to display in the load bar
      * @defaultValue `""`
@@ -239,29 +236,40 @@ declare namespace TextureLoader {
      * @defaultValue `true`
      */
     displayProgress: boolean;
-  }
+  }> &
+    // Can't Pick `expireCache`, despite it existing on `LoadSceneTexturesOptions`, as it has a different default here
+    Pick<LoadSceneTexturesOptions, "maxConcurrent">;
 
   /** Options for {@link TextureLoader.load | `TextureLoader#load`} */
-  interface LoadOptions extends InexactPartial<_LoadOptions> {}
-
-  interface FetchResourceOptions extends foundry.utils.FetchResourceOptions {}
+  interface LoadOptions extends _LoadOptions {}
 
   /** @internal */
-  interface _ExpireCacheOptions {
+  type _FetchResourceOptions = NullishProps<{
+    /**
+     * Append a cache-busting query parameter to the request.
+     * @defaultValue `false`
+     */
+    bustCache: boolean;
+  }>;
+
+  interface FetchResourceOptions extends _FetchResourceOptions {}
+
+  /** @internal */
+  type _ExpireCacheOptions = InexactPartial<{
     /**
      * A set of source URLs to *skip* from eviction checks.
      */
     exclude: Set<string>;
-  }
+  }>;
 
-  interface ExpireCacheOptions extends InexactPartial<_ExpireCacheOptions> {}
+  interface ExpireCacheOptions extends _ExpireCacheOptions {}
 }
 
 /**
  * Test whether a file source exists by performing a HEAD request against it
  * @param src - The source URL or path to test
  * @returns Does the file exist at the provided url?
- * @remarks As of v13, simply forwards to {@linkcode foundry.utils.srcExists}; Foundry comments "TODO \@deprecated in v14"
+ * @remarks As of v13, simply forwards to {@linkcode foundry.utils.srcExists}; Foundry comments `TODO @deprecated in v14`
  */
 export declare function srcExists(src: string): Promise<boolean>;
 
@@ -285,12 +293,12 @@ declare namespace loadTexture {
   type Return = PIXI.Texture | PIXI.Spritesheet | null;
 
   /** @internal */
-  interface _Options {
+  type _Options = InexactPartial<{
     /** A fallback texture URL to use if the requested source is unavailable */
     fallback: string;
-  }
+  }>;
 
-  interface Options extends InexactPartial<_Options> {}
+  interface Options extends _Options {}
 }
 
 declare global {

@@ -5,9 +5,6 @@ import GridLayer = foundry.canvas.layers.GridLayer;
 import GridMesh = foundry.canvas.containers.GridMesh;
 import GridHighlight = foundry.canvas.containers.GridHighlight;
 
-declare const roundedRect: PIXI.RoundedRectangle;
-declare const polygon: PIXI.Polygon;
-
 // This is deliberately typed incorrectly in v12; runtime would actually return a BaseGrid subtype
 expectTypeOf(GridLayer.instance).toEqualTypeOf<GridLayer>();
 
@@ -26,7 +23,9 @@ expectTypeOf(layer.draw()).toEqualTypeOf<Promise<GridLayer>>();
 expectTypeOf(layer.draw({})).toEqualTypeOf<Promise<GridLayer>>();
 expectTypeOf(layer["_draw"]({})).toEqualTypeOf<Promise<void>>();
 
-expectTypeOf(layer["_drawMesh"]()).toEqualTypeOf<Promise<GridMesh>>();
+expectTypeOf(layer["_drawMesh"]()).toEqualTypeOf<GridMesh>();
+// @ts-expect-error `initializeMesh` lacks a default for its one parameter, despite all its properties being optional
+expectTypeOf(layer.initializeMesh()).toBeVoid();
 expectTypeOf(layer.initializeMesh({})).toBeVoid();
 expectTypeOf(
   layer.initializeMesh({
@@ -40,7 +39,7 @@ expectTypeOf(
   layer.initializeMesh({
     alpha: undefined,
     color: undefined,
-    style: undefined,
+    style: null,
     thickness: undefined,
   }),
 ).toBeVoid();
@@ -50,9 +49,8 @@ expectTypeOf(layer.getHighlightLayer("some")).toEqualTypeOf<GridHighlight | unde
 expectTypeOf(layer.clearHighlightLayer("some")).toEqualTypeOf<void>();
 expectTypeOf(layer.destroyHighlightLayer("some")).toEqualTypeOf<void>();
 
-// @ts-expect-error `highlightPosition` requires either `x` and `y` or `shape` in its options
+// @ts-expect-error `highlightPosition` requires `x` and `y` properties in its options
 expectTypeOf(layer.highlightPosition("some", {}));
-// Gridded
 expectTypeOf(layer.highlightPosition("some", { x: 50, y: 50 })).toEqualTypeOf<void>();
 expectTypeOf(
   layer.highlightPosition("some", {
@@ -61,33 +59,17 @@ expectTypeOf(
     color: 0x33bbff,
     border: Color.from("#ABCFED"),
     alpha: 0.25,
+    shape: new PIXI.Polygon(),
   }),
 ).toEqualTypeOf<void>();
 expectTypeOf(
   layer.highlightPosition("some", {
     x: 10,
     y: 100,
-    color: undefined,
+    color: null,
     border: undefined,
     alpha: undefined,
-  }),
-).toEqualTypeOf<void>();
-// Gridless
-expectTypeOf(layer.highlightPosition("some", { shape: roundedRect })).toEqualTypeOf<void>();
-expectTypeOf(
-  layer.highlightPosition("some", {
-    shape: polygon,
-    color: 0x33bbff,
-    border: Color.from("#ABCFED"),
-    alpha: 0.25,
-  }),
-).toEqualTypeOf<void>();
-expectTypeOf(
-  layer.highlightPosition("some", {
-    shape: polygon,
-    color: undefined,
-    border: undefined,
-    alpha: undefined,
+    shape: undefined, // will fail silently on gridless
   }),
 ).toEqualTypeOf<void>();
 

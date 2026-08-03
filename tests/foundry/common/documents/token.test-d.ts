@@ -1,23 +1,16 @@
 import { expectTypeOf } from "vitest";
 import type { InterfaceToObject } from "fvtt-types/utils";
+import { TokenRing } from "#client/canvas/placeables/tokens/_module.mjs";
 
-import TokenRing = foundry.canvas.placeables.tokens.TokenRing;
 import BaseToken = foundry.documents.BaseToken;
 import Document = foundry.abstract.Document;
 
-class TestBaseToken extends BaseToken {
-  get compendium() {
-    return this.inCompendium
-      ? (game.packs!.get(this.pack!) as foundry.documents.collections.CompendiumCollection.ForDocument<"Token">)
-      : null;
-  }
-}
+class TestBaseToken extends foundry.documents.BaseToken {}
 
 // Token has no hard required fields for construction
-new TestBaseToken();
-new TestBaseToken({});
-
-const myToken = new TestBaseToken({
+let myToken = new TestBaseToken();
+myToken = new TestBaseToken({});
+myToken = new TestBaseToken({
   _id: "XXXXXSomeIDXXXXX",
   name: "Foo the Barbazian",
   displayName: CONST.TOKEN_DISPLAY_MODES.OWNER,
@@ -27,6 +20,8 @@ const myToken = new TestBaseToken({
     // not going to include the entire Actor schema here
     name: "Foo the Barbazian",
   },
+  appendNumber: true,
+  prependAdjective: true,
   width: 2,
   height: 3,
   texture: {
@@ -121,7 +116,7 @@ const myToken = new TestBaseToken({
 
 // omitting the null and undefined construction cases due to size and coverage on other documents
 
-expectTypeOf(myToken).toEqualTypeOf<TestBaseToken>();
+expectTypeOf(myToken).toEqualTypeOf<BaseToken>();
 
 expectTypeOf(myToken._id).toEqualTypeOf<string | null>();
 expectTypeOf(myToken.name).toBeString();
@@ -129,6 +124,8 @@ expectTypeOf(myToken.displayName).toEqualTypeOf<CONST.TOKEN_DISPLAY_MODES>();
 expectTypeOf(myToken.actorId).toEqualTypeOf<string | null>();
 expectTypeOf(myToken.actorLink).toBeBoolean();
 expectTypeOf(myToken.delta).toEqualTypeOf<ActorDelta.Implementation | null>();
+expectTypeOf(myToken.appendNumber).toBeBoolean();
+expectTypeOf(myToken.prependAdjective).toBeBoolean();
 
 // TextureData schema tests are in `tests/foundry/common/data/data.test-d.ts`
 expectTypeOf(myToken.texture).toEqualTypeOf<
@@ -159,7 +156,7 @@ expectTypeOf(myToken.sight.enabled).toBeBoolean();
 expectTypeOf(myToken.sight.range).toEqualTypeOf<number | null>();
 expectTypeOf(myToken.sight.angle).toBeNumber();
 expectTypeOf(myToken.sight.visionMode).toBeString();
-expectTypeOf(myToken.sight.color).toEqualTypeOf<Color | null>;
+expectTypeOf(myToken.sight.color).toEqualTypeOf<Color | null | undefined>;
 expectTypeOf(myToken.sight.attenuation).toBeNumber();
 expectTypeOf(myToken.sight.brightness).toBeNumber();
 expectTypeOf(myToken.sight.saturation).toBeNumber();
@@ -170,7 +167,7 @@ if (myToken.detectionModes[0]) {
   expectTypeOf(myToken.detectionModes[0].range).toEqualTypeOf<number | null>();
 }
 expectTypeOf(myToken.ring.enabled).toBeBoolean();
-expectTypeOf(myToken.ring.subject.texture).toEqualTypeOf<string | null>();
+expectTypeOf(myToken.ring.subject.texture).toEqualTypeOf<string | null | undefined>();
 // TODO: ArrayField<ForeignDocumentField> is returning `never[]`
 expectTypeOf(myToken._regions).toEqualTypeOf<Array<string | null>>();
 expectTypeOf(myToken.flags).toEqualTypeOf<
@@ -178,10 +175,12 @@ expectTypeOf(myToken.flags).toEqualTypeOf<
     InterfaceToObject<TokenDocument.CoreFlags> & InterfaceToObject<Document.CoreFlags>
   >
 >();
-expectTypeOf(myToken.width).toEqualTypeOf<number>();
-expectTypeOf(myToken.height).toEqualTypeOf<number>();
+
+// The following fields can't really be `undefined` because they have `initial`s, see https://github.com/League-of-Foundry-Developers/foundry-vtt-types/issues/3055
+expectTypeOf(myToken.width).toEqualTypeOf<number | undefined>();
+expectTypeOf(myToken.height).toEqualTypeOf<number | undefined>();
 expectTypeOf(myToken.occludable.radius).toEqualTypeOf<number>();
-expectTypeOf(myToken.ring.colors.ring).toEqualTypeOf<Color | null>();
-expectTypeOf(myToken.ring.colors.background).toEqualTypeOf<Color | null>();
+expectTypeOf(myToken.ring.colors.ring).toEqualTypeOf<Color | null | undefined>();
+expectTypeOf(myToken.ring.colors.background).toEqualTypeOf<Color | null | undefined>();
 expectTypeOf(myToken.ring.effects).toEqualTypeOf<number | null>();
 expectTypeOf(myToken.ring.subject.scale).toEqualTypeOf<number>();

@@ -25,15 +25,18 @@ declare class ControlIcon extends PIXI.Container {
    */
   tintColor: number | null;
 
-  /** @defaultValue `"static"` */
+  /**
+   * @defaultValue `static`
+   */
   override eventMode: PIXI.EventMode;
 
-  /** @defaultValue `false` */
+  /**
+   * @defaultValue `false`
+   */
   override interactiveChildren: boolean;
 
   override hitArea: PIXI.Rectangle;
 
-  /** @defaultValue `"pointer"` */
   override cursor: string;
 
   bg: PIXI.Graphics;
@@ -45,23 +48,22 @@ declare class ControlIcon extends PIXI.Container {
   tooltip: PreciseText;
 
   /**
-   * The elevation of the `ControlIcon`, which is displayed in its tooltip text.
-   * @remarks
-   * @throws If passed `NaN` or `+`/`-Infinity`
+   * The elevation of the ControlIcon, which is displayed in its tooltip text.
+   * @throws If a set is attempted with anything but a finite number
    */
   get elevation(): number;
 
   set elevation(value);
 
   /**
-   * Initial drawing of the `ControlIcon`
+   * Initial drawing of the ControlIcon
    */
   draw(): Promise<this>;
 
   /**
-   * Incremental refresh for `ControlIcon` appearance.
+   * Incremental refresh for ControlIcon appearance.
    */
-  refresh(options?: ControlIcon.RefreshOptions): this;
+  refresh({ visible, iconColor, borderColor, borderVisible }?: ControlIcon.RefreshOptions): this;
 }
 
 declare namespace ControlIcon {
@@ -69,11 +71,18 @@ declare namespace ControlIcon {
   interface AnyConstructor extends Identity<typeof AnyControlIcon> {}
 
   /** @internal */
-  interface _Options {
-    /** @defaultValue `40` */
+  type _Options = InexactPartial<{
+    /**
+     * @defaultValue `40`
+     * @remarks Can't be `null` as it only has a parameter default, and `null` coerced to `0` is a nonsensical size value
+     */
     size: number;
 
-    /** @defaultValue `0xFF5500` */
+    /**
+     * @defaultValue `0xFF5500`
+     * @remarks Can't be `null` as that's not a valid value for the `PIXI.Color` constructor,
+     * and it only has a parameter default
+     */
     borderColor: number;
 
     /**
@@ -82,24 +91,35 @@ declare namespace ControlIcon {
      */
     tint: number | null;
 
-    /** @defaultValue `number` */
+    /**
+     * @defaultValue `number`
+     * @remarks Can't be null as the `ControlIcon#elevation` setter throws if passed anything but a finite number,
+     * and it only has a parameter default
+     */
     elevation: number;
-  }
+  }>;
 
-  interface Options extends InexactPartial<_Options> {
+  interface Options extends _Options {
     /** A source string for the icon's texture */
     texture: string;
   }
 
   /** @internal */
-  interface _RefreshOptions {
+  type _RefreshOptions = InexactPartial<{
+    /** @remarks Can't be `null` because of an explicit `!== undefined` check */
     visible: boolean;
-    iconColor: number;
-    borderColor: number;
-    borderVisible: boolean;
-  }
 
-  interface RefreshOptions extends InexactPartial<_RefreshOptions> {}
+    /** @remarks Can't be `null` because of an explicit `!== undefined` check */
+    iconColor: number;
+
+    /** @remarks Can't be `null` because of an explicit `!== undefined` check */
+    borderColor: number;
+
+    /** @remarks Can't be `null` because of an explicit `!== undefined` check */
+    borderVisible: boolean;
+  }>;
+
+  interface RefreshOptions extends _RefreshOptions {}
 }
 
 export default ControlIcon;

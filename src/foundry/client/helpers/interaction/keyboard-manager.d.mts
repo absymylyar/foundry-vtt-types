@@ -239,7 +239,7 @@ declare namespace KeyboardManager {
   }
 
   /** @internal */
-  interface _EmulateKeypressOptions {
+  type _EmulateKeypressOptions = InexactPartial<{
     /**
      * Emulate the ALT modifier as pressed
      * @defaultValue `false`
@@ -269,9 +269,9 @@ declare namespace KeyboardManager {
      * @defaultValue `false`
      */
     force: boolean;
-  }
+  }>;
 
-  interface EmulateKeypressOptions extends InexactPartial<_EmulateKeypressOptions> {}
+  interface EmulateKeypressOptions extends _EmulateKeypressOptions {}
 
   /**
    * Keyboard event context
@@ -313,15 +313,15 @@ declare namespace KeyboardManager {
 
   interface ProcessKeyboardContextOptions extends Pick<EmulateKeypressOptions, "force"> {}
 
-  interface _ReleaseKeysOptions {
+  type _ReleaseKeysOptions = InexactPartial<{
     /**
      * Force the keyup events to be handled.
      * @defaultValue `true`
      */
     force: boolean;
-  }
+  }>;
 
-  interface ReleaseKeysOptions extends InexactPartial<_ReleaseKeysOptions> {}
+  interface ReleaseKeysOptions extends _ReleaseKeysOptions {}
 }
 
 export default KeyboardManager;

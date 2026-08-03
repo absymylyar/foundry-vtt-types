@@ -1,18 +1,9 @@
 import { expectTypeOf } from "vitest";
-import type { AnyObject } from "fvtt-types/utils";
-
-import InteractionLayer = foundry.canvas.layers.InteractionLayer;
-
-declare global {
-  namespace CONFIG.Canvas {
-    interface Layers {
-      testInteractionLayer: CONFIG.Canvas.LayerDefinition<typeof MyInteractionLayer, "primary">;
-    }
-  }
-}
+import type { HandleEmptyObject } from "fvtt-types/utils";
+import { InteractionLayer } from "#client/canvas/layers/_module.mjs";
 
 interface MyInteractionLayerOptions extends InteractionLayer.LayerOptions {
-  name: "testInteractionLayer";
+  name: "MyInteractionLayer";
   baseClass: typeof MyInteractionLayer;
 }
 
@@ -23,7 +14,7 @@ declare class MyInteractionLayer extends InteractionLayer {
 
   static override get layerOptions(): MyInteractionLayerOptions;
 
-  protected override _draw(options: AnyObject): Promise<void>;
+  protected override _draw(options: HandleEmptyObject<InteractionLayer.DrawOptions>): Promise<void>;
 }
 
 expectTypeOf(MyInteractionLayer.layerOptions.baseClass).toEqualTypeOf<typeof MyInteractionLayer>;

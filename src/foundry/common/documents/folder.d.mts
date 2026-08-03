@@ -1,6 +1,8 @@
-import type { MaybeArray } from "#utils";
-import type { DataModel, Document } from "#common/abstract/_module.d.mts";
-import type { SchemaField } from "#common/data/fields.d.mts";
+import type { AnyMutableObject } from "#utils";
+import type DataModel from "../abstract/data.d.mts";
+import type Document from "../abstract/document.mts";
+import type { DataField, SchemaField } from "../data/fields.d.mts";
+import type { LogCompatibilityWarningOptions } from "../utils/logging.d.mts";
 
 /**
  * The Folder Document.
@@ -9,7 +11,7 @@ import type { SchemaField } from "#common/data/fields.d.mts";
 // Note(LukeAbby): You may wonder why documents don't simply pass the `Parent` generic parameter.
 // This pattern evolved from trying to avoid circular loops and even internal tsc errors.
 // See: https://gist.github.com/LukeAbby/0d01b6e20ef19ebc304d7d18cef9cc21
-declare abstract class BaseFolder<out SubType extends BaseFolder.SubType = BaseFolder.SubType> extends Document<
+declare abstract class BaseFolder<out _SubType extends BaseFolder.SubType = BaseFolder.SubType> extends Document<
   "Folder",
   BaseFolder.Schema,
   any
@@ -22,10 +24,10 @@ declare abstract class BaseFolder<out SubType extends BaseFolder.SubType = BaseF
    * order to use documents on both the client (i.e. where all your code runs) and behind the scenes
    * on the server to manage document validation and storage.
    *
-   * You should use {@linkcode Folder.implementation | new Folder.implementation(...)} instead which will give you
+   * You should use {@link Folder.implementation | `new Folder.implementation(...)`} instead which will give you
    * a system specific implementation of `Folder`.
    */
-  constructor(data: BaseFolder.CreateData, context?: BaseFolder.ConstructionContext);
+  constructor(data: Folder.CreateData, context?: Folder.ConstructionContext);
 
   /**
    * @defaultValue
@@ -48,10 +50,9 @@ declare abstract class BaseFolder<out SubType extends BaseFolder.SubType = BaseF
   static override LOCALIZATION_PREFIXES: string[];
 
   /**
-   * @remarks
    * @throws If `data.folder === data._id` (no putting folders inside themselves)
    */
-  static validateJoint(data: BaseFolder.Source): void;
+  static validateJoint(data: Folder.Source): void;
 
   /**
    * Allow folder sorting modes
@@ -59,9 +60,11 @@ declare abstract class BaseFolder<out SubType extends BaseFolder.SubType = BaseF
    */
   static SORTING_MODES: ("a" | "m")[];
 
-  // Never returns an index entry, only a persisted `Folder` or `null`, as the `folders` collection of
-  // a compendium is always loaded and available synchronously.
-  static override get(documentId: string, operation?: BaseFolder.Database.GetDocumentsOperation): Folder.Stored | null;
+  /**
+   * @remarks Never returns an index entry, only ever {@linkcode Folder.Implementation} or `null`, as the `folders` collection of a
+   * compendium is always loaded and available synchronously
+   */
+  static override get(documentId: string, options?: Folder.Database.GetOptions): Folder.Implementation | null;
 
   /*
    * After this point these are not really overridden methods.
@@ -73,167 +76,215 @@ declare abstract class BaseFolder<out SubType extends BaseFolder.SubType = BaseF
    * separate like this helps against circularities.
    */
 
-  type: SubType;
-
   /* Document overrides */
+
+  // Same as Document for now
+  protected static override _initializationOrder(): Generator<[string, DataField.Any], void, undefined>;
+
+  override readonly parentCollection: Folder.ParentCollectionName | null;
+
+  override readonly pack: string | null;
 
   static override get implementation(): Folder.ImplementationClass;
 
   static override get baseDocument(): typeof BaseFolder;
 
-  static override get collectionName(): BaseFolder.ParentCollectionName;
+  static override get collectionName(): Folder.ParentCollectionName;
 
-  static override get documentName(): BaseFolder.Name;
+  static override get documentName(): Folder.Name;
 
   static override get TYPES(): BaseFolder.SubType[];
 
-  static override get hasTypeData(): false;
+  static override get hasTypeData(): undefined;
 
-  static override readonly hierarchy: BaseFolder.Hierarchy;
+  static override get hierarchy(): Folder.Hierarchy;
 
   override parent: BaseFolder.Parent;
 
-  override " fvtt_types_internal_document_parent": BaseFolder.Parent;
-
-  static override canUserCreate(user: User.Implementation): boolean;
-
-  override getUserLevel(user?: User.Implementation): CONST.DOCUMENT_OWNERSHIP_LEVELS;
-
-  override testUserPermission(
-    user: User.Implementation,
-    permission: Document.ActionPermission,
-    options?: Document.TestUserPermissionOptions,
-  ): boolean;
-
-  override canUserModify<Action extends Document.Database.OperationAction>(
-    user: User.Implementation,
-    action: Action,
-    data?: Document.CanUserModifyData<"Folder", Action>,
-  ): boolean;
-
-  static override createDocuments(
-    data: BaseFolder.CreateInput[],
-    operation?: BaseFolder.Database.CreateDocumentsOperation,
-  ): Promise<Folder.Stored[]>;
+  static override createDocuments<Temporary extends boolean | undefined = undefined>(
+    data: Array<Folder.Implementation | Folder.CreateData> | undefined,
+    operation?: Document.Database.CreateOperation<Folder.Database.Create<Temporary>>,
+  ): Promise<Array<Document.TemporaryIf<Folder.Implementation, Temporary>>>;
 
   static override updateDocuments(
-    updates: BaseFolder.UpdateInput[],
-    operation?: BaseFolder.Database.UpdateManyDocumentsOperation,
-  ): Promise<Folder.Stored[]>;
+    updates: Folder.UpdateData[] | undefined,
+    operation?: Document.Database.UpdateDocumentsOperation<Folder.Database.Update>,
+  ): Promise<Folder.Implementation[]>;
 
   static override deleteDocuments(
-    ids: readonly string[],
-    operation?: BaseFolder.Database.DeleteManyDocumentsOperation,
-  ): Promise<Folder.Stored[]>;
+    ids: readonly string[] | undefined,
+    operation?: Document.Database.DeleteDocumentsOperation<Folder.Database.Delete>,
+  ): Promise<Folder.Implementation[]>;
 
-  static override create<Data extends MaybeArray<BaseFolder.CreateInput>>(
-    data: Data,
-    operation?: BaseFolder.Database.CreateDocumentsOperation,
-  ): Promise<BaseFolder.CreateReturn<Data>>;
+  static override create<Temporary extends boolean | undefined = undefined>(
+    data: Folder.CreateData | Folder.CreateData[],
+    operation?: Folder.Database.CreateOperation<Temporary>,
+  ): Promise<Document.TemporaryIf<Folder.Implementation, Temporary> | undefined>;
 
   override update(
-    data: BaseFolder.UpdateInput,
-    operation?: BaseFolder.Database.UpdateOneDocumentOperation,
+    data: Folder.UpdateData | undefined,
+    operation?: Folder.Database.UpdateOperation,
   ): Promise<this | undefined>;
 
-  override delete(operation?: BaseFolder.Database.DeleteOneDocumentOperation): Promise<this | undefined>;
+  override delete(operation?: Folder.Database.DeleteOperation): Promise<this | undefined>;
 
-  // `Folder`s have no embedded collections, so this always returns `null`.
   static override getCollectionName(name: string): null;
 
-  override getFlag<Scope extends BaseFolder.Flags.Scope, Key extends BaseFolder.Flags.Key<Scope>>(
+  // Same as Document for now
+  override traverseEmbeddedDocuments(
+    _parentPath?: string,
+  ): Generator<[string, Document.AnyChild<this>], void, undefined>;
+
+  override getFlag<Scope extends Folder.Flags.Scope, Key extends Folder.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): BaseFolder.Flags.Get<Scope, Key>;
+  ): Document.GetFlag<Folder.Name, Scope, Key>;
 
   override setFlag<
-    Scope extends BaseFolder.Flags.Scope,
-    Key extends BaseFolder.Flags.Key<Scope>,
-    Value extends BaseFolder.Flags.Get<Scope, Key>,
-  >(scope: Scope, key: Key, value: Value): Promise<this | undefined>;
+    Scope extends Folder.Flags.Scope,
+    Key extends Folder.Flags.Key<Scope>,
+    Value extends Document.GetFlag<Folder.Name, Scope, Key>,
+  >(scope: Scope, key: Key, value: Value): Promise<this>;
 
-  override unsetFlag<Scope extends BaseFolder.Flags.Scope, Key extends BaseFolder.Flags.Key<Scope>>(
+  override unsetFlag<Scope extends Folder.Flags.Scope, Key extends Folder.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): Promise<this | undefined>;
+  ): Promise<this>;
 
   protected override _preCreate(
-    data: BaseFolder.CreateData,
-    options: BaseFolder.Database.PreCreateOptions,
-    user: User.Stored,
+    data: Folder.CreateData,
+    options: Folder.Database.PreCreateOptions,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected override _onCreate(
-    data: BaseFolder.CreateData,
-    options: BaseFolder.Database.OnCreateOptions,
+    data: Folder.CreateData,
+    options: Folder.Database.OnCreateOperation,
     userId: string,
   ): void;
 
   protected static override _preCreateOperation(
     documents: Folder.Implementation[],
-    operation: BaseFolder.Database.PreCreateOperation,
-    user: User.Stored,
+    operation: Document.Database.PreCreateOperationStatic<Folder.Database.Create>,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected static override _onCreateOperation(
-    documents: Folder.Stored[],
-    operation: BaseFolder.Database.OnCreateOperation,
-    user: User.Stored,
+    documents: Folder.Implementation[],
+    operation: Folder.Database.Create,
+    user: User.Implementation,
   ): Promise<void>;
 
   protected override _preUpdate(
-    changed: BaseFolder.UpdateData,
-    options: BaseFolder.Database.PreUpdateOptions,
-    user: User.Stored,
+    changed: Folder.UpdateData,
+    options: Folder.Database.PreUpdateOptions,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected override _onUpdate(
-    changed: BaseFolder.UpdateData,
-    options: BaseFolder.Database.OnUpdateOptions,
+    changed: Folder.UpdateData,
+    options: Folder.Database.OnUpdateOperation,
     userId: string,
   ): void;
 
   protected static override _preUpdateOperation(
-    documents: Folder.Stored[],
-    operation: BaseFolder.Database.PreUpdateOperation,
-    user: User.Stored,
+    documents: Folder.Implementation[],
+    operation: Folder.Database.Update,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected static override _onUpdateOperation(
-    documents: Folder.Stored[],
-    operation: BaseFolder.Database.OnUpdateOperation,
-    user: User.Stored,
+    documents: Folder.Implementation[],
+    operation: Folder.Database.Update,
+    user: User.Implementation,
   ): Promise<void>;
 
   protected override _preDelete(
-    options: BaseFolder.Database.PreDeleteOptions,
-    user: User.Stored,
+    options: Folder.Database.PreDeleteOptions,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
-  protected override _onDelete(options: BaseFolder.Database.OnDeleteOptions, userId: string): void;
+  protected override _onDelete(options: Folder.Database.OnDeleteOperation, userId: string): void;
 
   protected static override _preDeleteOperation(
-    documents: Folder.Stored[],
-    operation: BaseFolder.Database.PreDeleteOperation,
-    user: User.Stored,
+    documents: Folder.Implementation[],
+    operation: Folder.Database.Delete,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected static override _onDeleteOperation(
-    documents: Folder.Stored[],
-    operation: BaseFolder.Database.OnDeleteOperation,
-    user: User.Stored,
+    documents: Folder.Implementation[],
+    operation: Folder.Database.Delete,
+    user: User.Implementation,
+  ): Promise<void>;
+
+  // These data field things have been ticketed but will probably go into backlog hell for a while.
+  // We'll end up copy and pasting without modification for now I think. It makes it a tiny bit easier to update though.
+
+  // options: not null (parameter default only in _addDataFieldShim)
+  protected static override _addDataFieldShims(
+    data: AnyMutableObject,
+    shims: Record<string, string>,
+    options?: Document.DataFieldShimOptions,
+  ): void;
+
+  // options: not null (parameter default only)
+  protected static override _addDataFieldShim(
+    data: AnyMutableObject,
+    oldKey: string,
+    newKey: string,
+    options?: Document.DataFieldShimOptions,
+  ): void;
+
+  protected static override _addDataFieldMigration(
+    data: AnyMutableObject,
+    oldKey: string,
+    newKey: string,
+    apply?: ((data: AnyMutableObject) => unknown) | null,
+  ): boolean;
+
+  // options: not null (destructured where forwarded)
+  protected static override _logDataFieldMigration(
+    oldKey: string,
+    newKey: string,
+    options?: LogCompatibilityWarningOptions,
+  ): void;
+
+  /**
+   * @deprecated since v12, will be removed in v14
+   * @remarks "The `Document._onCreateDocuments` static method is deprecated in favor of {@link Document._onCreateOperation | `Document._onCreateOperation`}"
+   */
+  protected static override _onCreateDocuments(
+    documents: Folder.Implementation[],
+    context: Document.ModificationContext<Folder.Parent>,
+  ): Promise<void>;
+
+  /**
+   * @deprecated since v12, will be removed in v14
+   * @remarks "The `Document._onUpdateDocuments` static method is deprecated in favor of {@link Document._onUpdateOperation | `Document._onUpdateOperation`}"
+   */
+  protected static override _onUpdateDocuments(
+    documents: Folder.Implementation[],
+    context: Document.ModificationContext<Folder.Parent>,
+  ): Promise<void>;
+
+  /**
+   * @deprecated since v12, will be removed in v14
+   * @remarks "The `Document._onDeleteDocuments` static method is deprecated in favor of {@link Document._onDeleteOperation | `Document._onDeleteOperation`}"
+   */
+  protected static override _onDeleteDocuments(
+    documents: Folder.Implementation[],
+    context: Document.ModificationContext<Folder.Parent>,
   ): Promise<void>;
 
   /* DataModel overrides */
 
-  static override _schema: SchemaField<BaseFolder.Schema>;
+  protected static override _schema: SchemaField<Folder.Schema>;
 
-  static override get schema(): SchemaField<BaseFolder.Schema>;
+  static override get schema(): SchemaField<Folder.Schema>;
 
-  static override fromSource(
-    source: BaseFolder.CreateData,
-    context?: DataModel.FromSourceOptions,
-  ): Folder.Implementation;
+  // options: not null (parameter default only, destructured in super)
+  static override fromSource(source: Folder.CreateData, context?: DataModel.FromSourceOptions): Folder.Implementation;
 
   static override fromJSON(json: string): Folder.Implementation;
 }
@@ -241,38 +292,28 @@ declare abstract class BaseFolder<out SubType extends BaseFolder.SubType = BaseF
 export default BaseFolder;
 
 declare namespace BaseFolder {
-  // All types really live in the full document and are mirrored here for convenience
   export import Name = Folder.Name;
   export import ConstructionContext = Folder.ConstructionContext;
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
   export import ConstructorArgs = Folder.ConstructorArgs;
   export import Hierarchy = Folder.Hierarchy;
   export import Metadata = Folder.Metadata;
   export import SubType = Folder.SubType;
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  export import ConfiguredSubType = Folder.ConfiguredSubType;
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  export import Known = Folder.Known;
-  export import OfType = Folder.OfType;
   export import Parent = Folder.Parent;
   export import Descendant = Folder.Descendant;
   export import DescendantClass = Folder.DescendantClass;
+  export import Pack = Folder.Pack;
   export import Embedded = Folder.Embedded;
   export import ParentCollectionName = Folder.ParentCollectionName;
   export import CollectionClass = Folder.CollectionClass;
   export import Collection = Folder.Collection;
   export import Invalid = Folder.Invalid;
+  export import Stored = Folder.Stored;
   export import Source = Folder.Source;
   export import CreateData = Folder.CreateData;
-  export import CreateInput = Folder.CreateInput;
-  export import CreateReturn = Folder.CreateReturn;
   export import InitializedData = Folder.InitializedData;
   export import UpdateData = Folder.UpdateData;
-  export import UpdateInput = Folder.UpdateInput;
   export import Schema = Folder.Schema;
-  export import Database = Folder.Database;
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  export import TemporaryIf = Folder.TemporaryIf;
+  export import DatabaseOperation = Folder.Database;
   export import Flags = Folder.Flags;
 
   namespace Internal {

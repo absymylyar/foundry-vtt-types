@@ -1,7 +1,5 @@
 import { expectTypeOf } from "vitest";
-
-type RollParseArg = foundry.dice.types.RollParseArg;
-type RollParseNode = foundry.dice.types.RollParseNode;
+import type { RollParseArg, RollParseNode } from "../../../../src/foundry/client/dice/_types.d.mts";
 
 const rollParser = new foundry.dice.RollParser("");
 

@@ -1,13 +1,11 @@
-import type { FixedInstanceType, Identity, InexactPartial } from "#utils";
-import type { Ruler } from "#client/canvas/interaction/_module.d.mts";
-import type { BaseTokenRuler } from "#client/canvas/placeables/tokens/_module.d.mts";
-import type { BaseGrid } from "#common/grid/_module.d.mts";
-import type { Ray } from "#client/canvas/geometry/_module.d.mts";
+import type { Identity } from "#utils";
+import type { BaseTokenRuler } from "./_module.d.mts";
 
 declare class TokenRuler extends BaseTokenRuler {
+  #TokenRuler: true;
+
   /**
    * A handlebars template used to render each waypoint label.
-   * @defaultValue `"templates/hud/waypoint-label.hbs"`
    */
   static WAYPOINT_LABEL_TEMPLATE: string;
 
@@ -48,14 +46,14 @@ declare class TokenRuler extends BaseTokenRuler {
    * @param waypoint - The waypoint
    * @returns The radius, color, and alpha of the waypoint. If the radius is 0, no waypoint marker is drawn.
    */
-  protected _getWaypointStyle(waypoint: TokenRuler.Waypoint): Ruler.WaypointStyle;
+  protected _getWaypointStyle(waypoint: TokenRuler.Waypoint): TokenRuler.WaypointStyle;
 
   /**
    * Get the style of the segment from the previous to the given waypoint.
    * @param waypoint - The waypoint
    * @returns The line width, color, and alpha of the segment.  If the width is 0, no segment is drawn.
    */
-  protected _getSegmentStyle(waypoint: TokenRuler.Waypoint): Ruler.SegmentStyle;
+  protected _getSegmentStyle(waypoint: TokenRuler.Waypoint): TokenRuler.SegmentStyle;
 
   /**
    * Get the style to be used to highlight the grid offset.
@@ -66,48 +64,22 @@ declare class TokenRuler extends BaseTokenRuler {
    */
   protected _getGridHighlightStyle(
     waypoint: TokenRuler.Waypoint,
-    offset: BaseGrid.Offset3D,
+    offset: foundry.grid.BaseGrid.Offset3D,
   ): TokenRuler.GridHighlightStyle;
-
-  #TokenRuler: true;
 }
 
 declare namespace TokenRuler {
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode Implementation} instead. This type will be removed in v15.
-   */
-  type Any = Internal.Any;
-
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode ImplementationClass} instead. This type will be removed in v15.
-   */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyTokenRuler {}
-    interface AnyConstructor extends Identity<typeof AnyTokenRuler> {}
-  }
-
-  interface ImplementationClass extends Identity<CONFIG["Token"]["rulerClass"]> {}
-  interface Implementation extends FixedInstanceType<ImplementationClass> {}
+  interface Any extends AnyTokenRuler {}
+  interface AnyConstructor extends Identity<typeof AnyTokenRuler> {}
 
   interface Outline {
-    /** The thickness in pixels */
     thickness: number;
-
     color: PIXI.ColorSource;
   }
 
   interface DashLine {
-    /** @remarks Dash length in pixels. */
     dash: number;
-
-    /** @remarks Gap length in pixels. */
     gap: number;
-
-    /** @remarks In pixels per second. */
     speed: number;
   }
 
@@ -115,23 +87,22 @@ declare namespace TokenRuler {
     /**
      * The waypoints that were already passed by the Token
      */
-    passedWaypoints: TokenDocument.MeasuredMovementWaypoint[];
+    passedWaypoints: foundry.canvas.placeables.Token.MeasuredMovementWaypoint[];
 
     /**
      * The waypoints that the Token will try move to next
      */
-    pendingWaypoints: TokenDocument.MeasuredMovementWaypoint[];
+    pendingWaypoints: foundry.canvas.placeables.Token.MeasuredMovementWaypoint[];
 
     /**
      * Movement planned by Users
-     * @remarks Keys are User IDs.
      */
     plannedMovement: Record<string, foundry.canvas.placeables.Token.PlannedMovement>;
   }
 
   interface WaypointData {
     /** The config of the movement action */
-    actionConfig: CONFIG.Token.Movement.ActionConfig;
+    actionConfig: CONFIG.Token.MovementActionConfig;
 
     /** The ID of movement, or null if planned movement. */
     movementId: string | null;
@@ -158,10 +129,10 @@ declare namespace TokenRuler {
     };
 
     /** The ray from the center point of previous to the center point of this waypoint, or null if there is no previous waypoint. */
-    ray: Ray | null;
+    ray: foundry.canvas.geometry.Ray | null;
 
     /** The measurements at this waypoint. */
-    measurement: BaseGrid.MeasurePathResultWaypoint;
+    measurement: foundry.grid.BaseGrid.MeasurePathResultWaypoint;
 
     /** The previous waypoint, if any. */
     previous: Waypoint | null;
@@ -174,28 +145,63 @@ declare namespace TokenRuler {
    * @remarks This is not intended to be mutated, so foundry has marked it DeepReadonly,
    * but there's no programmatic block on mutation
    */
-  interface Waypoint extends Omit<TokenDocument.MeasuredMovementWaypoint, "movementId">, WaypointData {}
+  type Waypoint = Omit<TokenDocument.MeasuredMovementWaypoint, "movementId"> & WaypointData;
 
   /**
    * @remarks Intended to be extended by subclasses that need to track additional info between waypoints
    * Importantly, this is *not* saved to the token's movement data, instead it is merely mutated locally.
    */
   interface State {
-    initialized?: boolean | undefined;
-    hasElevation?: boolean | undefined;
-    previousElevation?: number;
+    hasElevation: boolean;
+    previousElevation: number;
   }
 
   /**
    * @remarks Fed into the template
    */
-  interface WaypointContext extends Ruler.WaypointContext {
+  interface WaypointContext {
+    action: string;
+    cssClass: string;
+    secret: boolean;
+    units: string;
+    uiScale: number;
+    position: {
+      x: number;
+      y: number;
+    };
+    distance: SegmentDistance;
     cost: SegmentCost;
+    elevation: ElevationContext;
   }
 
-  interface SegmentCost extends InexactPartial<Ruler._DeltaString> {
+  interface SegmentDistance {
+    total: string;
+    delta?: string | undefined;
+  }
+
+  interface SegmentCost {
     total: string;
     units: string;
+    delta?: string | undefined;
+  }
+
+  interface ElevationContext {
+    total: number;
+    icon: string;
+    hidden: boolean;
+    delta?: string | undefined;
+  }
+
+  interface WaypointStyle {
+    radius: number;
+    color?: PIXI.ColorSource | undefined;
+    alpha?: number | undefined;
+  }
+
+  interface SegmentStyle {
+    width: number;
+    color?: PIXI.ColorSource | undefined;
+    alpha?: number | undefined;
   }
 
   interface GridHighlightStyle {

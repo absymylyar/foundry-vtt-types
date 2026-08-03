@@ -1,18 +1,33 @@
 import { expectTypeOf } from "vitest";
 
 import AVMaster = foundry.av.AVMaster;
-import AVSettings = foundry.av.AVSettings;
 
 const avSettings = new AVSettings();
 
-AVSettings.DEFAULT_USER_SETTINGS.blocked;
-
-expectTypeOf(avSettings.client).toEqualTypeOf<AVSettings.ClientSettingData>();
-expectTypeOf(avSettings.world).toEqualTypeOf<AVSettings.WorldSettingData>();
+expectTypeOf(avSettings.client).toEqualTypeOf<AVSettings.ClientSettings>();
+expectTypeOf(avSettings.world).toEqualTypeOf<AVSettings.WorldSettings>();
 expectTypeOf(avSettings.activity).toEqualTypeOf<Record<string, AVSettings.Data>>();
 expectTypeOf(avSettings.getUser("")).toEqualTypeOf<AVSettings.UserSettings | null>();
 expectTypeOf(avSettings.users).toEqualTypeOf<Record<string, AVSettings.UserSettings>>();
 expectTypeOf(avSettings.verticalDock).toEqualTypeOf<boolean>();
 
+interface CustomVoiceModes {
+  SOME_CUSTOM_MODE: "custom";
+}
+
+declare global {
+  namespace AVSettings {
+    interface Overrides {
+      VoiceModes: CustomVoiceModes;
+    }
+  }
+}
+
+AVSettings.VOICE_MODES = {
+  SOME_CUSTOM_MODE: "custom",
+};
+
+expectTypeOf(AVSettings.VOICE_MODES).toEqualTypeOf<CustomVoiceModes>();
+
 const avMaster = new AVMaster();
-expectTypeOf(avMaster.settings.client.voice.mode).toEqualTypeOf<AVSettings.VOICE_MODES>();
+expectTypeOf(avMaster.settings.client.voice.mode).toEqualTypeOf<"custom">();

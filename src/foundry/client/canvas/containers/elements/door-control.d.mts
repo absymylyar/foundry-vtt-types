@@ -11,7 +11,7 @@ declare class DoorControl extends PIXI.Container {
 
   /**
    * @defaultValue `false`
-   * @remarks Foundry comments "Door controls are not visible by default"
+   * @remarks "Door controls are not visible by default"
    */
   override visible: boolean;
 
@@ -44,7 +44,7 @@ declare class DoorControl extends PIXI.Container {
   /**
    * Determine whether the DoorControl is visible to the calling user's perspective.
    * The control is always visible if the user is a GM and no Tokens are controlled.
-   * @see {@linkcode foundry.canvas.groups.CanvasVisibility.testVisibility | CanvasVisibility#testVisibility}
+   * @see {@link foundry.canvas.groups.CanvasVisibility.testVisibility | `CanvasVisibility#testVisibility`}
    */
   get isVisible(): boolean;
 
@@ -76,29 +76,11 @@ declare class DoorControl extends PIXI.Container {
 }
 
 declare namespace DoorControl {
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
-  type Any = Internal.Any;
+  interface Any extends AnyDoorControl {}
+  interface AnyConstructor extends Identity<typeof AnyDoorControl> {}
 
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyDoorControl {}
-    interface AnyConstructor extends Identity<typeof AnyDoorControl> {}
-  }
-
-  interface ImplementationClass extends Identity<CONFIG["Canvas"]["doorControlClass"]> {}
-  interface Implementation extends FixedInstanceType<ImplementationClass> {}
-
-  /**
-   * @deprecated Replaced by {@linkcode DoorControl.ImplementationClass}.
-   */
-  type ConfiguredClass = ImplementationClass;
-
-  /**
-   * @deprecated Replaced by {@linkcode DoorControl.Implementation}.
-   */
-  type ConfiguredInstance = Implementation;
+  type ConfiguredClass = CONFIG["Canvas"]["doorControlClass"];
+  type ConfiguredInstance = FixedInstanceType<ConfiguredClass>;
 }
 
 export default DoorControl;

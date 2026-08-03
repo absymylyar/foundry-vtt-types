@@ -30,10 +30,12 @@ declare namespace MacroConfig {
   interface AnyConstructor extends Identity<typeof AnyMacroConfig> {}
 
   interface RenderContext
-    extends HandlebarsApplicationMixin.RenderContext, DocumentSheetV2.RenderContext<Macro.Implementation> {}
+    extends HandlebarsApplicationMixin.RenderContext,
+      DocumentSheetV2.RenderContext<Macro.Implementation> {}
 
   interface Configuration
-    extends HandlebarsApplicationMixin.Configuration, DocumentSheetV2.Configuration<Macro.Implementation> {}
+    extends HandlebarsApplicationMixin.Configuration,
+      DocumentSheetV2.Configuration<Macro.Implementation> {}
 
   interface RenderOptions extends HandlebarsApplicationMixin.RenderOptions, DocumentSheetV2.RenderOptions {}
 }

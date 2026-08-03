@@ -1,19 +1,13 @@
 import type EventEmitterMixin from "#common/utils/event-emitter.mjs";
 import type { FixedInstanceType, Identity } from "#utils";
+import type TextureExtractor from "#client/canvas/texture-extractor.d.mts";
 import type { SpriteMesh } from "#client/canvas/containers/_module.mjs";
 import type { CanvasVisibility } from "#client/canvas/groups/_module.d.mts";
-import type { Canvas, TextureExtractor } from "#client/canvas/_module.d.mts";
 
 /**
- * A fog of war management class which is the singleton {@linkcode Canvas.fog | canvas.fog} instance.
+ * A fog of war management class which is the singleton canvas.fog instance.
  */
 declare class FogManager extends EventEmitterMixin() {
-  /**
-   * @defaultValue `["explored"]`
-   * @remarks Frozen
-   */
-  static override emittedEvents: readonly string[];
-
   /**
    * The FogExploration document which applies to this canvas view
    * @defaultValue `null`
@@ -23,13 +17,13 @@ declare class FogManager extends EventEmitterMixin() {
   /**
    * Track whether we have pending fog updates which have not yet been saved to the database
    * @defaultValue `false`
-   * @internal
+   * @remarks Foundry marked `@internal`
    */
   protected _updated: boolean;
 
   /**
    * Texture extractor
-   * @remarks Only `undefined` before first {@linkcode initialize} call. Set to `null` if {@linkcode TextureExtractor} creation fails, and will not retry from that state.
+   * @remarks Only `undefined` before first `#initialize()`ation. Set to `null` if {@linkcode TextureExtractor} creation fails, and will not retry from that state.
    */
   get extractor(): TextureExtractor | undefined | null;
 
@@ -48,29 +42,25 @@ declare class FogManager extends EventEmitterMixin() {
    * The configured options used for the saved fog-of-war texture.
    * @remarks Only `undefined` prior to the first time the canvas visibility layer is `#draw()`n
    */
-  get textureConfiguration(): CanvasVisibility.Implementation["textureConfiguration"];
+  get textureConfiguration(): CanvasVisibility.TextureConfiguration | undefined;
 
   /**
    * Does the currently viewed Scene support Token field of vision?
    */
-  get tokenVision(): Scene.Implementation["tokenVision"];
+  // TODO: make `Scene.Implementation["tokenVision"]` when docsv2 is done
+  get tokenVision(): boolean;
 
   /**
    * Does the currently viewed Scene support fog of war exploration?
    */
-  get fogExploration(): Scene.Implementation["fog"]["exploration"];
-
-  /**
-   * Is this position explored?
-   * @param position - The position to be tested
-   * @returns Is this position explored?
-   */
-  isPointExplored(position: Canvas.Point): boolean;
+  // TODO: make `Scene.Implementation["fog"]["exploration"]` when docsv2 is done
+  get fogExploration(): boolean;
 
   /**
    * Create the exploration display object with or without a provided texture.
+   * @privateRemarks Despite Foundry only typing this as returning `DisplayObject` in 12.331, it always returns a `SpriteMesh`
    */
-  protected _createExplorationObject(tex?: PIXI.Texture | PIXI.RenderTexture): SpriteMesh;
+  protected _createExplorationObject(tex?: PIXI.Texture | PIXI.RenderTexture | null): SpriteMesh;
 
   /**
    * Initialize fog of war - resetting it when switching scenes or re-drawing the canvas
@@ -83,13 +73,8 @@ declare class FogManager extends EventEmitterMixin() {
   clear(): Promise<void>;
 
   /**
-   * Destroy this FogManager.
-   */
-  destroy(): void;
-
-  /**
    * Once a new Fog of War location is explored, composite the explored container with the current staging sprite.
-   * Once the number of refresh is greater than the commit threshold, save the fog texture to the database.
+   * Once the number of refresh is \> to the commit threshold, save the fog texture to the database.
    */
   commit(): void;
 
@@ -99,8 +84,8 @@ declare class FogManager extends EventEmitterMixin() {
   load(): Promise<PIXI.Texture | void>;
 
   /**
-   * Dispatch a request to reset the fog of war exploration status for all users within this {@linkcode Scene}. Once the server has deleted
-   * existing {@linkcode FogExploration} documents, the {@linkcode _handleReset} handler will re-draw the canvas.
+   * Dispatch a request to reset the fog of war exploration status for all users within this Scene.
+   * Once the server has deleted existing FogExploration documents, the _onReset handler will re-draw the canvas.
    */
   reset(): Promise<void>;
 
@@ -109,17 +94,6 @@ declare class FogManager extends EventEmitterMixin() {
    * Note: if a save operation is pending, we're waiting for its conclusion.
    */
   save(): Promise<void>;
-
-  /**
-   * Synchronize one user's version of the Fog of War for this scene to other users.
-   * Note: This API is experimental and may be removed in later versions *without deprecation*. It is intended for
-   * one-time corrections of users' fog explorations, and should not be used for real-time synchronization of fog
-   * exploration.
-   * @param from - The user whose Fog of War to use as the source of truth.
-   * @param to   - A list of users that should have their Fog of War synced. If none are specified then all users will be synced.
-   * @returns A promise that resolves when synchronization has been completed.
-   */
-  sync(from: User.Stored, to?: User.Stored[]): Promise<void>;
 
   /**
    * Extract fog data as a base64 string
@@ -135,38 +109,45 @@ declare class FogManager extends EventEmitterMixin() {
 
   /**
    * If fog of war data is reset from the server, deactivate the current fog and initialize the exploration.
-   * @internal
-   * @remarks Called externally in the `fogReset` socket handler
+   * @remarks Foundry marked `@internal`, called externally in the `fogReset` socket handler
    */
   protected _handleReset(): Promise<void>;
 
-  #FogManager: true;
+  /**
+   * @deprecated since v11, will be removed in v13
+   * @remarks "pending is deprecated and redirected to the exploration container"
+   */
+  get pending(): CanvasVisibility["explored"];
+
+  /**
+   * @deprecated since v11, will be removed in v13
+   * @remarks "revealed is deprecated and redirected to the exploration container"
+   */
+  get revealed(): CanvasVisibility["explored"];
+
+  /**
+   * @deprecated since v11, will be removed in v13
+   * @remarks "update is obsolete and always returns true. The fog exploration does not record position anymore."
+   *
+   * Both parameters are unused
+   */
+  update(source: any, force?: boolean | null): true;
+
+  /**
+   * @deprecated since v11, will be removed in v13
+   * @remarks "resolution is deprecated and redirected to CanvasVisibility#textureConfiguration"
+   *
+   * Probable Bug Note: Returns the entire `textureConfiguration` object, not just its `resolution` property
+   */
+  get resolution(): CanvasVisibility["textureConfiguration"];
 }
 
 declare namespace FogManager {
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
-  type Any = Internal.Any;
+  interface Any extends AnyFogManager {}
+  interface AnyConstructor extends Identity<typeof AnyFogManager> {}
 
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyFogManager {}
-    interface AnyConstructor extends Identity<typeof AnyFogManager> {}
-  }
-
-  interface ImplementationClass extends Identity<CONFIG["Canvas"]["fogManager"]> {}
-  interface Implementation extends FixedInstanceType<ImplementationClass> {}
-
-  /**
-   * @deprecated Replaced by {@linkcode FogManager.ImplementationClass}.
-   */
-  type ConfiguredClass = ImplementationClass;
-
-  /**
-   * @deprecated Replaced by {@linkcode FogManager.Implementation}.
-   */
-  type ConfiguredInstance = Implementation;
+  type ConfiguredClass = CONFIG["Canvas"]["fogManager"];
+  type ConfiguredInstance = FixedInstanceType<ConfiguredClass>;
 }
 
 export default FogManager;

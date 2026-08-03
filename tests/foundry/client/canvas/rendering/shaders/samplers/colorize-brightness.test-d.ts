@@ -1,7 +1,5 @@
 import { expectTypeOf } from "vitest";
-
-import ColorizeBrightnessShader = foundry.canvas.rendering.shaders.ColorizeBrightnessShader;
-import AbstractBaseShader = foundry.canvas.rendering.shaders.AbstractBaseShader;
+import { AbstractBaseShader, ColorizeBrightnessShader } from "#client/canvas/rendering/shaders/_module.mjs";
 
 const _myCBS = ColorizeBrightnessShader.create();
 

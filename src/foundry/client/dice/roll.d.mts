@@ -1,4 +1,4 @@
-import type { AnyObject, InexactPartial, FixedInstanceType, EmptyObject, Identity } from "#utils";
+import type { AnyObject, InexactPartial, FixedInstanceType, EmptyObject, Identity, ConcreteKeys } from "#utils";
 import type { RollParseNode } from "./_types.d.mts";
 import type DiceTerm from "./terms/dice.d.mts";
 import type PoolTerm from "./terms/pool.d.mts";
@@ -36,12 +36,6 @@ declare class Roll<D extends AnyObject = EmptyObject> {
    * @param options - (default: `{}`)
    */
   constructor(formula: string, data?: D, options?: Roll.Options);
-
-  /**
-   * Dice Configuration setting name.
-   * @defaultValue `"diceConfiguration"`
-   */
-  static readonly DICE_CONFIGURATION_SETTING: "diceConfiguration";
 
   /**
    * The original provided data object which substitutes into attributes of the roll formula
@@ -506,14 +500,14 @@ declare class Roll<D extends AnyObject = EmptyObject> {
    * @param data - Unpacked data representing the Roll
    * @returns A reconstructed Roll instance
    */
-  static fromData<T extends Roll.Internal.AnyConstructor>(this: T, data: Roll.Data): FixedInstanceType<T>;
+  static fromData<T extends Roll.AnyConstructor>(this: T, data: Roll.Data): FixedInstanceType<T>;
 
   /**
    * Recreate a Roll instance using a provided JSON string
    * @param json - Serialized JSON data representing the Roll
    * @returns A reconstructed Roll instance
    */
-  static fromJSON<T extends Roll.Internal.AnyConstructor>(this: T, json: string): FixedInstanceType<T>;
+  static fromJSON<T extends Roll.AnyConstructor>(this: T, json: string): FixedInstanceType<T>;
 
   /**
    * Manually construct a Roll object by providing an explicit set of input terms
@@ -530,7 +524,7 @@ declare class Roll<D extends AnyObject = EmptyObject> {
    * roll.formula; // 4d8 + 8
    * ```
    */
-  static fromTerms<T extends Roll.Internal.AnyConstructor>(
+  static fromTerms<T extends Roll.AnyConstructor>(
     this: T,
     terms: RollTerm[],
     options?: Roll.Options,
@@ -538,23 +532,10 @@ declare class Roll<D extends AnyObject = EmptyObject> {
 }
 
 declare namespace Roll {
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
-  type Any = Internal.Any;
+  interface Any extends AnyRoll {}
+  interface AnyConstructor extends Identity<typeof AnyRoll> {}
 
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyRoll {}
-    interface AnyConstructor extends Identity<typeof AnyRoll> {}
-  }
-
-  /** @deprecated Use {@linkcode foundry.dice.Roll.Mode} instead */
-  type ConfiguredRollModes = Mode;
-
-  type Mode = keyof CONFIG.Dice.RollModes;
-
-  type CoreDenominations = "d4" | "d6" | "d8" | "d10" | "d12" | "d20" | "d100";
+  type ConfiguredRollModes = ConcreteKeys<typeof CONFIG.Dice.rollModes>;
 
   // TODO: Make this actually configurable
   interface ImplementationClass extends Identity<CONFIG["Dice"]["rolls"][0]> {}
@@ -612,8 +593,7 @@ declare namespace Roll {
     total: number | null;
   }
 
-  /** @internal */
-  interface _ClassifyStringTermOptions {
+  type _ClassifyStringTermOptions = InexactPartial<{
     /**
      * Allow intermediate terms
      * @defaultValue `true`
@@ -625,9 +605,9 @@ declare namespace Roll {
 
     /** The next term to classify */
     next: RollTerm | string | null;
-  }
+  }>;
 
-  interface ClassifyStringTermOptions extends InexactPartial<_ClassifyStringTermOptions> {}
+  interface ClassifyStringTermOptions extends _ClassifyStringTermOptions {}
 
   /** @internal */
   // TODO(LukeAbby): When shims are added then `"user"` should also be added here #3065. Specifically `user` should be added as partial.

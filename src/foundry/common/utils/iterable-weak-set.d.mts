@@ -5,16 +5,16 @@ import type { Identity } from "#utils";
  * unlike a WeakSet.
  * @template K - The type of the objects contained in the WeakSet
  */
-declare class IterableWeakSet<K extends WeakKey> {
+declare class IterableWeakSet<K extends WeakKey> extends WeakSet<K> {
   /**
    * @param entries - The initial entries.
    */
-  constructor(entries?: Iterable<K, void, unknown>);
+  constructor(entries?: Iterable<K>);
 
   /**
    * Enumerate the values.
    */
-  [Symbol.iterator](): Generator<K, void, unknown>;
+  [Symbol.iterator](): Generator<K, void, undefined>;
 
   /**
    * Add a value to the set.
@@ -38,7 +38,7 @@ declare class IterableWeakSet<K extends WeakKey> {
   /**
    * Enumerate the collection.
    */
-  values(): Generator<K, void, unknown>;
+  values(): Generator<K, void, undefined>;
 
   /**
    * Clear all values from the set.

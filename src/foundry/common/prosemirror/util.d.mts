@@ -27,7 +27,7 @@ declare namespace serializeHTMLString {
   type _StringNode = StringNode;
 
   /** @internal */
-  interface _Options {
+  type _Options = InexactPartial<{
     /**
      * The ProseMirror schema to use instead of the default one.
      * @defaultValue {@linkcode foundry.prosemirror.defaultSchema}
@@ -39,9 +39,9 @@ declare namespace serializeHTMLString {
      * @defaultValue `0`
      */
     spaces: string | number;
-  }
+  }>;
 
-  interface Options extends InexactPartial<_Options> {}
+  interface Options extends _Options {}
 }
 
 /**

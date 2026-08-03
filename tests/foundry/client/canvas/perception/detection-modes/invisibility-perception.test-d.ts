@@ -1,32 +1,19 @@
-import { describe, expectTypeOf, test } from "vitest";
+import { expectTypeOf } from "vitest";
+import { DetectionMode, DetectionModeInvisibility } from "#client/canvas/perception/_module.mjs";
+import type { Token } from "#client/canvas/placeables/_module.d.mts";
 
-import DetectionModeInvisibility = foundry.canvas.perception.DetectionModeInvisibility;
-import DetectionMode = foundry.canvas.perception.DetectionMode;
-import PointVisionSource = foundry.canvas.sources.PointVisionSource;
-import Token = foundry.canvas.placeables.Token;
-import GlowOverlayFilter = foundry.canvas.rendering.filters.GlowOverlayFilter;
+const source = {
+  id: "foo",
+  label: "bar",
+  type: DetectionMode.DETECTION_TYPES.OTHER,
+  angle: false,
+  walls: true,
+  tokenConfig: false,
+};
 
-declare const visionSource: PointVisionSource.Initialized;
-declare const token: Token.Implementation;
+declare const someVisionSource: foundry.canvas.sources.PointVisionSource;
+declare const someToken: Token.Implementation;
 
-describe("DetectionModeInvisibility tests", () => {
-  const source = {
-    id: "foo",
-    label: "bar",
-    type: DetectionMode.DETECTION_TYPES.OTHER,
-    angle: false,
-    walls: true,
-    tokenConfig: false,
-  } satisfies DetectionMode.CreateData;
-
-  const myDetectionModeInvisibility = new DetectionModeInvisibility(source);
-
-  test("Filter", () => {
-    expectTypeOf(DetectionModeInvisibility.getDetectionFilter()).toEqualTypeOf<GlowOverlayFilter>();
-    expectTypeOf(DetectionModeInvisibility["_detectionFilter"]).toEqualTypeOf<GlowOverlayFilter | undefined>();
-  });
-
-  test("Visibility Testing", () => {
-    expectTypeOf(myDetectionModeInvisibility["_canDetect"](visionSource, token)).toEqualTypeOf<boolean>();
-  });
-});
+expectTypeOf(DetectionModeInvisibility.getDetectionFilter()).toEqualTypeOf<PIXI.Filter>();
+const myDetectionModeInvisibility = new DetectionModeInvisibility(source);
+expectTypeOf(myDetectionModeInvisibility["_canDetect"](someVisionSource, someToken)).toEqualTypeOf<boolean>();

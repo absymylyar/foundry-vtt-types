@@ -1,4 +1,4 @@
-import type { FixedInstanceType, Identity, InexactPartial, IntentionalPartial, ValueOf } from "#utils";
+import type { Brand, Identity, InexactPartial, IntentionalPartial } from "#utils";
 
 /**
  * A singleton Tooltip Manager class responsible for rendering and positioning a dynamic tooltip element which is
@@ -151,41 +151,31 @@ declare class TooltipManager {
   /**
    * Retrieve the configured TooltipManager implementation
    */
-  static get implementation(): TooltipManager.ImplementationClass;
+  // TODO: Config.ux handling
+  static get implementation(): typeof TooltipManager;
 
   #TooltipManager: true;
 }
 
 declare namespace TooltipManager {
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
-  type Any = Internal.Any;
-
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyTooltipManager {}
-    interface AnyConstructor extends Identity<typeof AnyTooltipManager> {}
-  }
-
-  interface ImplementationClass extends Identity<typeof CONFIG.ux.TooltipManager> {}
-  interface Implementation extends FixedInstanceType<ImplementationClass> {}
+  interface Any extends AnyTooltipManager {}
+  interface AnyConstructor extends Identity<typeof AnyTooltipManager> {}
 
   /**
    * The directions in which a tooltip can extend, relative to its tool-tipped element.
    */
-  type TOOLTIP_DIRECTIONS = ValueOf<TooltipDirections>;
+  type TOOLTIP_DIRECTIONS = Brand<string, "TooltipManager.TOOLTIP_DIRECTIONS">;
 
   interface TooltipDirections {
-    UP: "UP";
-    DOWN: "DOWN";
-    LEFT: "LEFT";
-    RIGHT: "RIGHT";
-    CENTER: "CENTER";
+    UP: "UP" & TOOLTIP_DIRECTIONS;
+    DOWN: "DOWN" & TOOLTIP_DIRECTIONS;
+    LEFT: "LEFT" & TOOLTIP_DIRECTIONS;
+    RIGHT: "RIGHT" & TOOLTIP_DIRECTIONS;
+    CENTER: "CENTER" & TOOLTIP_DIRECTIONS;
   }
 
   /** @internal */
-  interface _ActivateOptions {
+  type _ActivateOptions = InexactPartial<{
     /**
      * Explicit tooltip text to display. If this is not provided the tooltip text is acquired from
      * the element's `data-tooltip-text` attribute if present and otherwise from its `data-tooltip`
@@ -229,9 +219,9 @@ declare namespace TooltipManager {
      * @remarks Ignored if `html` is passed
      */
     content: HTMLElement;
-  }
+  }>;
 
-  interface ActivateOptions extends InexactPartial<_ActivateOptions> {}
+  interface ActivateOptions extends _ActivateOptions {}
 
   /** @internal */
   interface _BasePosition {
@@ -251,14 +241,14 @@ declare namespace TooltipManager {
   interface Position extends InexactPartial<_BasePosition> {}
 
   /** @internal */
-  interface _CreateLockedTooltipOptions {
+  type _CreateLockedTooltipOptions = InexactPartial<{
     /**
      * An optional, space-separated list of CSS classes to apply to the activated tooltip.
      */
     cssClass: string;
-  }
+  }>;
 
-  interface CreateLockedTooltipOptions extends InexactPartial<_CreateLockedTooltipOptions> {}
+  interface CreateLockedTooltipOptions extends _CreateLockedTooltipOptions {}
 
   /**
    * @privateRemarks This is spread into an object with existing defaults (all `null`s for the `_BasePosition` properties).

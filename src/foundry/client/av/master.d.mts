@@ -1,54 +1,66 @@
-import type { DeepPartial } from "#utils";
-import type { KeyboardManager } from "#client/helpers/interaction/_module.d.mts";
-import type { AVClient, AVSettings } from "#client/av/_module.d.mts";
-import type { AVConfig } from "#client/applications/settings/menus/_module.d.mts";
+import type { DeepPartial, FixedInstanceType } from "#utils";
+
+import KeyboardManager = foundry.helpers.interaction.KeyboardManager;
+import AVSettings = foundry.av.AVSettings;
+import type AVConfig from "#client/applications/settings/menus/av-config.mjs";
 
 /**
  * The master Audio/Video controller instance.
- * This is available as the singleton {@linkcode game.webrtc}
+ * This is available as the singleton game.webrtc
  */
 declare class AVMaster {
   constructor();
 
-  /** @privateRemarks Defined during construction. */
   settings: AVSettings;
 
-  /** @privateRemarks Defined during construction. */
   config: AVConfig;
 
   /**
    * The Audio/Video client class
-   * @privateRemarks Defined during construction.
    */
-  client: AVClient.Implementation;
+  client: FixedInstanceType<CONFIG["WebRTC"]["clientClass"]>;
 
   /**
    * A flag to track whether the current user is actively broadcasting their microphone.
    * @defaultValue `false`
-   * @privateRemarks Defined during construction.
    */
   broadcasting: boolean;
 
   /**
-   * @defaultValue `{ speaking: false, volumeHistories: [] }`
+   * Flag to determine if we are connected to the signalling server or not.
+   * This is required for synchronization between connection and reconnection attempts.
+   * @defaultValue `false`
    * @internal
-   * @privateRemarks Defined during construction by simple assignment.
    */
-  _speakingData: AVMaster.SpeakingData;
+  protected _connected: boolean;
+
+  /**
+   * The cached connection promise.
+   * This is required to prevent re-triggering a connection while one is already in progress.
+   * @defaultValue `null`
+   * @internal
+   */
+  protected _connecting: Promise<boolean> | null;
+
+  /**
+   * A flag to track whether the A/V system is currently in the process of reconnecting.
+   * This occurs if the connection is lost or interrupted.
+   * @defaultValue `false`
+   * @internal
+   */
+  protected _reconnecting: boolean;
+
+  /**
+   * @defaultValue `{}`
+   * @internal
+   */
+  protected _speakingData: { speaking: boolean; volumeHistories: number[] };
 
   /**
    * @defaultValue `0`
    * @internal
-   * @privateRemarks Defined during construction by simple assignment.
    */
-  _pttMuteTimeout: number;
-
-  /**
-   * @defaultValue `3000`
-   * @internal
-   * @privateRemarks Defined during construction by simple assignment.
-   */
-  _reconnectPeriodMS: number;
+  protected _pttMuteTimeout: number;
 
   get mode(): AVSettings.AV_MODES;
 
@@ -68,6 +80,12 @@ declare class AVMaster {
    * Callback actions to take when the user becomes disconnected from the server.
    */
   reestablish(): Promise<void>;
+
+  /**
+   * Initialize the local broadcast state.
+   * @internal
+   */
+  protected _initialize(): void;
 
   /**
    * A user can broadcast audio if the AV mode is compatible and if they are allowed to broadcast.
@@ -92,7 +110,7 @@ declare class AVMaster {
   /**
    * Trigger a change in the audio broadcasting state when using a push-to-talk workflow.
    * @param intent - The user's intent to broadcast. Whether an actual broadcast occurs will depend
-   * on whether or not the user has muted their audio feed.
+   *                 on whether or not the user has muted their audio feed.
    */
   broadcast(intent: boolean): void;
 
@@ -101,14 +119,14 @@ declare class AVMaster {
    * @param mode - The currently selected voice broadcasting mode
    * @internal
    */
-  _initializeUserVoiceDetection(mode: AVSettings.VOICE_MODES): void;
+  protected _initializeUserVoiceDetection(mode: AVSettings.VOICE_MODES): void;
 
   /**
    * Activate voice detection tracking for a userId on a provided MediaStream.
    * Currently only a MediaStream is supported because MediaStreamTrack processing is not yet supported cross-browser.
    * @param stream - The MediaStream which corresponds to that User
    * @param ms     - A number of milliseconds which represents the voice activation volume interval
-   *                 (default: {@linkcode CONFIG.WebRTC.detectPeerVolumeInterval})
+   *                 (default: `CONFIG.WebRTC.detectPeerVolumeInterval`)
    */
   activateVoiceDetection(stream: MediaStream, ms?: number): void;
 
@@ -116,6 +134,31 @@ declare class AVMaster {
    * Actions which the orchestration layer should take when a peer user disconnects from the audio/video service.
    */
   deactivateVoiceDetection(): void;
+
+  /**
+   * Periodic notification of user audio level
+   *
+   * This function uses the audio level (in dB) of the audio stream to determine if the user is speaking or not and
+   * notifies the UI of such changes.
+   *
+   * The User is considered speaking if they are above the decibel threshold in any of the history values.
+   * This marks them as speaking as soon as they have a high enough volume, and marks them as not speaking only after
+   * they drop below the threshold in all histories (last 4 volumes = for 200 ms).
+   *
+   * There can be more optimal ways to do this and which uses whether the user was already considered speaking before
+   * or not, in order to eliminate short bursts of audio (coughing for example).
+   *
+   * @param dbLevel - The audio level in decibels of the user within the last 50ms
+   * @internal
+   */
+  protected _onAudioLevel(dbLevel: number): void;
+
+  /**
+   * Resets the speaking history of a user
+   * If the user was considered speaking, then mark them as not speaking
+   * @internal
+   */
+  protected _resetSpeakingHistory(): void;
 
   /**
    * Handle activation of a push-to-talk key or button.
@@ -134,6 +177,12 @@ declare class AVMaster {
   render(): void;
 
   /**
+   * Render the audio/video streams to the CameraViews UI.
+   * Assign each connected user to the correct video frame element.
+   */
+  onRender(): void;
+
+  /**
    * Respond to changes which occur to AV Settings.
    * Changes are handled in descending order of impact.
    * @param changed - The object of changed AV settings
@@ -141,13 +190,6 @@ declare class AVMaster {
   onSettingsChanged(changed: DeepPartial<AVSettings.Settings>): void;
 
   debug(message: string): void;
-}
-
-declare namespace AVMaster {
-  interface SpeakingData {
-    speaking: boolean;
-    volumeHistories: number[];
-  }
 }
 
 export default AVMaster;

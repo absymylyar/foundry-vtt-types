@@ -192,14 +192,14 @@ declare abstract class DiceTerm extends RollTerm {
    * Sequentially evaluate each dice roll modifier by passing the term to its evaluation function
    * Augment or modify the results array.
    */
-  protected _evaluateModifiers(): Promise<void>;
+  protected _evaluateModifiers(): void;
 
   /**
    * Evaluate a single modifier command, recording it in the array of evaluated modifiers
    * @param command - The parsed modifier command
    * @param modifier -  The full modifier request
    */
-  protected _evaluateModifier(command: string, modifier: string): Promise<void>;
+  protected _evaluateModifier(command: string, modifier: string): void;
 
   /**
    * A helper comparison function.
@@ -358,51 +358,51 @@ declare namespace DiceTerm {
     rolls: { result: string; classes: string }[];
   }
 
-  interface _KeepOrDropOptions {
+  type _KeepOrDropOptions = InexactPartial<{
     /**
      * Keep results?
      * @defaultValue true
      */
-    keep?: boolean | undefined;
+    keep?: boolean | undefined; // not: null (function checks keep===highest)
 
     /**
      * Keep the highest?
      * @defaultValue true
      */
-    highest?: boolean | undefined;
-  }
+    highest?: boolean | undefined; // not: null (function checks keep===highest)
+  }>;
 
-  interface KeepOrDropOptions extends InexactPartial<_KeepOrDropOptions> {}
+  interface KeepOrDropOptions extends _KeepOrDropOptions {}
 
-  interface _ApplyCountOptions {
+  type _ApplyCountOptions = InexactPartial<{
     /** @defaultValue false */
     flagSuccess: boolean | null;
 
     /** @defaultValue false */
     flagFailure: boolean | null;
-  }
+  }>;
 
-  interface ApplyCountOptions extends InexactPartial<_ApplyCountOptions> {}
+  interface ApplyCountOptions extends _ApplyCountOptions {}
 
-  interface _ApplyDeductOptions {
+  type _ApplyDeductOptions = InexactPartial<{
     /** @defaultValue false */
     deductFailure: boolean | null;
 
     /** @defaultValue false */
     invertFailure: boolean | null;
-  }
+  }>;
 
-  interface ApplyDeductOptions extends InexactPartial<_ApplyDeductOptions> {}
+  interface ApplyDeductOptions extends _ApplyDeductOptions {}
 
-  interface _MatchTermOptions {
+  type _MatchTermOptions = InexactPartial<{
     /**
      * Allow the number of dice to be optional, i.e. "d6"
      * @defaultValue true
      */
     imputeNumber: boolean | null;
-  }
+  }>;
 
-  interface MatchTermOptions extends InexactPartial<_MatchTermOptions> {}
+  interface MatchTermOptions extends _MatchTermOptions {}
 
   interface EvaluationOptions extends RollTerm.EvaluationOptions {
     /**

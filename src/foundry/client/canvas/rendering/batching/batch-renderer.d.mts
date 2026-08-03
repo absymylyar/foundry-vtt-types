@@ -82,9 +82,9 @@ declare namespace BatchRenderer {
   type PackInterleavedGeometryFunction = ToMethod<
     (
       /**
-       * @privateRemarks The `element` param is `Partial`'d here because at least one `_packInterleavedGeometry` implementation
-       * (`DepthSampleShader`'s) omits properties from the parent PIXI interface. Neither `PIXI.BatchRenderer` nor any Foundry
-       * implementations provide any default values for properties of this interface, so straight `Partial`, no `Inexact`.
+       * @privateRemarks The `element` param is `Partial`'d here because at least one `_packInterleavedGeometry` implementation (`DepthSampleShader`'s)
+       * omits properties from the parent PIXI interface. Neither `PIXI.BatchRenderer` nor any Foundry implementations provide any default values for
+       * properties of this interface, so no `InexactPartial` or `NullishProps`.
        */
       element: IntentionalPartial<PIXI.IBatchableElement>,
       attributeBuffer: PIXI.ViewableBuffer,
@@ -102,7 +102,7 @@ declare namespace BatchRenderer {
   type ReservedTextureUnits = 0 | 1 | 2 | 3 | 4;
 
   /** @internal */
-  interface _ShaderGeneratorOptions {
+  type _ShaderGeneratorOptions = InexactPartial<{
     /**
      * The vertex shader source
      * @remarks Can't be null as only a signature default is provided
@@ -120,13 +120,13 @@ declare namespace BatchRenderer {
      * @remarks Can't be null as only a signature default is provided
      */
     uniforms: typeof BatchRenderer.defaultUniforms;
-  }
+  }>;
 
   /**
    * Options for {@link BatchRenderer#setShaderGenerator} (and ultimately the
    * constructor of whatever's set as {@link BatchRenderer.shaderGeneratorClass})
    */
-  interface ShaderGeneratorOptions extends InexactPartial<_ShaderGeneratorOptions> {}
+  interface ShaderGeneratorOptions extends _ShaderGeneratorOptions {}
 }
 
 export default BatchRenderer;

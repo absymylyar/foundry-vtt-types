@@ -1,53 +1,27 @@
-import type {
-  Coalesce,
-  DeepPartial,
-  EmptyObject,
-  GetKey,
-  Identity,
-  InexactPartial,
-  IntentionalPartial,
-  PrettifyType,
-  SimpleMerge,
-} from "#utils";
-import type { fields } from "#client/data/_module.d.mts";
+import type { DeepPartial, EmptyObject, InexactPartial, PrettifyType, SimpleMerge, UnionToIntersection } from "#utils";
 import type Document from "#common/abstract/document.d.mts";
-import type { ApplicationV2, DialogV2 } from "#client/applications/api/_module.d.mts";
-import type { Application } from "#client/appv1/api/_module.d.mts";
-import type { Game } from "#client/_module.d.mts";
-import type { SocketInterface } from "#client/helpers/_module.d.mts";
-import type { BasePackage } from "#common/packages/_module.d.mts";
-import type {
-  DocumentCollection,
-  DirectoryCollectionMixin,
-  WorldCollection,
-} from "#client/documents/abstract/_module.d.mts";
-import type { CompendiumFolderCollection } from "#client/documents/collections/_module.d.mts";
 
-/** @privateRemarks `AllHooks` only used for links */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import type { AllHooks } from "#client/hooks.d.mts";
-
-/** @privateRemarks `ClientDocumentMixin` only used for links */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import type ClientDocumentMixin from "#client/documents/abstract/client-document.d.mts";
+import SocketInterface = foundry.helpers.SocketInterface;
+import Game = foundry.Game;
+import type ApplicationV2 from "#client/applications/api/application.mjs";
 
 /**
  * A collection of Document objects contained within a specific compendium pack.
  * Each Compendium pack has its own associated instance of the CompendiumCollection class which contains its contents.
  *
- * @see {@linkcode Game.packs | Game#packs}
+ * @see {@link Game.packs | `Game#packs`}
  */
 declare class CompendiumCollection<
-  DocumentName extends CompendiumCollection.DocumentName,
-> extends DirectoryCollectionMixin(DocumentCollection)<DocumentName> {
-  /** @param metadata - The compendium metadata, an object provided by {@linkcode Game.data | game.data} */
-  constructor(metadata: CompendiumCollection.ConstructorMetadata<DocumentName>);
+  Type extends foundry.documents.collections.CompendiumCollection.DocumentName,
+> extends foundry.documents.abstract.DirectoryCollectionMixin(foundry.documents.abstract.DocumentCollection)<Type> {
+  /** @param metadata - The compendium metadata, an object provided by game.data */
+  constructor(metadata: foundry.documents.collections.CompendiumCollection.ConstructorMetadata<Type>);
 
   /** The compendium metadata which defines the compendium content and location */
-  metadata: CompendiumCollection.Metadata<DocumentName>;
+  metadata: foundry.documents.collections.CompendiumCollection.Metadata;
 
   /** A subsidiary collection which contains the more minimal index of the pack */
-  index: Collection<CompendiumCollection.IndexEntry<DocumentName>>;
+  index: IndexTypeForMetadata<Type>;
 
   /** @deprecated Foundry made this property truly private in v13 (this warning will be removed in v14) */
   _flush: never;
@@ -64,71 +38,62 @@ declare class CompendiumCollection<
    */
   static CONFIG_SETTING: "compendiumConfiguration";
 
-  /**
-   * The DataField definition for the configuration Setting
-   */
-  static CONFIG_FIELD: CompendiumCollection.SettingField;
-
   /** The canonical Compendium name - comprised of the originating package and the pack name */
   get collection(): this["metadata"]["id"];
 
-  /**
-   * The banner image for this Compendium pack, or the default image for the pack type if no image is set.
-   * @remarks `undefined` in the metadata gets converted to `CONFIG[this.metadata.type]?.compendiumBanner`, which might, itself, be `undefined`
-   */
-  get banner(): string | null | undefined;
+  /** The banner image for this Compendium pack, or the default image for the pack type if no image is set. */
+  get banner(): string | null | void;
 
   /**
    * A reference to the Application class which provides an interface to interact with this compendium content.
-   * @defaultValue {@linkcode foundry.applications.sidebar.apps.Compendium}
+   * @defaultValue `Compendium`
    */
-  applicationClass: Application.AnyConstructor | ApplicationV2.AnyConstructor;
+  applicationClass:
+    | foundry.appv1.api.Application.AnyConstructor
+    | foundry.applications.api.ApplicationV2.AnyConstructor;
 
   /**
    * A subsidiary collection which contains the folders within the pack
    */
-  get folders(): CompendiumFolderCollection<DocumentName>;
+  get folders(): foundry.documents.collections.CompendiumFolderCollection;
 
   /**
-   * @remarks One less than in-world, to allow importing a whole compendium under one root folder in the world collection.
-   * @defaultValue {@linkcode CONST.FOLDER_MAX_DEPTH}`- 1`
+   * @remarks 1 less than in-world
+   * @defaultValue `CONST.FOLDER_MAX_DEPTH - 1`
    */
   get maxFolderDepth(): number;
 
   /**
    * Get the Folder that this Compendium is displayed within
    */
-  get folder(): Folder.Stored<"Compendium"> | null;
+  get folder(): (Folder.Implementation & { type: "Compendium" }) | null;
 
   /**
    * Assign this CompendiumCollection to be organized within a specific Folder.
-   * @param folder - The desired Folder within the World or `null` to clear the folder
+   * @param folder - The desired Folder within the World or null to clear the folder
    * @returns A promise which resolves once the transaction is complete
-   * @remarks Can either pass a `Folder` instance or the ID of one in {@linkcode foundry.Game.folders | game.folders}
    */
-  setFolder(folder: Folder.Stored<"Compendium"> | string | null): Promise<void>;
+  setFolder(folder: Folder.Implementation | string | null): Promise<void>;
 
   /**
    * Get the sort order for this Compendium
    */
   get sort(): number;
 
-  protected override _getVisibleTreeContents(): this["index"]["contents"];
+  // Note(LukeAbby): The override for `_getVisibleTreeContents` become unreasonably long and don't add any changes and so has been omitted.
 
   /** Access the compendium configuration data for this pack */
-  get config(): CompendiumCollection.StoredConfiguration | EmptyObject;
+  get config(): foundry.documents.collections.CompendiumCollection.Configuration | EmptyObject;
 
-  override get documentName(): DocumentName;
+  get documentName(): Type;
 
   /** Track whether the Compendium Collection is locked for editing */
   get locked(): boolean;
 
   /**
    * The visibility configuration of this compendium pack.
-   * @remarks Foundry wants this to be {@linkcode CompendiumCollection.OwnershipData} (omitting the `NONE` key),
-   * but due to {@link https://github.com/foundryvtt/foundryvtt/issues/13354}, it's not, currently.
    */
-  get ownership(): BasePackage.OwnershipRecord;
+  get ownership(): foundry.packages.BasePackage.OwnershipRecord;
 
   /** Is this Compendium pack visible to the current game User? */
   get visible(): boolean;
@@ -138,103 +103,107 @@ declare class CompendiumCollection<
 
   /**
    * The index fields which should be loaded for this compendium pack
-   * @remarks Contained elements are a concatenation of the document's `metadata.compendiumIndexFields` as well as
-   * `CONFIG[documentName].compendiumIndexFields`. They will be in form of dotkeys, e.g `"flags.world.foo"` or `"system.bar"`
+   * @remarks Contained elements are a concatenation of the document's `metadata.compendiumIndexFields` as well as CONFIG
    */
   get indexFields(): Set<string>;
 
   /**
    * Has this Compendium pack been fully indexed?
+   * @defaultValue `false`
    */
   get indexed(): boolean;
 
-  /**
-   * @remarks Since all documents will get flushed at the end of the cache timer anyway, this doesn't clear documents with currently
-   * rendered sheets in their {@linkcode ClientDocumentMixin.AnyMixed.apps | #apps}
-   */
-  override clear(): void;
+  // Note(LukeAbby): The overrides for `get` become unreasonably long and don't add any changes and so have been omitted.
+
+  // NOTE(LukeAbby): This override was disabled for the time being because it's erroring.
+  // Thankfully it doesn't actually change its parent class's signature.
+  // set(id: string, document: Document.Stored<Document.ImplementationFor<T["type"]>>): this;
+
+  delete: (id: string) => boolean;
+
+  clear: () => void;
 
   /**
    * Load the Compendium index and cache it as the keys and values of the Collection.
    * @param options - Options which customize how the index is created
    */
-  getIndex(options?: CompendiumCollection.GetIndexOptions): Promise<this["index"]>;
+  getIndex(options?: foundry.documents.collections.CompendiumCollection.GetIndexOptions<Type>): Promise<this["index"]>;
 
   /**
    * Get a single Document from this Compendium by ID.
    * The document may already be locally cached, otherwise it is retrieved from the server.
-   * @param id - The requested Document `id`
+   * @param id -  The requested Document id
    * @returns The retrieved Document instance
-   * @remarks A return of `undefined` is only possible if passing a falsey `id`. If the retrieval fails, returns `null`.
    */
-  getDocument(id: string): Promise<Document.StoredForName<DocumentName> | undefined | null>;
+  getDocument(id: string): Promise<Document.StoredForName<Type> | undefined | null>;
 
   /**
    * Load multiple documents from the Compendium pack using a provided query object.
-   * @param query - A database query used to retrieve documents from the underlying database (default: `{}`)
+   * @param query - A database query used to retrieve documents from the underlying database
+   *                default: `{}`
    * @returns The retrieved Document instances
    *
-   * @example
-   * Get Documents that match the given value only.
+   * @example Get Documents that match the given value only.
    * ```js
    * await pack.getDocuments({ type: "weapon" });
    * ```
    *
-   * @example
-   * Get several Documents by their IDs.
+   * @example Get several Documents by their IDs.
    * ```js
    * await pack.getDocuments({ _id__in: arrayOfIds });
    * ```
    *
-   * @example
-   * Get Documents by their sub-types.
+   * @example Get Documents by their sub-types.
    * ```js
    * await pack.getDocuments({ type__in: ["weapon", "armor"] });
    * ```
    */
-  getDocuments(query?: CompendiumCollection.Query<DocumentName>): Promise<Document.StoredForName<DocumentName>[]>;
+  getDocuments(
+    query?: foundry.documents.collections.CompendiumCollection.Query<Type>,
+  ): Promise<Document.ImplementationFor<Type>[]>;
 
   /**
    * Get the ownership level that a User has for this Compendium pack.
-   * @param user - The user being tested (default: {@linkcode Game.user | game.user})
-   * @returns The ownership level in {@linkcode CONST.DOCUMENT_OWNERSHIP_LEVELS}
-   * @privateRemarks Temporary `User`s' {@linkcode User.hasRole | #hasRole} methods work without error, so `Implementation` over `Stored`.
+   * @param user - The user being tested (default: `game.user`)
+   * @returns The ownership level in {@link CONST.DOCUMENT_OWNERSHIP_LEVELS | `CONST.DOCUMENT_OWNERSHIP_LEVELS`}
    */
+  // user: not null (parameter default only)
   getUserLevel(user?: User.Implementation): CONST.DOCUMENT_OWNERSHIP_LEVELS;
 
   /**
    * Test whether a certain User has a requested permission level (or greater) over the Compendium pack
    * @param user       - The User being tested
-   * @param permission - The permission level from {@linkcode CONST.DOCUMENT_OWNERSHIP_LEVELS} to test
+   * @param permission - The permission level from DOCUMENT_OWNERSHIP_LEVELS to test
    * @param options    - Additional options involved in the permission test
    * @returns Does the user have this permission level over the Compendium pack?
-   * @privateRemarks Temporary `User`s still have {@linkcode User.role | role}s, so `Implementation` over `Stored`.
    */
   testUserPermission(
     user: User.Implementation,
-    permission: Document.ActionPermission,
-    options?: CompendiumCollection.TestUserPermissionOptions,
+    permission: string | number,
+    options?: foundry.documents.collections.CompendiumCollection.TestUserPermissionOptions,
   ): boolean;
 
   /**
    * Import a Document into this Compendium Collection.
    * @param document - The existing Document you wish to import
-   * @param options  - Additional options which modify how the data is imported.
-   * See {@linkcode ClientDocumentMixin.AnyMixed.toCompendium | ClientDocument#toCompendium} (default: `{}`)
+   * @param options  - Additional options which modify how the data is imported. See {@link ClientDocument.toCompendium | `ClientDocument#toCompendium`}
+   *                   (default: `{}`)
    * @returns The imported Document instance
-   * @remarks Takes either the primary document type of this compendium or a `Folder` of the appropriate type.
    */
-  importDocument<Doc extends CompendiumCollection.DocOrFolder<DocumentName>>(
-    document: Doc,
+  importDocument(
+    document: Document.ImplementationFor<Type>,
     options?: ClientDocument.ToCompendiumOptions,
-  ): Promise<CompendiumCollection.ImportDocumentReturn<Doc> | undefined>;
+  ): Promise<Document.StoredForName<Type> | undefined>;
 
   /**
    * Import a Folder into this Compendium Collection.
    * @param folder  - The existing Folder you wish to import
    * @param options - Additional options which modify how the data is imported.
    */
-  importFolder(folder: Folder.Stored<DocumentName>, options?: CompendiumCollection.ImportFolderOptions): Promise<void>;
+  importFolder(
+    folder: Folder.Implementation,
+    options?: foundry.documents.collections.CompendiumCollection.ImportFolderOptions,
+  ): Promise<void>;
 
   /**
    * Import an array of Folders into this Compendium Collection.
@@ -242,59 +211,61 @@ declare class CompendiumCollection<
    * @param options - Additional options which modify how the data is imported.
    */
   importFolders(
-    folders: Folder.Stored<DocumentName>[],
-    options?: CompendiumCollection.ImportFoldersOptions,
+    folders: Folder.Implementation[],
+    options?: foundry.documents.collections.CompendiumCollection.ImportFoldersOptions,
   ): Promise<void>;
 
   /**
    * Fully import the contents of a Compendium pack into a World folder.
-   * @param options - Options which modify the import operation. Additional options are forwarded to {@linkcode WorldCollection.fromCompendium | WorldCollection#fromCompendium} and {@linkcode Document.createDocuments} (default: `{}`)
+   * @param options - Options which modify the import operation. Additional options are forwarded to {@link WorldCollection.fromCompendium | `WorldCollection#fromCompendium`} and {@linkcode Document.createDocuments} (default: `{}`)
    * @returns The imported Documents, now existing within the World
    */
   importAll(
-    options?: CompendiumCollection.ImportAllOptions<DocumentName>,
-  ): Promise<Document.StoredForName<DocumentName>[]>;
+    options?: foundry.documents.collections.CompendiumCollection.ImportAllOptions<Type>,
+  ): Promise<Document.StoredForName<Type>[]>;
 
   /**
    * Provide a dialog form that prompts the user to import the full contents of a Compendium pack into the World.
-   * @param options - Additional options passed to the DialogV2.confirm method (default: `{}`)
-   * @returns A promise which resolves in the following ways: an array of imported Documents if the "yes" button was pressed,
-   * false if the "no" button was pressed, or null if the dialog was closed without making a choice.
+   * @param options - Additional options passed to the DialogV2.confirm method
+   *                  (default: `{}`)
+   * @returns A promise which resolves in the following ways: an array of imported
+   *          Documents if the "yes" button was pressed, false if the "no" button was pressed, or
+   *          null if the dialog was closed without making a choice.
    */
-  importDialog<Options extends CompendiumCollection.ImportDialogOptions | undefined = undefined>(
-    options?: Options,
-  ): Promise<CompendiumCollection.ImportDialogReturn<DocumentName, Options>>;
+  importDialog(
+    options?: foundry.applications.api.DialogV2.ConfirmConfig,
+  ): Promise<Document.StoredForName<Type>[] | null | false>;
 
   /**
    * Add a Document to the index, capturing it's relevant index attributes
-   * @param document - The document to index
+   * @param document -The document to index
    */
-  indexDocument(document: Document.StoredForName<DocumentName>): void;
+  indexDocument(document: Document.StoredForName<Type>): void;
 
   /**
    * Prompt the gamemaster with a dialog to configure ownership of this Compendium pack.
    * @returns The configured ownership for the pack
-   * @privateRemarks Always returns `this.ownership`, not the dialog return
    */
-  configureOwnershipDialog(): Promise<BasePackage.OwnershipRecord>;
+  configureOwnershipDialog(): Promise<foundry.packages.BasePackage.OwnershipRecord>;
 
   /**
    * Activate the Socket event listeners used to receive responses to compendium management events.
    * @param socket - The active game socket.
    * @internal
    */
-  static _activateSocketListeners(socket: io.Socket): void;
+  protected static _activateSocketListeners(socket: Game["socket"]): void;
 
   /**
    * Create a new Compendium Collection using provided metadata.
    * @param metadata - The compendium metadata used to create the new pack
-   * @param options  - Additional options which modify the Compendium creation request (default: `{}`)
+   * @param options - Additional options which modify the Compendium creation request
+   *                  (default: `{}`)
    */
-  static createCompendium<Type extends CompendiumCollection.DocumentName>(
-    this: abstract new (...args: never) => CompendiumCollection<NoInfer<Type>>,
-    metadata: CompendiumCollection.CreateCompendiumMetadata<Type>,
-    options?: CompendiumCollection.ManageCompendiumSocketOptions,
-  ): Promise<CompendiumCollection<Type>>;
+  static createCompendium<T extends foundry.documents.collections.CompendiumCollection.DocumentName>(
+    this: abstract new (...args: never) => CompendiumCollection<NoInfer<T>>,
+    metadata: foundry.documents.collections.CompendiumCollection.CreateCompendiumMetadata<T>,
+    options?: unknown,
+  ): Promise<CompendiumCollection<T>>;
 
   /**
    * Generate a UUID for a given primary document ID within this Compendium pack
@@ -305,12 +276,13 @@ declare class CompendiumCollection<
 
   /**
    * Assign configuration metadata settings to the compendium pack
-   * @param configuration - The object of compendium settings to define (default: `{}`)
+   * @param configuration - The object of compendium settings to define
+   *                        (default: `{}`)
    * @returns A Promise which resolves once the setting is updated
-   * @remarks Passing explicit `undefined` for any key of `configuration` will remove it from the stored config, reverting to default
-   * handling for that property.
    */
-  configure(configuration?: CompendiumCollection.Configuration): Promise<void>;
+  configure(
+    configuration?: InexactPartial<CompendiumCollection.Configuration>,
+  ): Promise<CompendiumCollection.Configuration>;
 
   /**
    * Delete an existing world-level Compendium Collection.
@@ -322,374 +294,175 @@ declare class CompendiumCollection<
    * Duplicate a compendium pack to the current World.
    * @param label - A new Compendium label
    */
-  duplicateCompendium({ label }?: CompendiumCollection.DuplicateCompendiumOptions): Promise<this>;
+  duplicateCompendium({
+    label,
+  }?: foundry.documents.collections.CompendiumCollection.DuplicateCompendiumOptions): Promise<this>;
 
   /**
    * Migrate a compendium pack.
    * This operation re-saves all documents within the compendium pack to disk, applying the current data model.
    * If the document type has system data, the latest system data template will also be applied to all documents.
    */
-  migrate(options?: CompendiumCollection.MigrateOptions): Promise<this>;
+  migrate(): Promise<this>;
 
-  override updateAll(
-    transformation: DocumentCollection.Transformation<DocumentName>,
-    condition?: ((doc: Document.StoredForName<DocumentName>) => boolean) | null,
-    options?: DocumentCollection.UpdateAllOperation<DocumentName>,
-  ): Promise<Document.StoredForName<DocumentName>[]>;
+  // Note(LukeAbby): The override for `updateAll` and `_onModifyContents` become unreasonably long and don't add any changes and so has been omitted.
 
-  /** @privateRemarks Fake type override, see {@linkcode DocumentCollection.search | DocumentCollection#search} */
-  override search(search: DocumentCollection.SearchOptions): CompendiumCollection.IndexEntry<DocumentName>[];
-
-  override render(force?: boolean, options?: DocumentCollection.RenderOptions): void;
-
-  override _onModifyContents<Action extends Document.Database.OperationAction>(
-    action: Action,
-    documents: Document.StoredForName<DocumentName>[],
-    result: Collection.OnModifyContentsResult<DocumentName, Action>,
-    operation: Collection.OnModifyContentsOperation<DocumentName, Action>,
-    user: User.Stored,
-  ): void;
+  override render(force?: boolean, options?: foundry.appv1.api.Application.Options | ApplicationV2.RenderOptions): void;
 
   /**
    * Handle changes to the world compendium configuration setting.
-   * @remarks As the setting's {@linkcode foundry.helpers.ClientSettings.SettingConfig.onChange | onChange} function,
-   * this gets passed the new value after it's been cleaned and validated by the field in `ClientSettings##cleanJSON`
    */
-  protected static _onConfigure(config: CompendiumCollection.SettingData): void;
-
-  #CompendiumCollection: true;
+  protected static _onConfigure(config: CompendiumCollection.WorldCompendiumConfiguration): void;
 }
 
 declare namespace CompendiumCollection {
-  interface Any extends AnyCompendiumCollection {}
-  interface AnyConstructor extends Identity<typeof AnyCompendiumCollection> {}
+  interface Any extends CompendiumCollection<DocumentName> {}
 
-  // No `Implementation`, packs are always created by direct calls to `new CompendiumCollection`
+  type DocumentName = foundry.CONST.COMPENDIUM_DOCUMENT_TYPES;
 
-  type DocumentName = CONST.COMPENDIUM_DOCUMENT_TYPES;
-
-  type DocOrFolder<DocumentName extends CompendiumCollection.DocumentName> =
-    | Document.ImplementationFor<DocumentName>
-    | Folder.OfType<DocumentName>;
-
-  /** @internal */
-  type _OwnershipChoices = (keyof typeof CONST.DOCUMENT_OWNERSHIP_LEVELS)[];
-
-  interface OwnershipFieldSchema extends fields.DataSchema {
-    GAMEMASTER: fields.StringField<{ required: true; choices: ["OWNER"]; initial: "OWNER" }>;
-    ASSISTANT: fields.StringField<{ required: true; choices: _OwnershipChoices; initial: "OWNER" }>;
-    TRUSTED: fields.StringField<{ required: true; choices: _OwnershipChoices; initial: "INHERIT" }>;
-    PLAYER: fields.StringField<{ required: true; choices: _OwnershipChoices; initial: "INHERIT" }>;
+  interface Configuration {
+    ownership: foundry.packages.BasePackage.OwnershipRecord;
+    locked: boolean;
   }
 
-  interface ConfigSettingElementSchema extends fields.DataSchema {
-    /**
-     * @defaultValue `null`
-     *  @remarks The `id` of the folder this is in in the
-     * {@linkcode foundry.applications.sidebar.tabs.CompendiumDirectory | Compendium directory}. `undefined` and `null` should behave
-     * identically.
-     */
-    folder: fields.StringField<{
-      required: true;
-      blank: false;
-      nullable: true;
-      validate: typeof foundry.data.validators.isValidId;
-    }>;
-
-    /** @remarks Integer sort value, for if this pack is either not in a folder, or is in one set to manual sort */
-    sort: fields.NumberField<{
-      required: false;
-      nullable: false;
-      integer: true;
-      min: 0;
-      initial: undefined;
-    }>;
-
-    /**
-     * @defaultValue `undefined`
-     * @remarks Is the compendium edit lock engaged?
-     */
-    locked: fields.BooleanField<{ required: false; initial: undefined }>;
-
-    /** @defaultValue `undefined` */
-    ownership: fields.SchemaField<OwnershipFieldSchema, { required: false; initial: undefined }>;
+  // The type that's passed to `createCompendium`.
+  interface CreateCompendiumMetadata<Type extends DocumentName> {
+    type: Type;
+    label: string;
+    name?: string | undefined;
   }
 
-  interface StoredConfiguration extends fields.SchemaField.InitializedData<ConfigSettingElementSchema> {}
+  // The type that's passed to `new CompendiumCollection(...)`
+  type ConstructorMetadata<Type extends foundry.documents.collections.CompendiumCollection.DocumentName> =
+    Metadata<Type> & {
+      index: IndexTypeForMetadata<Type>;
+      folders: Folder.Implementation[];
+    };
 
-  /**
-   * @remarks The partialed interface for passing to {@linkcode CompendiumCollection.configure | CompendiumCollection#configure},
-   * if you want the stored interface see {@linkcode CompendiumCollection.StoredConfiguration}
-   */
-  interface Configuration extends DeepPartial<StoredConfiguration> {}
-
-  type SettingFieldElement = fields.SchemaField<ConfigSettingElementSchema>;
-
-  type SettingField = fields.TypedObjectField<SettingFieldElement>;
-
-  interface SettingData extends fields.TypedObjectField.InitializedType<
-    SettingFieldElement,
-    fields.TypedObjectField.DefaultOptions
-  > {}
-
-  /** @remarks Currently (13.351) unused due to {@link https://github.com/foundryvtt/foundryvtt/issues/13354} */
-  type OwnershipData = NonNullable<SettingData["ownership"]>;
-
-  /**
-   * Minimal metadata required for {@linkcode CompendiumCollection.createCompendium} calls.
-   *
-   * @remarks `IntentionalPartial` instead of `Inexact` because it's going over the socket, so `undefined`-value keys get dropped.
-   * Only `type` and `label` are required, with `name` being a slugified `label` if not passed. Other than those keys, only `flags`
-   * and `ownership` are respected and not replaced by the server.
-   *
-   */
-  interface CreateCompendiumMetadata<Type extends CompendiumCollection.DocumentName = CompendiumCollection.DocumentName>
-    extends
-      Pick<Metadata<Type>, "type" | "label">,
-      Pick<IntentionalPartial<Metadata<Type>>, "name" | "flags" | "ownership"> {}
-
-  /**
-   * The type that's passed to `new CompendiumCollection(...)`
-   *
-   * @privateRemarks Construction technically doesn't error with only `type`, `index`, and `folders`, but that doesn't produce an actually
-   * valid pack. This type represents the data the server will be providing when construction happens, which users will never do directly.
-   */
-  interface ConstructorMetadata<
-    Type extends CompendiumCollection.DocumentName = CompendiumCollection.DocumentName,
-  > extends Metadata<Type> {
-    /**
-     * @remarks The precomputed index sent from the server.
-     *
-     * @privateRemarks Omitted in {@linkcode Metadata} and re-added here with more specificity.
-     * See {@linkcode Game.Data.Pack.index}.
-     */
-    index: CompendiumCollection.IndexEntry<Type>[];
-
-    /**
-     * Source data for any folders inside the `CompendiumCollection`
-     *
-     * @privateRemarks Removed in {@linkcode Metadata} and re-added here in lieu of larger refactor.
-     * See {@linkcode Game.Data.Pack.folders}.
-     */
-    // TODO: Should eventually be `Folder.StoredSource<Type>[]`
-    folders: Folder.Source[];
-  }
-
-  /**
-   * The type that appears in `compendium.metadata` after initialization.
-   * @privateRemarks Note that the `Omit` is because `delete metadata.index` and `delete metadata.folders` are called during construction.
-   * This also deletes in `game.data` since it's passed uncloned.
-   */
-  interface Metadata<Type extends CompendiumCollection.DocumentName = CompendiumCollection.DocumentName> extends Omit<
-    Game.Data.Pack,
-    "index" | "folders"
+  // The type that appears in `compendium.metadata` after initialization.
+  interface Metadata<
+    Type extends
+      foundry.documents.collections.CompendiumCollection.DocumentName = foundry.documents.collections.CompendiumCollection.DocumentName,
   > {
     type: Type;
+    label: string;
+    name: string;
+
+    flags: Record<string, never>; // created by the server, but always empty and no way to change it in a way that is s
+    ownership: foundry.packages.BasePackage.OwnershipRecord;
+    path: string;
+    package: string;
+    system: string;
+
+    /** Added by PackageCompendiumPacks#initialize */
+    id: string;
+    packageType: string;
+    packageName: string;
   }
 
-  interface GetIndexOptions {
+  interface GetIndexOptions<Type extends DocumentName> {
     /**
      * An array of fields to return as part of the index
      * @defaultValue `[]`
      */
-    // TODO: Should really be `DotKeys<keyof Document.SourceForName<Type>>[]` here but that explodes the class with errors about union size,
-    // TODO: so for now we just allow anything.
-    fields?: string[] | undefined;
+    fields?: (keyof Document.SourceForName<Type>)[];
   }
 
   // TODO: Improve automatic index properties based on document type
-  // TODO(LukeAbby): Switch to `Document.StoredSourceForName`.
-  // Investigate why the `DeepPartial` too
-  type IndexEntry<Type extends CompendiumCollection.DocumentName = CompendiumCollection.DocumentName> = {
-    _id: string;
-    uuid: string;
-  } & DeepPartial<Omit<Document.SourceForName<Type>, "_id" | "uuid">>;
+  type IndexEntry<Type extends DocumentName> = { _id: string; uuid: string } & DeepPartial<
+    Document.SourceForName<Type>
+  >;
 
-  type ImportDocumentReturn<Doc extends DocOrFolder<CompendiumCollection.DocumentName>> =
-    Doc extends Folder.Implementation
-      ? Folder.Stored<Doc["type"]>
-      : Doc extends Document.Any
-        ? Document.StoredForName<Doc["documentName"]>
-        : never;
+  type ForDocument<Name extends DocumentName> = Name extends unknown ? CompendiumCollection<Name> : never;
 
-  type ForDocument<Name extends Document.Type> = Name extends Document.CompendiumType
-    ? CompendiumCollection<Name>
-    : Name extends Document.EmbeddedType
-      ? ForDocument<Exclude<Document.ParentForName<Name>, null>["documentName"]>
-      : never;
-
-  type ManageCompendiumAction = "create" | "delete" | "migrate";
-
-  type ManageCompendiumData<
-    Action extends ManageCompendiumAction,
-    Type extends CompendiumCollection.DocumentName = CompendiumCollection.DocumentName,
-  > =
-    | (Action extends "create" ? CreateCompendiumMetadata<Type> : never)
-    | (Action extends "delete" | "migrate" ? string : never);
-
-  interface ManageCompendiumRequest<
-    Action extends ManageCompendiumAction = ManageCompendiumAction,
-    Type extends CompendiumCollection.DocumentName = CompendiumCollection.DocumentName,
-  >
-    extends SocketInterface.SocketRequest {
-    /** The request action. */
-    action: ManageCompendiumAction;
+  interface ManageCompendiumRequest extends SocketInterface.SocketRequest {
+    /**
+     * The request action.
+     */
+    action: string;
 
     /**
      * The compendium creation data, or the ID of the compendium to delete.
-     * @remarks Also the ID for `migrate` actions, not just `delete`.
      */
-    data: ManageCompendiumData<Action, Type>;
+    data: PackageCompendiumData | string;
 
-    /** Additional options. */
-    options?: ManageCompendiumSocketOptions;
+    /**
+     * Additional options.
+     */
+    options?: Record<string, unknown>;
   }
 
-  type ManageCompendiumResult<Action extends ManageCompendiumAction, Type extends CompendiumCollection.DocumentName> =
-    | (Action extends "create" ? ConstructorMetadata<Type> : never)
-    | (Action extends "delete" | "migrate" ? string : never);
-
-  interface ManageCompendiumResponse<
-    Action extends ManageCompendiumAction = ManageCompendiumAction,
-    Type extends CompendiumCollection.DocumentName = CompendiumCollection.DocumentName,
-  >
-    extends SocketInterface.SocketResponse {
-    /** @remarks "manageCompendium" socket returns always include this key */
-    userId: string;
-
-    /** The original request. */
-    request: ManageCompendiumRequest<Action, Type>;
+  // @ts-expect-error Bad inheritance
+  interface ManageCompendiumResponse extends SocketInterface.SocketResponse {
+    /**
+     * The original request.
+     */
+    request: ManageCompendiumRequest;
 
     /**
      * The compendium creation data, or the collection name of the deleted compendium.
-     * @remarks `migrate` calls do not return a socket response, so the above is accurate.
      */
-    result: ManageCompendiumResult<Action, Type>;
+    result: PackageCompendiumData | string;
   }
 
-  /** @internal*/
-  interface _ManageCompendiumSocketOptions {
+  interface TestUserPermissionOptions {
     /**
-     * @remarks {@linkcode CompendiumCollection.duplicateCompendium | CompendiumCollection#duplicateCompendium} passes
-     * {@linkcode CompendiumCollection.collection | this.collection} when calling {@linkcode CompendiumCollection.createCompendium}.
+     * Require the exact permission level requested?
+     * @defaultValue `false`
      */
-    source: string;
+    exact?: boolean | undefined;
   }
 
-  /**
-   * The interface for {@linkcode ManageCompendiumRequest.options}.
-   *
-   * @privateRemarks If this were more complicated on the server side, we'd split this up into `CreateOptions`, `DeleteOptions`, and
-   * `MigrateOptions` (one for each {@linkcode ManageCompendiumAction}), but as of 13.351 the only valid `options` key for any operation is
-   * {@linkcode ManageCompendiumSocketOptions.source | source} for `create`, with `delete` using no options and `migrate` only taking an
-   * `onProgress` function that wouldn't survive the socket and {@linkcode MigrateOptions.notify | notify} which, since `migrate` operations
-   * don't return a response (inferred by reading the {@linkcode CompendiumCollection._activateSocketListeners} body), and it has no effect
-   * server-side, is pointless to allow.
-   *
-   * `IntentionalPartial` because this goes over the socket, where `undefined`-value keys get dropped. This type can't be folded into
-   * {@linkcode ManageCompendiumSocketOptions}; doing so causes errors about lack of index signature where
-   * {@linkcode ManageCompendiumRequest} extends {@linkcode SocketInterface.Request}.
-   */
-  interface ManageCompendiumSocketOptions extends IntentionalPartial<_ManageCompendiumSocketOptions> {}
-
-  interface TestUserPermissionOptions extends InexactPartial<Document._TestUserPermissionsOptions> {}
-
-  /**
-   * Used in {@linkcode ImportFolderOptions} and {@linkcode ImportFoldersOptions}.
-   * @internal
-   */
-  interface _ImportParents {
+  interface ImportFolderOptions {
     /**
      * Import any parent folders which are not already present in the Compendium
      * @defaultValue `true`
      */
-    importParents: boolean;
+    importParents?: boolean | undefined;
   }
 
-  interface ImportFolderOptions extends InexactPartial<_ImportParents> {}
+  interface ImportFoldersOptions {
+    /**
+     * Import any parent folders which are not already present in the Compendium
+     * @defaultValue `true`
+     */
+    importParents?: boolean | undefined;
+  }
 
-  interface ImportFoldersOptions extends InexactPartial<_ImportParents> {}
-
-  /** @internal */
-  interface _ImportAllOptions {
+  type ImportAllOptions<Type extends foundry.documents.collections.CompendiumCollection.DocumentName> = SimpleMerge<
+    UnionToIntersection<Document.Database.CreateOperationForName<Type>>,
+    foundry.documents.abstract.WorldCollection.FromCompendiumOptions
+  > & {
     /**
      * An existing Folder _id to use.
      * @defaultValue `null`
      */
-    folderId: string | null;
+    folderId?: string | null | undefined;
 
     /**
      * A new Folder name to create.
      * @defaultValue `""`
      */
-    folderName: string;
-  }
-
-  /**
-   * The interface for passing to {@linkcode CompendiumCollection.importAll | CompendiumCollection#importAll}.
-   *
-   * @remarks The same options object is passed to {@linkcode WorldCollection.fromCompendium | WorldCompendium#fromCompendium} and
-   * {@linkcode Document.createDocuments | documentClass.createDocuments}, after having `folderId` and `folderName` pulled out.
-   *
-   * @privateRemarks Needs to be a type here, rather than interface, because `CreateDocumentsOperationForName`
-   * doesn't have statically known keys.
-   */
-  type ImportAllOptions<Type extends CompendiumCollection.DocumentName> = WorldCollection.FromCompendiumOptions &
-    Document.Database.CreateDocumentsOperationForName<Type> &
-    InexactPartial<_ImportAllOptions>;
-
-  /** @internal */
-  interface _ImportDialogOptions {
-    /**
-     * @remarks Should the `Keep ID` checkbox start checked or not ?
-     * @defaultValue `false`
-     */
-    keepId: boolean;
-  }
-
-  interface ImportDialogOptions extends DialogV2.ConfirmConfig, InexactPartial<_ImportDialogOptions> {}
-
-  type ImportDialogReturn<
-    DocumentName extends CompendiumCollection.DocumentName,
-    Config extends DialogV2.ConfirmConfig | undefined,
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-  > = _ImportDialogReturn<DocumentName, Coalesce<Config, {}>>;
-
-  type _ImportDialogReturn<
-    DocumentName extends CompendiumCollection.DocumentName,
-    Config extends DialogV2.ConfirmConfig,
-  > = DialogV2.ConfirmReturn<
-    SimpleMerge<
-      Config,
-      {
-        yes: SimpleMerge<
-          { callback: (event: Event) => Promise<Document.StoredForName<DocumentName>[]> },
-          // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-          GetKey<Config, "yes", {}>
-        >;
-      }
-    >
-  >;
+    folderName?: string | undefined;
+  };
 
   interface DuplicateCompendiumOptions {
-    /** A new Compendium label */
     label?: string | undefined;
   }
 
-  /** @internal */
-  interface _MigrateOptions {
-    /**
-     * Display notifications
-     * @defaultValue `true`
-     */
-    notify: boolean;
+  interface WorldCompendiumPackConfiguration {
+    folder?: string;
+    sort?: number;
+    locked?: boolean;
   }
 
-  interface MigrateOptions extends InexactPartial<_MigrateOptions> {}
+  interface WorldCompendiumConfiguration extends Record<string, InexactPartial<WorldCompendiumPackConfiguration>> {}
 
   // Note(LukeAbby): One neat possibility for this type would be making something like `type: "foo"`,
   // `type__ne: "foo"`, and `type__in: ["foo", "bar"]` all narrow `system`.
-  type Query<Type extends CompendiumCollection.DocumentName> = _Queryify<Document.SourceForName<Type>>;
+  type Query<Type extends foundry.documents.collections.CompendiumCollection.DocumentName> = _Queryify<
+    Document.SourceForName<Type>
+  >;
 
   /** @internal */
   type _Queryify<T> = T extends object ? _QueryifyObject<T> : T;
@@ -708,18 +481,11 @@ declare namespace CompendiumCollection {
       [K in keyof T as K extends string ? (IsComparable<T[K]> extends true ? `${K}__ne` : never) : never]?: T[K];
     }
   >;
-
-  /** @deprecated Use {@linkcode CompendiumCollection.StoredConfiguration} instead. This type will be removed in v14. */
-  type WorldCompendiumPackConfiguration = CompendiumCollection.StoredConfiguration;
-
-  /** @deprecated Use {@linkcode CompendiumCollection.SettingData} instead. This type will be removed in v14. */
-  type WorldCompendiumConfiguration = CompendiumCollection.SettingData;
 }
-
-export default CompendiumCollection;
 
 type IsComparable<T> = T extends boolean | string | number | bigint | symbol | null | undefined ? true : false;
 
-declare abstract class AnyCompendiumCollection extends CompendiumCollection<CompendiumCollection.DocumentName> {
-  constructor(...args: never);
-}
+type IndexTypeForMetadata<Type extends foundry.documents.collections.CompendiumCollection.DocumentName> =
+  foundry.utils.Collection<foundry.documents.collections.CompendiumCollection.IndexEntry<Type>>;
+
+export default CompendiumCollection;

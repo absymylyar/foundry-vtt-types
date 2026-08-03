@@ -1,14 +1,9 @@
-import type { IntentionalPartial, MaybeArray, Merge } from "#utils";
-import type { fields } from "#common/data/_module.d.mts";
-import type { DatabaseBackend, Document } from "#common/abstract/_module.d.mts";
-import type { BaseSetting, BaseUser } from "#client/documents/_module.d.mts";
-import type { DialogV2 } from "#client/applications/api/_module.d.mts";
+import type { InexactPartial, Merge } from "#utils";
+import type { documents } from "#client/client.d.mts";
+import type Document from "#common/abstract/document.d.mts";
+import type { DataSchema } from "#common/data/fields.d.mts";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type ClientDatabaseBackend from "#client/data/client-backend.d.mts";
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type ClientDocumentMixin from "#client/documents/abstract/client-document.d.mts";
+import fields = foundry.data.fields;
 
 declare namespace Setting {
   /**
@@ -27,14 +22,14 @@ declare namespace Setting {
   type Hierarchy = Readonly<Document.HierarchyOf<Schema>>;
 
   /**
-   * The implementation of the `Setting` document instance configured through
-   * {@linkcode CONFIG.Setting.documentClass} in Foundry and {@linkcode DocumentClassConfig} in fvtt-types.
+   * The implementation of the `Setting` document instance configured through `CONFIG.Setting.documentClass` in Foundry and
+   * {@linkcode DocumentClassConfig} or {@link ConfiguredSetting | `fvtt-types/configuration/ConfiguredSetting`} in fvtt-types.
    */
   type Implementation = Document.ImplementationFor<Name>;
 
   /**
-   * The implementation of the `Setting` document configured through
-   * {@linkcode CONFIG.Setting.documentClass} in Foundry and {@linkcode DocumentClassConfig} in fvtt-types.
+   * The implementation of the `Setting` document configured through `CONFIG.Setting.documentClass` in Foundry and
+   * {@linkcode DocumentClassConfig} in fvtt-types.
    */
   type ImplementationClass = Document.ImplementationClassFor<Name>;
 
@@ -42,17 +37,18 @@ declare namespace Setting {
    * A document's metadata is special information about the document ranging anywhere from its name,
    * whether it's indexed, or to the permissions a user has over it.
    */
-  interface Metadata extends Merge<
-    Document.Metadata.Default,
-    Readonly<{
-      name: "Setting";
-      collection: "settings";
-      label: "DOCUMENT.Setting";
-      labelPlural: "DOCUMENT.Settings";
-      permissions: Metadata.Permissions;
-      schemaVersion: "13.341";
-    }>
-  > {}
+  interface Metadata
+    extends Merge<
+      Document.Metadata.Default,
+      Readonly<{
+        name: "Setting";
+        collection: "settings";
+        label: string;
+        labelPlural: string;
+        permissions: Metadata.Permissions;
+        schemaVersion: string;
+      }>
+    > {}
 
   namespace Metadata {
     /**
@@ -84,6 +80,15 @@ declare namespace Setting {
   type DescendantClass = never;
 
   /**
+   * Types of `CompendiumCollection` this document might be contained in.
+   * Note that `this.pack` will always return a string; this is the type for `game.packs.get(this.pack)`
+   *
+   * Will be `never` if cannot be contained in a `CompendiumCollection`.
+   */
+  // Note: Takes any document in the heritage chain (i.e. itself or any parent, transitive or not) that can be contained in a compendium.
+  type Pack = never;
+
+  /**
    * An embedded document is a document contained in another.
    * For example an `Item` can be contained by an `Actor` which means `Item` can be embedded in `Actor`.
    *
@@ -94,26 +99,25 @@ declare namespace Setting {
   /**
    * The name of the world or embedded collection this document can find itself in.
    * For example an `Item` is always going to be inside a collection with a key of `items`.
-   * This is a fixed string per document type and is primarily useful for the descendant Document operation methods, e.g
-   * {@linkcode ClientDocumentMixin.AnyMixed._preCreateDescendantDocuments | ClientDocument._preCreateDescendantDocuments}.
+   * This is a fixed string per document type and is primarily useful for {@link ClientDocumentMixin | `Descendant Document Events`}.
    */
   type ParentCollectionName = Metadata["collection"];
 
   /**
    * The world collection that contains `Setting`s. Will be `never` if none exists.
    */
-  type CollectionClass = foundry.documents.collections.WorldSettings.ImplementationClass;
+  type CollectionClass = foundry.documents.collections.WorldSettings.ConfiguredClass;
 
   /**
    * The world collection that contains `Setting`s. Will be `never` if none exists.
    */
-  type Collection = foundry.documents.collections.WorldSettings.Implementation;
+  type Collection = foundry.documents.collections.WorldSettings.Configured;
 
   /**
    * An instance of `Setting` that comes from the database but failed validation meaning that
    * its `system` and `_source` could theoretically be anything.
    */
-  type Invalid = Document.Internal.Invalid<Implementation>;
+  interface Invalid extends Document.Internal.Invalid<Setting.Implementation> {}
 
   /**
    * An instance of `Setting` that comes from the database.
@@ -121,75 +125,52 @@ declare namespace Setting {
   type Stored = Document.Internal.Stored<Setting.Implementation>;
 
   /**
-   * The data put in {@linkcode Setting._source | Setting#_source}. This data is what was
+   * The data put in {@link Setting._source | `Setting#_source`}. This data is what was
    * persisted to the database and therefore it must be valid JSON.
    *
-   * For example a {@linkcode fields.SetField | SetField} is persisted to the database as an array
+   * For example a {@link fields.SetField | `SetField`} is persisted to the database as an array
    * but initialized as a {@linkcode Set}.
    */
   interface Source extends fields.SchemaField.SourceData<Schema> {}
 
   /**
    * The data necessary to create a document. Used in places like {@linkcode Setting.create}
-   * and {@linkcode Setting | new Setting(...)}.
+   * and {@link Setting | `new Setting(...)`}.
    *
-   * For example a {@linkcode fields.SetField | SetField} can accept any {@linkcode Iterable}
+   * For example a {@link fields.SetField | `SetField`} can accept any {@linkcode Iterable}
    * with the right values. This means you can pass a `Set` instance, an array of values,
    * a generator, or any other iterable.
    */
   interface CreateData extends fields.SchemaField.CreateData<Schema> {}
 
   /**
-   * Used in the {@linkcode Setting.create} and {@linkcode Setting.createDocuments} signatures, and
-   * {@linkcode Setting.Database.CreateOperation} and its derivative interfaces.
-   */
-  type CreateInput = CreateData | Implementation;
-
-  /**
-   * The helper type for the return of {@linkcode Setting.create}, returning (a single | an array of) (temporary | stored)
-   * `Setting`s.
-   *
-   * `| undefined` is included in the non-array branch because if a `.create` call with non-array data is cancelled by the `preCreate`
-   * method or hook, `shift`ing the return of `.createDocuments` produces `undefined`
-   */
-  type CreateReturn<Data extends MaybeArray<CreateInput>> =
-    Data extends Array<CreateInput> ? Setting.Stored[] : Setting.Stored | undefined;
-
-  /**
-   * The data after a {@linkcode Document} has been initialized, for example
-   * {@linkcode Setting.name | Setting#name}.
+   * The data after a {@link foundry.abstract.Document | `Document`} has been initialized, for example
+   * {@link Setting.name | `Setting#name`}.
    *
    * This is data transformed from {@linkcode Setting.Source} and turned into more
-   * convenient runtime data structures. For example a {@linkcode fields.SetField | SetField} is
+   * convenient runtime data structures. For example a {@link fields.SetField | `SetField`} is
    * persisted to the database as an array of values but at runtime it is a `Set` instance.
    */
   interface InitializedData extends fields.SchemaField.InitializedData<Schema> {}
 
   /**
-   * The data used to update a document, for example {@linkcode Setting.update | Setting#update}.
-   * It is a distinct type from {@linkcode Setting.CreateData | DeepPartial<Setting.CreateData>} because
+   * The data used to update a document, for example {@link Setting.update | `Setting#update`}.
+   * It is a distinct type from {@link Setting.CreateData | `DeepPartial<Setting.CreateData>`} because
    * it has different rules for `null` and `undefined`.
    */
   interface UpdateData extends fields.SchemaField.UpdateData<Schema> {}
 
   /**
-   * Used in the {@linkcode Setting.update | Setting#update} and
-   * {@linkcode Setting.updateDocuments} signatures, and {@linkcode Setting.Database.UpdateOperation}
-   * and its derivative interfaces.
-   */
-  type UpdateInput = UpdateData | Implementation;
-
-  /**
-   * The schema for {@linkcode Setting}. This is the source of truth for how a `Setting` document
+   * The schema for {@linkcode Setting}. This is the source of truth for how an Setting document
    * must be structured.
    *
    * Foundry uses this schema to validate the structure of the {@linkcode Setting}. For example
-   * a {@linkcode fields.StringField | StringField} will enforce that the value is a string. More
-   * complex fields like {@linkcode fields.SetField | SetField} goes through various conversions
+   * a {@link fields.StringField | `StringField`} will enforce that the value is a string. More
+   * complex fields like {@link fields.SetField | `SetField`} goes through various conversions
    * starting as an array in the database, initialized as a set, and allows updates with any
    * iterable.
    */
-  interface Schema extends fields.DataSchema {
+  interface Schema extends DataSchema {
     /**
      * The _id which uniquely identifies this Setting document
      * @defaultValue `null`
@@ -200,8 +181,6 @@ declare namespace Setting {
      * The setting key, a composite of \{scope\}.\{name\}
      * @defaultValue `""`
      */
-    // TODO: why is this not required in CreateData like it should be?
-    // TODO: why are is the string template not being enforced?
     key: fields.StringField<
       {
         required: true;
@@ -229,7 +208,7 @@ declare namespace Setting {
      * The ID of the user this Setting belongs to, if user-scoped.
      * @defaultValue `null`
      */
-    user: fields.ForeignDocumentField<typeof BaseUser, { idOnly: true }>;
+    user: fields.ForeignDocumentField<typeof documents.BaseUser, { idOnly: true }>;
 
     /**
      * An object of creation and access information
@@ -239,496 +218,109 @@ declare namespace Setting {
   }
 
   namespace Database {
-    /* ***********************************************
-     *                GET OPERATIONS                 *
-     *************************************************/
+    /** Options passed along in Get operations for Settings */
+    interface Get extends foundry.abstract.types.DatabaseGetOperation<Setting.Parent> {}
+
+    /** Options passed along in Create operations for Settings */
+    interface Create<Temporary extends boolean | undefined = boolean | undefined>
+      extends foundry.abstract.types.DatabaseCreateOperation<Setting.CreateData, Setting.Parent, Temporary> {}
+
+    /** Options passed along in Delete operations for Settings */
+    interface Delete extends foundry.abstract.types.DatabaseDeleteOperation<Setting.Parent> {}
+
+    /** Options passed along in Update operations for Settings */
+    interface Update extends foundry.abstract.types.DatabaseUpdateOperation<Setting.UpdateData, Setting.Parent> {}
+
+    /** Operation for {@linkcode Setting.createDocuments} */
+    interface CreateDocumentsOperation<Temporary extends boolean | undefined>
+      extends Document.Database.CreateOperation<Setting.Database.Create<Temporary>> {}
+
+    /** Operation for {@linkcode Setting.updateDocuments} */
+    interface UpdateDocumentsOperation extends Document.Database.UpdateDocumentsOperation<Setting.Database.Update> {}
+
+    /** Operation for {@linkcode Setting.deleteDocuments} */
+    interface DeleteDocumentsOperation extends Document.Database.DeleteDocumentsOperation<Setting.Database.Delete> {}
+
+    /** Operation for {@linkcode Setting.create} */
+    interface CreateOperation<Temporary extends boolean | undefined>
+      extends Document.Database.CreateOperation<Setting.Database.Create<Temporary>> {}
+
+    /** Operation for {@link Setting.update | `Setting#update`} */
+    interface UpdateOperation extends Document.Database.UpdateOperation<Update> {}
+
+    interface DeleteOperation extends Document.Database.DeleteOperation<Delete> {}
+
+    /** Options for {@linkcode Setting.get} */
+    interface GetOptions extends Document.Database.GetOptions {}
+
+    /** Options for {@link Setting._preCreate | `Setting#_preCreate`} */
+    interface PreCreateOptions extends Document.Database.PreCreateOptions<Create> {}
+
+    /** Options for {@link Setting._onCreate | `Setting#_onCreate`} */
+    interface OnCreateOptions extends Document.Database.CreateOptions<Create> {}
+
+    /** Operation for {@linkcode Setting._preCreateOperation} */
+    interface PreCreateOperation extends Document.Database.PreCreateOperationStatic<Setting.Database.Create> {}
+
+    /** Operation for {@link Setting._onCreateOperation | `Setting#_onCreateOperation`} */
+    interface OnCreateOperation extends Setting.Database.Create {}
+
+    /** Options for {@link Setting._preUpdate | `Setting#_preUpdate`} */
+    interface PreUpdateOptions extends Document.Database.PreUpdateOptions<Update> {}
+
+    /** Options for {@link Setting._onUpdate | `Setting#_onUpdate`} */
+    interface OnUpdateOptions extends Document.Database.UpdateOptions<Update> {}
+
+    /** Operation for {@linkcode Setting._preUpdateOperation} */
+    interface PreUpdateOperation extends Setting.Database.Update {}
+
+    /** Operation for {@link Setting._onUpdateOperation | `Setting._preUpdateOperation`} */
+    interface OnUpdateOperation extends Setting.Database.Update {}
+
+    /** Options for {@link Setting._preDelete | `Setting#_preDelete`} */
+    interface PreDeleteOptions extends Document.Database.PreDeleteOperationInstance<Delete> {}
+
+    /** Options for {@link Setting._onDelete | `Setting#_onDelete`} */
+    interface OnDeleteOptions extends Document.Database.DeleteOptions<Delete> {}
+
+    /** Options for {@link Setting._preDeleteOperation | `Setting#_preDeleteOperation`} */
+    interface PreDeleteOperation extends Setting.Database.Delete {}
+
+    /** Options for {@link Setting._onDeleteOperation | `Setting#_onDeleteOperation`} */
+    interface OnDeleteOperation extends Setting.Database.Delete {}
+
+    /** Context for {@linkcode Setting._onDeleteOperation} */
+    interface OnDeleteDocumentsContext extends Document.ModificationContext<Setting.Parent> {}
+
+    /** Context for {@linkcode Setting._onCreateDocuments} */
+    interface OnCreateDocumentsContext extends Document.ModificationContext<Setting.Parent> {}
+
+    /** Context for {@linkcode Setting._onUpdateDocuments} */
+    interface OnUpdateDocumentsContext extends Document.ModificationContext<Setting.Parent> {}
 
     /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.GetOperation | GetOperation} interface for
-     * `Setting` documents. Valid for passing to
-     * {@linkcode ClientDatabaseBackend._getDocuments | ClientDatabaseBackend#_getDocuments}.
-     *
-     * The {@linkcode GetDocumentsOperation} and {@linkcode BackendGetOperation} interfaces derive from this one.
+     * Options for {@link Setting._preCreateDescendantDocuments | `Setting#_preCreateDescendantDocuments`}
+     * and {@link Setting._onCreateDescendantDocuments | `Setting#_onCreateDescendantDocuments`}
      */
-    interface GetOperation extends DatabaseBackend.GetOperation<Setting.Parent> {}
+    interface CreateOptions extends Document.Database.CreateOptions<Setting.Database.Create> {}
 
     /**
-     * The interface for passing to {@linkcode Setting.get}.
-     * @see {@linkcode Document.Database.GetDocumentsOperation}
+     * Options for {@link Setting._preUpdateDescendantDocuments | `Setting#_preUpdateDescendantDocuments`}
+     * and {@link Setting._onUpdateDescendantDocuments | `Setting#_onUpdateDescendantDocuments`}
      */
-    interface GetDocumentsOperation extends Document.Database.GetDocumentsOperation<GetOperation> {}
+    interface UpdateOptions extends Document.Database.UpdateOptions<Setting.Database.Update> {}
 
     /**
-     * The interface for passing to {@linkcode DatabaseBackend.get | DatabaseBackend#get} for `Setting` documents.
-     * @see {@linkcode Document.Database.BackendGetOperation}
+     * Options for {@link Setting._preDeleteDescendantDocuments | `Setting#_preDeleteDescendantDocuments`}
+     * and {@link Setting._onDeleteDescendantDocuments | `Setting#_onDeleteDescendantDocuments`}
      */
-    interface BackendGetOperation extends Document.Database.BackendGetOperation<GetOperation> {}
-
-    /* ***********************************************
-     *              CREATE OPERATIONS                *
-     *************************************************/
+    interface DeleteOptions extends Document.Database.DeleteOptions<Setting.Database.Delete> {}
 
     /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.CreateOperation | DatabaseCreateOperation}
-     * interface for `Setting` documents.
-     *
-     * See {@linkcode DatabaseBackend.CreateOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode Setting.create}. The new name for that
-     * interface is {@linkcode CreateDocumentsOperation}.
+     * Create options for {@linkcode Setting.createDialog}.
      */
-    interface CreateOperation extends DatabaseBackend.CreateOperation<Setting.CreateInput, Setting.Parent> {
-      // The server-side `updateWorld` property has been omitted because it would never be safe to pass from the client.
-    }
-
-    /**
-     * The interface for passing to {@linkcode Setting.create} or {@linkcode Setting.createDocuments}.
-     * @see {@linkcode Document.Database.CreateDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface CreateDocumentsOperation extends Document.Database.CreateDocumentsOperation<CreateOperation> {}
-
-    /**
-     * @deprecated `Setting` documents are never embedded. This interface exists for consistency with other documents.
-     *
-     * The interface for passing to the {@linkcode Document.createEmbeddedDocuments | #createEmbeddedDocuments} method of any Documents that
-     * can contain `Setting` documents. (see {@linkcode Setting.Parent})
-     * @see {@linkcode Document.Database.CreateEmbeddedOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface CreateEmbeddedOperation extends Document.Database.CreateEmbeddedOperation<CreateOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.create | DatabaseBackend#create} for `Setting` documents.
-     * @see {@linkcode Document.Database.BackendCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendCreateOperation extends Document.Database.BackendCreateOperation<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Setting._preCreate | Setting#_preCreate} and
-     * {@link Hooks.PreCreateDocument | the `preCreateSetting` hook}.
-     * @see {@linkcode Document.Database.PreCreateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreCreateOptions extends Document.Database.PreCreateOptions<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Setting._preCreateOperation}.
-     * @see {@linkcode Document.Database.PreCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreCreateOperation extends Document.Database.PreCreateOperation<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Setting._onCreate | Setting#_onCreate} and
-     * {@link Hooks.CreateDocument | the `createSetting` hook}.
-     * @see {@linkcode Document.Database.OnCreateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnCreateOptions extends Document.Database.OnCreateOptions<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Setting._onCreateOperation} and `Setting`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnCreateOperation extends Document.Database.OnCreateOperation<CreateOperation> {}
-
-    /* ***********************************************
-     *              UPDATE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.UpdateOperation | DatabaseUpdateOperation}
-     * interface for `Setting` documents.
-     *
-     * See {@linkcode DatabaseBackend.UpdateOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode Setting.update | Setting#update}.
-     * The new name for that interface is {@linkcode UpdateOneDocumentOperation}.
-     */
-    interface UpdateOperation extends DatabaseBackend.UpdateOperation<Setting.UpdateInput, Setting.Parent> {
-      // The server-side `updateWorld` property has been omitted because it would never be safe to pass from the client.
-    }
-
-    /**
-     * The interface for passing to {@linkcode Setting.update | Setting#update}.
-     * @see {@linkcode Document.Database.UpdateOneDocumentOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateOneDocumentOperation extends Document.Database.UpdateOneDocumentOperation<UpdateOperation> {}
-
-    /**
-     * @deprecated `Setting` documents are never embedded. This interface exists for consistency with other documents.
-     *
-     * The interface for passing to the {@linkcode Document.updateEmbeddedDocuments | #updateEmbeddedDocuments} method of any Documents that
-     * can contain `Setting` documents (see {@linkcode Setting.Parent}). This interface is just an alias
-     * for {@linkcode UpdateOneDocumentOperation}, as the same keys are provided by the method in both cases.
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateEmbeddedOperation extends UpdateOneDocumentOperation {}
-
-    /**
-     * The interface for passing to {@linkcode Setting.updateDocuments}.
-     * @see {@linkcode Document.Database.UpdateManyDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateManyDocumentsOperation extends Document.Database.UpdateManyDocumentsOperation<UpdateOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.update | DatabaseBackend#update} for `Setting` documents.
-     * @see {@linkcode Document.Database.BackendUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendUpdateOperation extends Document.Database.BackendUpdateOperation<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Setting._preUpdate | Setting#_preUpdate} and
-     * {@link Hooks.PreUpdateDocument | the `preUpdateSetting` hook}.
-     * @see {@linkcode Document.Database.PreUpdateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreUpdateOptions extends Document.Database.PreUpdateOptions<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Setting._preUpdateOperation}.
-     * @see {@linkcode Document.Database.PreUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreUpdateOperation extends Document.Database.PreUpdateOperation<UpdateOperation> {}
-
-    /**
-     * This is the "real" {@linkcode OnUpdateOptionsW} for `Setting`, see that linked interface's privateRemarks.
-     * @internal
-     */
-    interface _OnUpdateOptions extends Document.Database.OnUpdateOptions<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Setting._onUpdate | Setting#_onUpdate} and
-     * {@link Hooks.UpdateDocument | the `updateSetting` hook}.
-     * @see {@linkcode Document.Database.OnUpdateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     *
-     * ---
-     *
-     * @privateRemarks This interface is mostly re-partialed due to the server, on receiving a `Combat` update that modifies the world time,
-     * emitting an `"update"` event for the `"core.time"` world setting, with what will usually (see {@linkcode Combat.TurnWorldTime}
-     * remarks) be an empty operation object. `parent` is inserted back into the operation object client-side, so it exists despite this.
-     */
-    interface OnUpdateOptions
-      extends IntentionalPartial<Omit<_OnUpdateOptions, "parent">>, Pick<_OnUpdateOptions, "parent"> {}
-
-    /**
-     * This is the "real" {@linkcode OnUpdateOperation} for `Setting`, see that linked interface's privateRemarks.
-     * @internal
-     */
-    interface _OnUpdateOperation extends Document.Database.OnUpdateOperation<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Setting._onUpdateOperation} and `Setting`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     *
-     * ---
-     *
-     * @privateRemarks This interface is mostly re-partialed due to the server, on receiving a `Combat` update that modifies the world time,
-     * emitting an `"update"` event for the `"core.time"` world setting, with what will usually (see {@linkcode Combat.TurnWorldTime}
-     * remarks) be an empty operation object. `parent` and `updates` are inserted back into the operation object client-side, so they exist
-     * despite this.
-     */
-    interface OnUpdateOperation
-      extends
-        IntentionalPartial<Omit<_OnUpdateOperation, "parent" | "updates">>,
-        Pick<_OnUpdateOperation, "parent" | "updates"> {}
-
-    /* ***********************************************
-     *              DELETE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.DeleteOperation | DatabaseDeleteOperation}
-     * interface for `Setting` documents.
-     *
-     * See {@linkcode DatabaseBackend.DeleteOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode Setting.delete | Setting#delete}.
-     * The new name for that interface is {@linkcode DeleteOneDocumentOperation}.
-     */
-    interface DeleteOperation extends DatabaseBackend.DeleteOperation<Setting.Parent> {}
-
-    /**
-     * The interface for passing to {@linkcode Setting.delete | Setting#delete}.
-     * @see {@linkcode Document.Database.DeleteOneDocumentOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteOneDocumentOperation extends Document.Database.DeleteOneDocumentOperation<DeleteOperation> {}
-
-    /**
-     * @deprecated `Setting` documents are never embedded. This interface exists for consistency with other documents.
-     *
-     * The interface for passing to the {@linkcode Document.deleteEmbeddedDocuments | #deleteEmbeddedDocuments} method of any Documents that
-     * can contain `Setting` documents (see {@linkcode Setting.Parent}). This interface is just an alias
-     * for {@linkcode DeleteOneDocumentOperation}, as the same keys are provided by the method in both cases.
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteEmbeddedOperation extends DeleteOneDocumentOperation {}
-
-    /**
-     * The interface for passing to {@linkcode Setting.deleteDocuments}.
-     * @see {@linkcode Document.Database.DeleteManyDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteManyDocumentsOperation extends Document.Database.DeleteManyDocumentsOperation<DeleteOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.delete | DatabaseBackend#delete} for `Setting` documents.
-     * @see {@linkcode Document.Database.BackendDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendDeleteOperation extends Document.Database.BackendDeleteOperation<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Setting._preDelete | Setting#_preDelete} and
-     * {@link Hooks.PreDeleteDocument | the `preDeleteSetting` hook}.
-     * @see {@linkcode Document.Database.PreDeleteOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreDeleteOptions extends Document.Database.PreDeleteOptions<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Setting._preDeleteOperation}.
-     * @see {@linkcode Document.Database.PreDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreDeleteOperation extends Document.Database.PreDeleteOperation<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Setting._onDelete | Setting#_onDelete} and
-     * {@link Hooks.DeleteDocument | the `deleteSetting` hook}.
-     * @see {@linkcode Document.Database.OnDeleteOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnDeleteOptions extends Document.Database.OnDeleteOptions<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Setting._onDeleteOperation} and `Setting`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnDeleteOperation extends Document.Database.OnDeleteOperation<DeleteOperation> {}
-
-    namespace Internal {
-      interface OperationNameMap {
-        GetDocumentsOperation: Setting.Database.GetDocumentsOperation;
-        BackendGetOperation: Setting.Database.BackendGetOperation;
-        GetOperation: Setting.Database.GetOperation;
-
-        CreateDocumentsOperation: Setting.Database.CreateDocumentsOperation;
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        CreateEmbeddedOperation: Setting.Database.CreateEmbeddedOperation;
-        BackendCreateOperation: Setting.Database.BackendCreateOperation;
-        CreateOperation: Setting.Database.CreateOperation;
-        PreCreateOptions: Setting.Database.PreCreateOptions;
-        PreCreateOperation: Setting.Database.PreCreateOperation;
-        OnCreateOptions: Setting.Database.OnCreateOptions;
-        OnCreateOperation: Setting.Database.OnCreateOperation;
-
-        UpdateOneDocumentOperation: Setting.Database.UpdateOneDocumentOperation;
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        UpdateEmbeddedOperation: Setting.Database.UpdateEmbeddedOperation;
-        UpdateManyDocumentsOperation: Setting.Database.UpdateManyDocumentsOperation;
-        BackendUpdateOperation: Setting.Database.BackendUpdateOperation;
-        UpdateOperation: Setting.Database.UpdateOperation;
-        PreUpdateOptions: Setting.Database.PreUpdateOptions;
-        PreUpdateOperation: Setting.Database.PreUpdateOperation;
-        OnUpdateOptions: Setting.Database.OnUpdateOptions;
-        OnUpdateOperation: Setting.Database.OnUpdateOperation;
-
-        DeleteOneDocumentOperation: Setting.Database.DeleteOneDocumentOperation;
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        DeleteEmbeddedOperation: Setting.Database.DeleteEmbeddedOperation;
-        DeleteManyDocumentsOperation: Setting.Database.DeleteManyDocumentsOperation;
-        BackendDeleteOperation: Setting.Database.BackendDeleteOperation;
-        DeleteOperation: Setting.Database.DeleteOperation;
-        PreDeleteOptions: Setting.Database.PreDeleteOptions;
-        PreDeleteOperation: Setting.Database.PreDeleteOperation;
-        OnDeleteOptions: Setting.Database.OnDeleteOptions;
-        OnDeleteOperation: Setting.Database.OnDeleteOperation;
-      }
-    }
+    interface DialogCreateOptions extends InexactPartial<Create> {}
   }
-
-  /**
-   * If `Temporary` is true then {@linkcode Setting.Implementation}, otherwise {@linkcode Setting.Stored}.
-   * @deprecated `Document.create`/`Documents` can no longer return temporary documents as of v14. This type will be removed in v15.
-   */
-  type TemporaryIf<Temporary extends boolean | undefined> =
-    true extends Extract<Temporary, true> ? Setting.Implementation : Setting.Stored;
 
   /**
    * @deprecated `Settings` does not have any flags.
@@ -760,68 +352,19 @@ declare namespace Setting {
     type Get<_Scope, _Key> = never;
   }
 
-  /* ***********************************************
-   *       CLIENT DOCUMENT TEMPLATE TYPES          *
-   *************************************************/
-
-  /** The interface {@linkcode Setting.fromDropData} receives */
   interface DropData extends Document.Internal.DropData<Name> {}
+  interface DropDataOptions extends Document.DropDataOptions {}
 
-  /**
-   * @deprecated Foundry prior to v13 had a completely unused `options` parameter in the {@linkcode Setting.fromDropData}
-   * signature that has since been removed. This type will be removed in v14.
-   */
-  type DropDataOptions = never;
-
-  /**
-   * The interface for passing to {@linkcode Setting.defaultName}
-   * @see {@linkcode Document.DefaultNameContext}
-   */
   interface DefaultNameContext extends Document.DefaultNameContext<Name, Parent> {}
 
-  /**
-   * The interface for passing to {@linkcode Setting.createDialog}'s first parameter
-   * @see {@linkcode Document.CreateDialogData}
-   */
   interface CreateDialogData extends Document.CreateDialogData<CreateData> {}
-
-  /**
-   * @deprecated This is for a deprecated signature, and will be removed in v15.
-   * The interface for passing to {@linkcode Setting.createDialog}'s second parameter that still includes partial Dialog
-   * options, instead of being purely a {@linkcode Database.CreateDocumentsOperation | CreateDocumentsOperation}.
-   */
-  interface CreateDialogDeprecatedOptions
-    extends Database.CreateDocumentsOperation, Document._PartialDialogV1OptionsForCreateDialog {}
-
-  /**
-   * The interface for passing to {@linkcode Setting.createDialog}'s third parameter
-   * @see {@linkcode Document.CreateDialogOptions}
-   */
   interface CreateDialogOptions extends Document.CreateDialogOptions<Name> {}
-
-  /**
-   * The return type for {@linkcode Setting.createDialog}.
-   * @see {@linkcode Document.CreateDialogReturn}
-   */
-  type CreateDialogReturn<Config extends Setting.CreateDialogOptions | undefined> = Document.CreateDialogReturn<
-    Setting.Stored,
-    Config
-  >;
-
-  /**
-   * The return type for {@linkcode Setting.deleteDialog | Setting#deleteDialog}.
-   * @see {@linkcode Document.DeleteDialogReturn}
-   */
-  type DeleteDialogReturn<Config extends DialogV2.ConfirmConfig | undefined> = Document.DeleteDialogReturn<
-    Setting.Stored,
-    Config
-  >;
 
   /**
    * The arguments to construct the document.
    *
-   * @deprecated Writing the signature directly has helped reduce circularities and therefore is
-   * now recommended. This type will be removed in v14.
+   * @deprecated - Writing the signature directly has helped reduce circularities and therefore is
+   * now recommended.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   type ConstructorArgs = Document.ConstructorParameters<CreateData, Parent>;
@@ -832,7 +375,7 @@ declare namespace Setting {
  *
  * @see {@linkcode WorldSettings}       The world-level collection of Setting documents
  */
-declare class Setting extends BaseSetting.Internal.ClientDocument {
+declare class Setting extends foundry.documents.BaseSetting.Internal.ClientDocument {
   /**
    * @param data    - Initial data from which to construct the `Setting`
    * @param context - Construction context options
@@ -842,24 +385,12 @@ declare class Setting extends BaseSetting.Internal.ClientDocument {
   /**
    * The setting configuration for this setting document.
    */
-  get config(): foundry.helpers.ClientSettings.SettingConfig | undefined;
+  get config(): foundry.applications.settings.SettingsConfig | undefined;
 
   protected override _initialize(options?: Document.InitializeOptions): void;
 
-  // For type simplicity the following real override(s) are commented out.
-  // These methods historically have been the source of a large amount of computation from tsc.
-
-  // protected override _onCreate(
-  //   data: Setting.CreateData,
-  //   options: Setting.Database.OnCreateOptions,
-  //   userId: string,
-  // ): void;
-
-  // protected override _onUpdate(
-  //   changed: Setting.UpdateData,
-  //   options: Setting.Database.OnUpdateOptions,
-  //   userId: string,
-  // ): void;
+  // _onCreate and _onUpdate are overridden but with no signature changes.
+  // For type simplicity they are left off. These methods historically have been the source of a large amount of computation from tsc.
 
   /**
    * Cast the value of the Setting into its defined type.
@@ -884,47 +415,28 @@ declare class Setting extends BaseSetting.Internal.ClientDocument {
 
   static override defaultName(context?: Setting.DefaultNameContext): string;
 
-  static override createDialog<Options extends Setting.CreateDialogOptions | undefined = undefined>(
-    data?: Setting.CreateDialogData,
-    createOptions?: Setting.Database.CreateDocumentsOperation,
-    options?: Options,
-  ): Promise<Setting.CreateDialogReturn<Options>>;
-
   /**
-   * @deprecated "The `ClientDocument.createDialog` signature has changed. It now accepts database operation options in its second
-   * parameter, and options for {@linkcode DialogV2.prompt} in its third parameter." (since v13, until v15)
-   *
-   * @see {@linkcode Setting.CreateDialogDeprecatedOptions}
+   * @throws Foundry tries to figure out the folders for the world collection and errors out
    */
-  static override createDialog<Options extends Setting.CreateDialogOptions | undefined = undefined>(
-    data: Setting.CreateDialogData,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    createOptions: Setting.CreateDialogDeprecatedOptions,
-    options?: Options,
-  ): Promise<Setting.CreateDialogReturn<Options>>;
+  static override createDialog(
+    data?: Setting.CreateData,
+    createOptions?: Setting.Database.DialogCreateOptions,
+    options?: Setting.CreateDialogOptions,
+  ): never;
 
-  override deleteDialog<Options extends DialogV2.ConfirmConfig | undefined = undefined>(
-    options?: Options,
-    operation?: Setting.Database.DeleteOneDocumentOperation,
-  ): Promise<Setting.DeleteDialogReturn<Options>>;
+  override deleteDialog(
+    options?: InexactPartial<foundry.applications.api.DialogV2.ConfirmConfig>,
+    operation?: Document.Database.DeleteOperationForName<"Setting">,
+  ): Promise<this | false | null | undefined>;
 
-  /**
-   * @deprecated "`options` is now an object containing entries supported by {@linkcode DialogV2.confirm | DialogV2.confirm}."
-   * (since v13, until v15)
-   *
-   * @see {@linkcode Document.DeleteDialogDeprecatedConfig}
-   */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  override deleteDialog<Options extends Document.DeleteDialogDeprecatedConfig | undefined = undefined>(
-    options?: Options,
-    operation?: Setting.Database.DeleteOneDocumentOperation,
-  ): Promise<Setting.DeleteDialogReturn<Options>>;
-
-  static override fromDropData(data: Setting.DropData): Promise<Setting.Implementation | undefined>;
+  static override fromDropData(
+    data: Setting.DropData,
+    options?: Setting.DropDataOptions,
+  ): Promise<Setting.Implementation | undefined>;
 
   static override fromImport(
     source: Setting.Source,
-    context?: Document.FromImportContext<Setting.Parent>,
+    context?: Document.FromImportContext<Setting.Parent> | null,
   ): Promise<Setting.Implementation>;
 
   override _onClickDocumentLink(event: MouseEvent): ClientDocument.OnClickDocumentLinkReturn;

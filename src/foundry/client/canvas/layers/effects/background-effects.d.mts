@@ -4,7 +4,6 @@ import type { CanvasLayer } from "../_module.d.mts";
 declare module "#configuration" {
   namespace Hooks {
     interface CanvasLayerConfig {
-      /** @remarks Not configurable, doesn't have an `Implementation` */
       CanvasBackgroundAlterationEffects: CanvasBackgroundAlterationEffects.Any;
     }
   }
@@ -29,13 +28,7 @@ declare class CanvasBackgroundAlterationEffects extends CanvasLayer {
    */
   lighting: PIXI.Container;
 
-  // fake type override
-  override draw(options?: HandleEmptyObject<CanvasBackgroundAlterationEffects.DrawOptions>): Promise<this>;
-
   protected override _draw(options: HandleEmptyObject<CanvasBackgroundAlterationEffects.DrawOptions>): Promise<void>;
-
-  // fake type override
-  override tearDown(options?: HandleEmptyObject<CanvasBackgroundAlterationEffects.TearDownOptions>): Promise<this>;
 
   protected override _tearDown(
     options: HandleEmptyObject<CanvasBackgroundAlterationEffects.TearDownOptions>,
@@ -53,7 +46,7 @@ declare namespace CanvasBackgroundAlterationEffects {
 
   interface DrawOptions extends CanvasLayer.DrawOptions {}
 
-  interface TearDownOptions extends CanvasLayer.TearDownOptions {}
+  interface TearDownOptions extends CanvasLayer.DrawOptions {}
 }
 
 export default CanvasBackgroundAlterationEffects;

@@ -20,7 +20,7 @@ declare abstract class CategoryBrowser<
   Configuration extends CategoryBrowser.Configuration = CategoryBrowser.Configuration,
   RenderOptions extends CategoryBrowser.RenderOptions = CategoryBrowser.RenderOptions,
 > extends HandlebarsApplicationMixin(ApplicationV2)<RenderContext, Configuration, RenderOptions> {
-  static DEFAULT_OPTIONS: CategoryBrowser.DefaultOptions;
+  static DEFAULT_OPTIONS: DeepPartial<CategoryBrowser.Configuration> & object;
 
   static PARTS: Record<string, HandlebarsApplicationMixin.HandlebarsTemplatePart>;
 
@@ -65,7 +65,7 @@ declare abstract class CategoryBrowser<
    */
   protected _sortCategories(a: CategoryBrowser.CategoryData<Entry>, b: CategoryBrowser.CategoryData<Entry>): number;
 
-  protected _tearDown(options: ApplicationV2.ClosingOptions): void;
+  protected _tearDown(options: DeepPartial<ApplicationV2.ClosingOptions>): void;
 
   protected _onRender(context: DeepPartial<RenderContext>, options: DeepPartial<RenderOptions>): Promise<void>;
 
@@ -92,21 +92,13 @@ declare namespace CategoryBrowser {
     submitButton: boolean;
   }
 
-  interface Configuration<CategoryBrowser extends CategoryBrowser.Any = CategoryBrowser.Any>
-    extends HandlebarsApplicationMixin.Configuration, ApplicationV2.Configuration<CategoryBrowser> {
+  interface Configuration extends HandlebarsApplicationMixin.Configuration, ApplicationV2.Configuration {
     /** The initial category tab: omitting this will result in an initial active tab that corresponds with the first category by insertion order. */
     initialCategory: string | null;
 
     /** Additional Template partials for specific use with this class */
     subtemplates: Subtemplates;
   }
-
-  // Note(LukeAbby): This `& object` is so that the `DEFAULT_OPTIONS` can be overridden more easily
-  // Without it then `static override DEFAULT_OPTIONS = { unrelatedProp: 123 }` would error.
-  type DefaultOptions<CategoryBrowser extends CategoryBrowser.Any = CategoryBrowser.Any> = DeepPartial<
-    Configuration<CategoryBrowser>
-  > &
-    object;
 
   interface RenderOptions extends HandlebarsApplicationMixin.RenderOptions, ApplicationV2.RenderOptions {}
 

@@ -1,6 +1,5 @@
 import { expectTypeOf } from "vitest";
-
-import FogSamplerShader = foundry.canvas.rendering.shaders.FogSamplerShader;
+import { FogSamplerShader } from "#client/canvas/rendering/shaders/_module.mjs";
 
 let myFSS;
 

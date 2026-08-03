@@ -1,4 +1,4 @@
-import type { DeepPartial, Identity } from "#utils";
+import type { Identity } from "#utils";
 import type ApplicationV2 from "../../api/application.mjs";
 
 declare module "#configuration" {
@@ -17,10 +17,7 @@ declare class FrameViewer<
   RenderContext extends FrameViewer.RenderContext = FrameViewer.RenderContext,
   Configuration extends FrameViewer.Configuration = FrameViewer.Configuration,
   RenderOptions extends FrameViewer.RenderOptions = FrameViewer.RenderOptions,
-> extends ApplicationV2<RenderContext, Configuration, RenderOptions> {
-  // Fake override.
-  static override DEFAULT_OPTIONS: FrameViewer.DefaultOptions;
-}
+> extends ApplicationV2<RenderContext, Configuration, RenderOptions> {}
 
 declare namespace FrameViewer {
   interface Any extends AnyFrameViewer {}
@@ -28,17 +25,10 @@ declare namespace FrameViewer {
 
   interface RenderContext extends ApplicationV2.RenderContext {}
 
-  interface Configuration<
-    FrameViewer extends FrameViewer.Any = FrameViewer.Any,
-  > extends ApplicationV2.Configuration<FrameViewer> {
+  interface Configuration extends ApplicationV2.Configuration {
     /** The initial URL to navigate to */
     url: string;
   }
-
-  // Note(LukeAbby): This `& object` is so that the `DEFAULT_OPTIONS` can be overridden more easily
-  // Without it then `static override DEFAULT_OPTIONS = { unrelatedProp: 123 }` would error.
-  type DefaultOptions<FrameViewer extends FrameViewer.Any = FrameViewer.Any> = DeepPartial<Configuration<FrameViewer>> &
-    object;
 
   interface RenderOptions extends ApplicationV2.RenderOptions {}
 }

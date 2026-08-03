@@ -1,8 +1,9 @@
 import type { AnyArray, AnyObject, InexactPartial, FixedInstanceType, Identity } from "#utils";
 import type FormApplication from "#client/appv1/api/form-application-v1.mjs";
 import type ApplicationV2 from "#client/applications/api/application.d.mts";
+import type { CustomFormInput } from "#client/applications/forms/fields.d.mts";
 import type DataModel from "#common/abstract/data.d.mts";
-import type { DataField, SchemaField } from "#common/data/fields.d.mts";
+import type { DataField } from "#common/data/fields.d.mts";
 
 /**
  * A class responsible for managing defined game settings or settings menus.
@@ -39,7 +40,7 @@ declare class ClientSettings {
    * {@linkcode foundry.documents.collections.WorldSettings | WorldSettings} lacks `key`, `setItem`,
    * and `removeItem` methods
    */
-  storage: Map<string, Storage | foundry.documents.collections.WorldSettings.Implementation>;
+  storage: Map<string, Storage | foundry.documents.collections.WorldSettings>;
 
   /**
    * Return a singleton instance of the Game Settings Configuration app
@@ -199,7 +200,7 @@ declare namespace ClientSettings {
     T extends ClientSettings.Type,
     N extends ClientSettings.Namespace,
     K extends ClientSettings.KeyFor<N>,
-  > extends InexactPartial<_RegisterData<_RegisterType<T, N, K>>> {}
+  > extends _RegisterData<_RegisterType<T, N, K>> {}
 
   /**
    * @internal
@@ -210,8 +211,10 @@ declare namespace ClientSettings {
     K extends ClientSettings.KeyFor<N>,
   > = ClientSettings.Type extends T ? ConfiguredType<N, K> : NoInfer<T>;
 
-  /** @internal */
-  interface _RegisterData<T extends ClientSettings.Type> extends Omit<SettingConfig<T>, "key" | "namespace"> {}
+  /**
+   * @internal
+   */
+  type _RegisterData<T extends ClientSettings.Type> = InexactPartial<Omit<SettingConfig<T>, "key" | "namespace">>;
 
   /**
    * A TypeScript type is a type for a setting that only exists at compile time.
@@ -232,18 +235,14 @@ declare namespace ClientSettings {
     | (T extends symbol ? typeof Symbol : never)
     | (T extends bigint ? typeof BigInt : never)
     | (T extends readonly (infer V)[] ? typeof Array<V> : never)
-    | (T extends AnyObject ? typeof Object : never)
-    // TODO(LukeAbby): If `DataModel.AnyConstructor` can be used in `RuntimeType` this can be switched to `...args: never`
-    | (T extends DataModel.Any ? new (...args: any[]) => T : never);
+    | (T extends AnyObject ? typeof Object : never);
 
   type SettingCreateData<N extends Namespace, K extends KeyFor<N>> = ToSettingCreateData<ConfiguredType<N, K>>;
 
   type ToSettingCreateData<T extends Type> = ReplaceUndefinedWithNull<
-    | SettingType<T, " __fvtt_types_internal_assignment_data">
+    | SettingType<T>
     // TODO(LukeAbby): The `fromSource` function is called with `strict` which changes how fallback behaviour works. See `ClientSettings#set`
-    | (T extends (abstract new (...args: infer _1) => infer Instance extends DataModel.Any)
-        ? SchemaField.CreateData<DataModel.SchemaOf<Instance>>
-        : never)
+    | (T extends (abstract new (...args: infer _1) => infer Instance extends DataModel.Any) ? Instance : never)
   >;
 
   type SettingInitializedType<N extends Namespace, K extends KeyFor<N>> = ToSettingInitializedType<
@@ -251,27 +250,16 @@ declare namespace ClientSettings {
   >;
 
   type ToSettingInitializedType<T extends Type> = ReplaceUndefinedWithNull<
-    SettingType<T, " __fvtt_types_internal_initialized_data"> | (T extends DataModel.Any ? T : never)
+    SettingType<T> | (T extends DataModel.Any ? T : never)
   >;
 
   type Get<N extends Namespace, K extends KeyFor<N>, Doc extends boolean | undefined> = Doc extends true
     ? Setting.Implementation
     : SettingInitializedType<N, K>;
 
-  type Scope = "world" | "client" | "user";
-
   /**
-   * A function that gets called when a setting is changed, either by `ClientSettings##setClient`
-   * or {@linkcode Setting._onUpdate | Setting#_onUpdate}.
-   * @remarks Only world settings get passed `userId`.
+   * @internal
    */
-  type OnChangeFunction<InitializedData = unknown> = (
-    value: InitializedData,
-    options: OnChangeOptions,
-    userId?: string,
-  ) => void;
-
-  /** @internal */
   interface _SettingConfig<RuntimeType extends ClientSettings.RuntimeType, CreateData, InitializedData> {
     /** A unique machine-readable id for the setting */
     key: string;
@@ -289,7 +277,7 @@ declare namespace ClientSettings {
      * The scope the Setting is stored in, either World or Client
      * @defaultValue `"client"`
      */
-    scope: Scope;
+    scope: "world" | "client";
 
     /** Indicates if this Setting should render in the Config application */
     config?: boolean | undefined;
@@ -320,26 +308,21 @@ declare namespace ClientSettings {
     requiresReload?: boolean;
 
     /** Executes when the value of this Setting changes */
-    onChange?: OnChangeFunction<InitializedData>;
+    onChange?: (value: InitializedData, options?: Omit<SetOptions, "document">) => void;
 
     /**
      * A custom form field input used in conjunction with a DataField type
-     * @deprecated As of v13, the new, AppV2 {@linkcode foundry.applications.settings.SettingsConfig | SettingsConfig}'s template no longer
-     * passes this to the relevant `{{formGroup}}` helper, so this is currently non-functional:
-     * {@link https://github.com/foundryvtt/foundryvtt/issues/13670}
      */
-    input?: DataField.CustomFormInput | undefined;
+    input?: CustomFormInput | undefined;
   }
 
   /**
    * A Client Setting
+   * @remarks Copied from `client/_types.mjs`
    * @remarks Not to be confused with {@linkcode globalThis.SettingConfig} which is how you register setting types in this project
    */
-  interface SettingConfig<T extends Type = (value: unknown) => unknown> extends _SettingConfig<
-    ToRuntimeType<T>,
-    ToSettingInitializedType<T>,
-    ToSettingCreateData<T>
-  > {}
+  interface SettingConfig<T extends Type = (value: unknown) => unknown>
+    extends _SettingConfig<ToRuntimeType<T>, ToSettingInitializedType<T>, ToSettingCreateData<T>> {}
 
   /**
    * A Client Setting Submenu
@@ -395,41 +378,36 @@ declare namespace ClientSettings {
   }
 
   /** @internal */
-  interface _GetOptions<Doc extends boolean | undefined> {
+  type _GetOptions<Doc extends boolean | undefined> = InexactPartial<{
     /**
      * Retrieve the full Setting document instance instead of just its value
      * @defaultValue `false`
      */
     document: Doc;
-  }
+  }>;
 
-  interface GetOptions<Doc extends boolean | undefined = undefined> extends InexactPartial<_GetOptions<Doc>> {}
+  interface GetOptions<Doc extends boolean | undefined = undefined> extends _GetOptions<Doc> {}
 
   /** @internal */
-  interface _SetOptions<Doc extends boolean | undefined> {
+  type _SetOptions<Doc extends boolean | undefined> = InexactPartial<{
     /**
      * Return the updated Setting document instead of just its value
      * @defaultValue `false`
      */
     document: Doc;
-  }
+  }>;
 
   /** @internal */
   interface _SetOptionsCreate<Doc extends boolean | undefined>
-    extends InexactPartial<_SetOptions<Doc>>, Setting.Database.CreateDocumentsOperation {}
+    extends _SetOptions<Doc>,
+      Setting.Database.CreateOperation<undefined | false> {}
 
   /** @internal */
   interface _SetOptionsUpdate<Doc extends boolean | undefined>
-    extends InexactPartial<_SetOptions<Doc>>, Setting.Database.UpdateOneDocumentOperation {}
+    extends _SetOptions<Doc>,
+      Setting.Database.UpdateOperation {}
 
   type SetOptions<Doc extends boolean | undefined = undefined> = _SetOptionsCreate<Doc> | _SetOptionsUpdate<Doc>;
-
-  /**
-   * @remarks The object that gets passed to `ClientSettings##setWorld`, and via that {@linkcode Setting._onUpdate | Setting#_onUpdate};
-   * or `##setClient`, and via that, the {@linkcode AllHooks.clientSettingChanged | clientSettingChanged} hook. Both paths also send this
-   * to the Setting's registered {@linkcode ClientSettings.SettingConfig.onChange | onChange} function, so that's the name that was chosen.
-   */
-  type OnChangeOptions = Setting.Database.CreateDocumentsOperation | Setting.Database.UpdateOneDocumentOperation;
 
   /**
    * @deprecated Replaced with {@linkcode ClientSettings.SettingInitializedType}.
@@ -485,11 +463,12 @@ type ConfiguredType<
   K extends ClientSettings.KeyFor<N>,
 > = globalThis.SettingConfig[`${N}.${K}` & keyof globalThis.SettingConfig];
 
-type SettingType<T extends ClientSettings.Type, K extends keyof DataField.Any> =
+type SettingType<T extends ClientSettings.Type> =
   // Note(LukeAbby): This isn't written as `T extends ClientSettings.TypeScriptType ? T : never` because then types like `DataField.Any` would be matched.
   | (T extends ClientSettings.RuntimeType ? never : T)
   // TODO(LukeAbby): The `validate` function is called with `strict` which changes how fallback behavior works. See `ClientSettings#set`
-  | (T extends DataField.Any ? T[K] : never)
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
+  | (T extends DataField.Any ? DataField.AssignmentTypeFor<T> : never)
   | (T extends SettingConstructor ? ConstructorToSettingType<T> : T extends SettingFunction ? ReturnType<T> : never);
 
 // TODO(LukeAbby): The exact semantics for when `undefined` is replaced with `null` are unclear.

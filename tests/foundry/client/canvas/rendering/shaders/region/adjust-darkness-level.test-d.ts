@@ -1,7 +1,8 @@
 import { expectTypeOf } from "vitest";
-
-import AdjustDarknessLevelRegionShader = foundry.canvas.rendering.shaders.AdjustDarknessLevelRegionShader;
-import IlluminationDarknessLevelRegionShader = foundry.canvas.rendering.shaders.IlluminationDarknessLevelRegionShader;
+import {
+  AdjustDarknessLevelRegionShader,
+  IlluminationDarknessLevelRegionShader,
+} from "#client/canvas/rendering/shaders/_module.mjs";
 
 const myADLRS = AdjustDarknessLevelRegionShader.create();
 expectTypeOf(myADLRS).toEqualTypeOf<AdjustDarknessLevelRegionShader>();

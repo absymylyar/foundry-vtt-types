@@ -1,4 +1,4 @@
-import type { Identity, InexactPartial, ValueOf } from "#utils";
+import type { Brand, Identity, InexactPartial } from "#utils";
 import type KeyboardManager from "./keyboard-manager.d.mts";
 
 /**
@@ -203,7 +203,7 @@ declare namespace ClientKeybindings {
    * Properties of {@linkcode StoredKeybindActionConfig} that are neither computed nor provided defaults by {@linkcode ClientKeybindings.register | #register}
    * @internal
    */
-  interface _KeybindActionConfigOptional {
+  type _KeybindActionConfigOptional = InexactPartial<{
     /** An additional human readable hint */
     hint: string;
 
@@ -221,14 +221,14 @@ declare namespace ClientKeybindings {
 
     /** If true, only a GM can edit and execute this Action */
     restricted: boolean;
-  }
+  }>;
 
   /**
    * A Client Keybinding Action Configuration
    * @remarks The shape of stored ({@linkcode ClientKeybindings.actions | #actions}) action configs, after defaults provided by
    * {@linkcode ClientKeybindings.register | #register} are applied.
    */
-  interface StoredKeybindingActionConfig extends InexactPartial<_KeybindActionConfigOptional> {
+  interface StoredKeybindingActionConfig extends _KeybindActionConfigOptional {
     /**
      * The namespace within which the action was registered
      * @remarks e.g `"core"`, `"my-package"`
@@ -299,16 +299,16 @@ declare namespace ClientKeybindings {
   interface KeybindingActionConfig extends _KeybindingActionConfig {}
 
   /** @internal */
-  interface _StoredKeybindingActionBindingComputed {
+  type _StoredKeybindingActionBindingComputed = InexactPartial<{
     /**
      * A numeric index which tracks this bindings position during form rendering
      * @remarks Appears to never exist on stored bindings in {@linkcode ClientKeybindings.bindings | ClientKeybindings#bindings},
      * only existing on values in the `ControlsConfig##pendingEdits` private Map during a binding setting operation in the UI
      */
     index: number;
-  }
+  }>;
 
-  interface StoredKeybindingActionBinding extends InexactPartial<_StoredKeybindingActionBindingComputed> {
+  interface StoredKeybindingActionBinding extends _StoredKeybindingActionBindingComputed {
     /**
      * The {@linkcode KeyboardEvent.code | KeyboardEvent#code} value from {@link https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code/code_values}
      * @remarks Registration will throw if one of {@linkcode KeyboardManager.PROTECTED_KEYS} is passed
@@ -332,7 +332,7 @@ declare namespace ClientKeybindings {
   }
 
   /**
-   * See {@linkcode StoredKeybindingActionBindingComputed.index}
+   * See {@linkcode _StoredKeybindingActionBindingComputed.index}
    * @internal
    */
   interface _PassableActionBinding extends Omit<StoredKeybindingActionBinding, "index"> {}
@@ -407,22 +407,22 @@ declare namespace ClientKeybindings {
    */
   interface ActionComparison extends Pick<KeybindingAction, "precedence" | "order"> {}
 
-  type MOVEMENT_DIRECTIONS = ValueOf<MovementDirections>;
+  type MOVEMENT_DIRECTIONS = Brand<string, "ClientKeybindings.MOVEMENT_DIRECTIONS">;
 
   interface MovementDirections {
-    UP: "up";
-    LEFT: "left";
-    DOWN: "down";
-    RIGHT: "right";
-    DESCEND: "descend";
-    ASCEND: "ascend";
+    UP: "up" & MOVEMENT_DIRECTIONS;
+    LEFT: "left" & MOVEMENT_DIRECTIONS;
+    DOWN: "down" & MOVEMENT_DIRECTIONS;
+    RIGHT: "right" & MOVEMENT_DIRECTIONS;
+    DESCEND: "descend" & MOVEMENT_DIRECTIONS;
+    ASCEND: "ascend" & MOVEMENT_DIRECTIONS;
   }
 
-  type ZOOM_DIRECTIONS = ValueOf<ZoomDirections>;
+  type ZOOM_DIRECTIONS = Brand<string, "ClientKeybindings.ZOOM_DIRECTIONS">;
 
   interface ZoomDirections {
-    IN: "in";
-    OUT: "out";
+    IN: "in" & ZOOM_DIRECTIONS;
+    OUT: "out" & ZOOM_DIRECTIONS;
   }
 }
 

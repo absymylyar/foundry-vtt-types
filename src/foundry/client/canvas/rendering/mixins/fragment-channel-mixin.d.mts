@@ -55,12 +55,12 @@ declare namespace AdaptiveFragmentChannelMixin {
   type Channel = "r" | "g" | "b";
 
   /** @internal */
-  interface _ConcreteCreateOptions {
+  type _ConcreteCreateOptions = InexactPartial<{
     /** @defaultValue `"r"` */
     channel: Channel;
-  }
+  }>;
 
-  interface ConcreteCreateOptions extends InexactPartial<_ConcreteCreateOptions> {}
+  interface ConcreteCreateOptions extends _ConcreteCreateOptions {}
 }
 
 export default AdaptiveFragmentChannelMixin;

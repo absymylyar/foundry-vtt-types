@@ -1,7 +1,9 @@
 import { expectTypeOf } from "vitest";
 import {
+  details,
+  summary,
+  summaryBlock,
   dl,
-  dl_group,
   dt,
   dd,
   fieldset,
@@ -19,12 +21,16 @@ import {
   rp,
   rt,
   iframe,
-} from "../../../../../src/foundry/common/prosemirror/schema/other.mts";
+} from "#common/prosemirror/schema/other.mjs";
 import type { NodeSpec } from "prosemirror-model";
 
-expectTypeOf(dl).toEqualTypeOf<NodeSpec>();
+expectTypeOf(details).toEqualTypeOf<NodeSpec>();
 
-expectTypeOf(dl_group).toEqualTypeOf<NodeSpec>();
+expectTypeOf(summary).toEqualTypeOf<NodeSpec>();
+
+expectTypeOf(summaryBlock).toEqualTypeOf<NodeSpec>();
+
+expectTypeOf(dl).toEqualTypeOf<NodeSpec>();
 
 expectTypeOf(dt).toEqualTypeOf<NodeSpec>();
 

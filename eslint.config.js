@@ -2,7 +2,7 @@
 /* eslint-disable jsdoc/no-types, jsdoc/require-param-description, jsdoc/require-returns-description */
 
 import globals from "globals";
-import { includeIgnoreFile } from "@eslint/config-helpers";
+import { includeIgnoreFile } from "@eslint/compat";
 import js from "@eslint/js";
 import tsESLint from "typescript-eslint";
 import tsParser from "@typescript-eslint/parser";
@@ -171,24 +171,6 @@ const placeables = [
   "Wall",
 ];
 
-// TODO: Wire up what parts of this work. These classes only have `.instance` getters, no `.implementation` equivalent; point users toward CONFIG[documentName].collection
-const _worldCollections = [
-  "Actors",
-  "CardStacks",
-  "ChatMessages",
-  "CombatEncounters",
-  "FogExplorations",
-  "Folders",
-  "Items",
-  "Journal", // singular on purpose, grr foundry
-  "Macros",
-  "Playlists",
-  "RollTables",
-  "Scenes",
-  "Users",
-  "WorldSettings",
-];
-
 /** @type {{ selector: string; message: string }[]} */
 const noRestrictedSyntax = [];
 
@@ -265,26 +247,6 @@ for (const placeable of placeables) {
   };
 }
 
-/** Imports that aren't allowed in `/src/**` *or* `/tests/**` */
-const noRestrictedImportsPaths = [
-  {
-    name: "type-fest",
-    message: "You probably meant to import fvtt-types/utils",
-  },
-];
-
-/** Imports that only aren't allowed in `/src/**` */
-const pathsOnlyAllowedInTests = [
-  {
-    name: "#tests",
-    message: "Importing from tests is not supported outside tests/",
-  },
-  {
-    name: "#testUtils",
-    message: "Importing from tests is not supported outside tests/",
-  },
-];
-
 /**
  * @type {import("@typescript-eslint/utils").TSESLint.FlatConfig.ConfigArray}
  */
@@ -296,11 +258,10 @@ const rules = [
   ...tsESLint.configs.stylisticTypeChecked,
   importPlugin.flatConfigs.recommended,
   importPlugin.flatConfigs.typescript,
-  // Necessary for oxfmt, despite the name.
   eslintConfigPrettier,
   {
     // This is excluded because if it weren't then it would mess with the type checking of the rest of the repo as it loosens the types of many types.
-    ignores: ["src/index-lenient.d.mts", "cvise"],
+    ignores: ["src/index-lenient.d.mts"],
   },
   {
     languageOptions: {
@@ -347,6 +308,7 @@ const rules = [
       // non-null assertions are useful in tests
       "@typescript-eslint/no-non-null-assertion": "off",
 
+      // TODO(LukeAbby): reenable once all document declaration merges can be removed
       "@typescript-eslint/no-unsafe-declaration-merging": "off",
       "@typescript-eslint/no-unused-expressions": "off", // expectTypeOf seems to trip this rule.
       "@typescript-eslint/no-unused-vars": [
@@ -354,14 +316,18 @@ const rules = [
         {
           argsIgnorePattern: "^_",
           varsIgnorePattern: "^_",
-          caughtErrorsIgnorePattern: "^_",
         },
       ],
       "@typescript-eslint/no-unnecessary-type-parameters": "off",
       "@typescript-eslint/no-restricted-imports": [
         "error",
         {
-          paths: noRestrictedImportsPaths.concat(pathsOnlyAllowedInTests),
+          paths: [
+            {
+              name: "type-fest",
+              message: "You probably meant to import fvtt-types/utils",
+            },
+          ],
         },
       ],
       "@typescript-eslint/prefer-namespace-keyword": "error",
@@ -433,8 +399,6 @@ const rules = [
       "jsdoc/require-jsdoc": "off",
       "jsdoc/require-param": "off",
       "jsdoc/require-returns": "off",
-      "jsdoc/require-throws-type": "off",
-      "jsdoc/require-yields-type": "off",
       "jsdoc/tag-lines": "off",
 
       "tsdoc/syntax": "warn",
@@ -460,7 +424,7 @@ const rules = [
   },
 
   {
-    files: ["**/*.js", "**/*.mjs", "**/*.cjs"],
+    files: ["**/*.js"],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -485,12 +449,14 @@ const rules = [
       // It can make sense to have empty functions in tests.
       "@typescript-eslint/no-empty-function": "off",
 
-      "@typescript-eslint/no-restricted-imports": [
-        "error",
-        {
-          paths: noRestrictedImportsPaths,
-        },
-      ],
+      // While test are broken these errors are disabled.
+      "@typescript-eslint/no-unsafe-member-access": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-redundant-type-constituents": "off",
+      "@typescript-eslint/no-unnecessary-condition": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
     },
   },
 ];

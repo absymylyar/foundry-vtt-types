@@ -1,6 +1,8 @@
-import type { MaybeArray } from "#utils";
-import type { DataModel, Document } from "#common/abstract/_module.d.mts";
-import type { SchemaField } from "#common/data/fields.d.mts";
+import type { AnyMutableObject } from "#utils";
+import type DataModel from "../abstract/data.d.mts";
+import type Document from "../abstract/document.mts";
+import type { DataField, SchemaField } from "../data/fields.d.mts";
+import type { LogCompatibilityWarningOptions } from "../utils/logging.d.mts";
 
 /**
  * The ActiveEffect Document.
@@ -19,10 +21,10 @@ declare abstract class BaseActiveEffect<
    * order to use documents on both the client (i.e. where all your code runs) and behind the scenes
    * on the server to manage document validation and storage.
    *
-   * You should use {@linkcode ActiveEffect.implementation | new ActiveEffect.implementation(...)} instead which will give you
+   * You should use {@link ActiveEffect.implementation | `new ActiveEffect.implementation(...)`} instead which will give you
    * a system specific implementation of `ActiveEffect`.
    */
-  constructor(data: BaseActiveEffect.CreateData, context?: BaseActiveEffect.ConstructionContext);
+  constructor(data: ActiveEffect.CreateData, context?: ActiveEffect.ConstructionContext);
 
   /**
    * @defaultValue
@@ -49,9 +51,9 @@ declare abstract class BaseActiveEffect<
   static override LOCALIZATION_PREFIXES: string[];
 
   protected override _preCreate(
-    data: BaseActiveEffect.CreateData,
-    options: BaseActiveEffect.Database.PreCreateOptions,
-    user: User.Stored,
+    data: ActiveEffect.CreateData,
+    options: ActiveEffect.Database.PreCreateOptions,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   /**
@@ -59,14 +61,15 @@ declare abstract class BaseActiveEffect<
    * Migrations:
    * - `icon` to `img` (since v12, no specified end)
    */
-  static override migrateData(source: object): object;
+  static override migrateData(source: AnyMutableObject): AnyMutableObject;
 
   /**
    * @remarks
    * Shims:
    * - `icon` to `img` (since v12, until v14)
    */
-  static override shimData(data: object, options?: DataModel.ShimDataOptions): object;
+  // options: not null (destructured)
+  static override shimData(data: AnyMutableObject, options?: DataModel.ShimDataOptions): AnyMutableObject;
 
   /**
    * @deprecated since v12, will be removed in v14
@@ -86,166 +89,219 @@ declare abstract class BaseActiveEffect<
    * separate like this helps against circularities.
    */
 
-  type: SubType;
-
   /* Document overrides */
+
+  // Same as Document for now
+  protected static override _initializationOrder(): Generator<[string, DataField.Any], void, undefined>;
+
+  override readonly parentCollection: ActiveEffect.ParentCollectionName | null;
+
+  override readonly pack: string | null;
 
   static override get implementation(): ActiveEffect.ImplementationClass;
 
   static override get baseDocument(): typeof BaseActiveEffect;
 
-  static override get collectionName(): BaseActiveEffect.ParentCollectionName;
+  static override get collectionName(): ActiveEffect.ParentCollectionName;
 
-  static override get documentName(): BaseActiveEffect.Name;
+  static override get documentName(): ActiveEffect.Name;
 
   static override get TYPES(): BaseActiveEffect.SubType[];
 
   static override get hasTypeData(): true;
 
-  static override readonly hierarchy: BaseActiveEffect.Hierarchy;
+  static override get hierarchy(): ActiveEffect.Hierarchy;
 
-  override system: BaseActiveEffect.SystemOfType<SubType>;
+  override system: ActiveEffect.SystemOfType<SubType>;
 
   override parent: BaseActiveEffect.Parent;
 
-  override " fvtt_types_internal_document_parent": BaseActiveEffect.Parent;
-
-  static override canUserCreate(user: User.Implementation): boolean;
-
-  override getUserLevel(user?: User.Implementation): CONST.DOCUMENT_OWNERSHIP_LEVELS;
-
-  override testUserPermission(
-    user: User.Implementation,
-    permission: Document.ActionPermission,
-    options?: Document.TestUserPermissionOptions,
-  ): boolean;
-
-  override canUserModify<Action extends Document.Database.OperationAction>(
-    user: User.Implementation,
-    action: Action,
-    data?: Document.CanUserModifyData<"ActiveEffect", Action>,
-  ): boolean;
-
-  static override createDocuments(
-    data: BaseActiveEffect.CreateInput[],
-    operation?: BaseActiveEffect.Database.CreateDocumentsOperation,
-  ): Promise<ActiveEffect.Stored[]>;
+  static override createDocuments<Temporary extends boolean | undefined = undefined>(
+    data: Array<ActiveEffect.Implementation | ActiveEffect.CreateData> | undefined,
+    operation?: Document.Database.CreateOperation<ActiveEffect.Database.Create<Temporary>>,
+  ): Promise<Array<Document.TemporaryIf<ActiveEffect.Implementation, Temporary>>>;
 
   static override updateDocuments(
-    updates: BaseActiveEffect.UpdateInput[],
-    operation?: BaseActiveEffect.Database.UpdateManyDocumentsOperation,
-  ): Promise<ActiveEffect.Stored[]>;
+    updates: ActiveEffect.UpdateData[] | undefined,
+    operation?: Document.Database.UpdateDocumentsOperation<ActiveEffect.Database.Update>,
+  ): Promise<ActiveEffect.Implementation[]>;
 
   static override deleteDocuments(
-    ids: readonly string[],
-    operation?: BaseActiveEffect.Database.DeleteManyDocumentsOperation,
-  ): Promise<ActiveEffect.Stored[]>;
+    ids: readonly string[] | undefined,
+    operation?: Document.Database.DeleteDocumentsOperation<ActiveEffect.Database.Delete>,
+  ): Promise<ActiveEffect.Implementation[]>;
 
-  static override create<Data extends MaybeArray<BaseActiveEffect.CreateInput>>(
-    data: Data,
-    operation?: BaseActiveEffect.Database.CreateDocumentsOperation,
-  ): Promise<BaseActiveEffect.CreateReturn<Data>>;
+  static override create<Temporary extends boolean | undefined = false>(
+    data: ActiveEffect.CreateData | ActiveEffect.CreateData[],
+    operation?: ActiveEffect.Database.CreateOperation<Temporary>,
+  ): Promise<Document.TemporaryIf<ActiveEffect.Implementation, Temporary> | undefined>;
 
   override update(
-    data: BaseActiveEffect.UpdateInput,
-    operation?: BaseActiveEffect.Database.UpdateOneDocumentOperation,
+    data: ActiveEffect.UpdateData | undefined,
+    operation?: ActiveEffect.Database.UpdateOperation,
   ): Promise<this | undefined>;
 
-  override delete(operation?: BaseActiveEffect.Database.DeleteOneDocumentOperation): Promise<this | undefined>;
+  override delete(operation?: ActiveEffect.Database.DeleteOperation): Promise<this | undefined>;
 
-  // `ActiveEffect`s are neither world documents nor compendium documents, so this always returns `null`.
-  static override get(documentId: string, operation?: BaseActiveEffect.Database.GetDocumentsOperation): null;
+  static override get(
+    documentId: string,
+    options?: ActiveEffect.Database.GetOptions,
+  ): ActiveEffect.Implementation | null;
 
-  // `ActiveEffect`s have no embedded collections, so this always returns `null`.
   static override getCollectionName(name: string): null;
 
-  override getFlag<Scope extends BaseActiveEffect.Flags.Scope, Key extends BaseActiveEffect.Flags.Key<Scope>>(
+  // Same as Document for now
+  override traverseEmbeddedDocuments(
+    _parentPath?: string,
+  ): Generator<[string, Document.AnyChild<this>], void, undefined>;
+
+  override getFlag<Scope extends ActiveEffect.Flags.Scope, Key extends ActiveEffect.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): BaseActiveEffect.Flags.Get<Scope, Key>;
+  ): Document.GetFlag<ActiveEffect.Name, Scope, Key>;
 
   override setFlag<
-    Scope extends BaseActiveEffect.Flags.Scope,
-    Key extends BaseActiveEffect.Flags.Key<Scope>,
-    Value extends BaseActiveEffect.Flags.Get<Scope, Key>,
-  >(scope: Scope, key: Key, value: Value): Promise<this | undefined>;
+    Scope extends ActiveEffect.Flags.Scope,
+    Key extends ActiveEffect.Flags.Key<Scope>,
+    Value extends Document.GetFlag<ActiveEffect.Name, Scope, Key>,
+  >(scope: Scope, key: Key, value: Value): Promise<this>;
 
-  override unsetFlag<Scope extends BaseActiveEffect.Flags.Scope, Key extends BaseActiveEffect.Flags.Key<Scope>>(
+  override unsetFlag<Scope extends ActiveEffect.Flags.Scope, Key extends ActiveEffect.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): Promise<this | undefined>;
+  ): Promise<this>;
 
   protected override _onCreate(
-    data: BaseActiveEffect.CreateData,
-    options: BaseActiveEffect.Database.OnCreateOptions,
+    data: ActiveEffect.CreateData,
+    options: ActiveEffect.Database.OnCreateOperation,
     userId: string,
   ): void;
 
   protected static override _preCreateOperation(
     documents: ActiveEffect.Implementation[],
-    operation: BaseActiveEffect.Database.PreCreateOperation,
-    user: User.Stored,
+    operation: Document.Database.PreCreateOperationStatic<ActiveEffect.Database.Create>,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected static override _onCreateOperation(
-    documents: ActiveEffect.Stored[],
-    operation: BaseActiveEffect.Database.OnCreateOperation,
-    user: User.Stored,
+    documents: ActiveEffect.Implementation[],
+    operation: ActiveEffect.Database.Create,
+    user: User.Implementation,
   ): Promise<void>;
 
   protected override _preUpdate(
-    changed: BaseActiveEffect.UpdateData,
-    options: BaseActiveEffect.Database.PreUpdateOptions,
-    user: User.Stored,
+    changed: ActiveEffect.UpdateData,
+    options: ActiveEffect.Database.PreUpdateOptions,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected override _onUpdate(
-    changed: BaseActiveEffect.UpdateData,
-    options: BaseActiveEffect.Database.OnUpdateOptions,
+    changed: ActiveEffect.UpdateData,
+    options: ActiveEffect.Database.OnUpdateOperation,
     userId: string,
   ): void;
 
   protected static override _preUpdateOperation(
-    documents: ActiveEffect.Stored[],
-    operation: BaseActiveEffect.Database.PreUpdateOperation,
-    user: User.Stored,
+    documents: ActiveEffect.Implementation[],
+    operation: ActiveEffect.Database.Update,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected static override _onUpdateOperation(
-    documents: ActiveEffect.Stored[],
-    operation: BaseActiveEffect.Database.OnUpdateOperation,
-    user: User.Stored,
+    documents: ActiveEffect.Implementation[],
+    operation: ActiveEffect.Database.Update,
+    user: User.Implementation,
   ): Promise<void>;
 
   protected override _preDelete(
-    options: BaseActiveEffect.Database.PreDeleteOptions,
-    user: User.Stored,
+    options: ActiveEffect.Database.PreDeleteOptions,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
-  protected override _onDelete(options: BaseActiveEffect.Database.OnDeleteOptions, userId: string): void;
+  protected override _onDelete(options: ActiveEffect.Database.OnDeleteOperation, userId: string): void;
 
   protected static override _preDeleteOperation(
-    documents: ActiveEffect.Stored[],
-    operation: BaseActiveEffect.Database.PreDeleteOperation,
-    user: User.Stored,
+    documents: ActiveEffect.Implementation[],
+    operation: ActiveEffect.Database.Delete,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected static override _onDeleteOperation(
-    documents: ActiveEffect.Stored[],
-    operation: BaseActiveEffect.Database.OnDeleteOperation,
-    user: User.Stored,
+    documents: ActiveEffect.Implementation[],
+    operation: ActiveEffect.Database.Delete,
+    user: User.Implementation,
+  ): Promise<void>;
+
+  // These data field things have been ticketed but will probably go into backlog hell for a while.
+  // We'll end up copy and pasting without modification for now I think. It makes it a tiny bit easier to update though.
+
+  // options: not null (parameter default only in _addDataFieldShim)
+  protected static override _addDataFieldShims(
+    data: AnyMutableObject,
+    shims: Record<string, string>,
+    options?: Document.DataFieldShimOptions,
+  ): void;
+
+  // options: not null (parameter default only)
+  protected static override _addDataFieldShim(
+    data: AnyMutableObject,
+    oldKey: string,
+    newKey: string,
+    options?: Document.DataFieldShimOptions,
+  ): void;
+
+  protected static override _addDataFieldMigration(
+    data: AnyMutableObject,
+    oldKey: string,
+    newKey: string,
+    apply?: ((data: AnyMutableObject) => unknown) | null,
+  ): boolean;
+
+  // options: not null (destructured where forwarded)
+  protected static override _logDataFieldMigration(
+    oldKey: string,
+    newKey: string,
+    options?: LogCompatibilityWarningOptions,
+  ): void;
+
+  /**
+   * @deprecated since v12, will be removed in v14
+   * @remarks "The `Document._onCreateDocuments` static method is deprecated in favor of {@link Document._onCreateOperation | `Document._onCreateOperation`}"
+   */
+  protected static override _onCreateDocuments(
+    documents: ActiveEffect.Implementation[],
+    context: Document.ModificationContext<ActiveEffect.Parent>,
+  ): Promise<void>;
+
+  /**
+   * @deprecated since v12, will be removed in v14
+   * @remarks "The `Document._onUpdateDocuments` static method is deprecated in favor of {@link Document._onUpdateOperation | `Document._onUpdateOperation`}"
+   */
+  protected static override _onUpdateDocuments(
+    documents: ActiveEffect.Implementation[],
+    context: Document.ModificationContext<ActiveEffect.Parent>,
+  ): Promise<void>;
+
+  /**
+   * @deprecated since v12, will be removed in v14
+   * @remarks "The `Document._onDeleteDocuments` static method is deprecated in favor of {@link Document._onDeleteOperation | `Document._onDeleteOperation`}"
+   */
+  protected static override _onDeleteDocuments(
+    documents: ActiveEffect.Implementation[],
+    context: Document.ModificationContext<ActiveEffect.Parent>,
   ): Promise<void>;
 
   /* DataModel overrides */
 
-  static override _schema: SchemaField<BaseActiveEffect.Schema>;
+  protected static override _schema: SchemaField<ActiveEffect.Schema>;
 
-  static override get schema(): SchemaField<BaseActiveEffect.Schema>;
+  static override get schema(): SchemaField<ActiveEffect.Schema>;
 
-  static override validateJoint(data: BaseActiveEffect.Source): void;
+  static override validateJoint(data: ActiveEffect.Source): void;
 
+  // options: not null (parameter default only, destructured in super)
   static override fromSource(
-    source: BaseActiveEffect.CreateData,
+    source: ActiveEffect.CreateData,
     context?: DataModel.FromSourceOptions,
   ): ActiveEffect.Implementation;
 
@@ -255,37 +311,32 @@ declare abstract class BaseActiveEffect<
 export default BaseActiveEffect;
 
 declare namespace BaseActiveEffect {
-  // All types really live in the full document and are mirrored here for convenience
   export import Name = ActiveEffect.Name;
   export import ConstructionContext = ActiveEffect.ConstructionContext;
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
   export import ConstructorArgs = ActiveEffect.ConstructorArgs;
   export import Hierarchy = ActiveEffect.Hierarchy;
   export import Metadata = ActiveEffect.Metadata;
   export import SubType = ActiveEffect.SubType;
-  export import ConfiguredSubType = ActiveEffect.ConfiguredSubType;
+  export import ConfiguredSubTypes = ActiveEffect.ConfiguredSubTypes;
   export import Known = ActiveEffect.Known;
   export import OfType = ActiveEffect.OfType;
   export import SystemOfType = ActiveEffect.SystemOfType;
   export import Parent = ActiveEffect.Parent;
   export import Descendant = ActiveEffect.Descendant;
   export import DescendantClass = ActiveEffect.DescendantClass;
+  export import Pack = ActiveEffect.Pack;
   export import Embedded = ActiveEffect.Embedded;
   export import ParentCollectionName = ActiveEffect.ParentCollectionName;
   export import CollectionClass = ActiveEffect.CollectionClass;
   export import Collection = ActiveEffect.Collection;
   export import Invalid = ActiveEffect.Invalid;
+  export import Stored = ActiveEffect.Stored;
   export import Source = ActiveEffect.Source;
   export import CreateData = ActiveEffect.CreateData;
-  export import CreateInput = ActiveEffect.CreateInput;
-  export import CreateReturn = ActiveEffect.CreateReturn;
   export import InitializedData = ActiveEffect.InitializedData;
   export import UpdateData = ActiveEffect.UpdateData;
-  export import UpdateInput = ActiveEffect.UpdateInput;
   export import Schema = ActiveEffect.Schema;
-  export import Database = ActiveEffect.Database;
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  export import TemporaryIf = ActiveEffect.TemporaryIf;
+  export import DatabaseOperation = ActiveEffect.Database;
   export import Flags = ActiveEffect.Flags;
   export import CoreFlags = ActiveEffect.CoreFlags;
   export import DurationData = ActiveEffect.DurationData;

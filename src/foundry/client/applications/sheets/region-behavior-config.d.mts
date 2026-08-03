@@ -24,7 +24,7 @@ declare class RegionBehaviorConfig<
   Configuration,
   RenderOptions
 > {
-  constructor(options: DocumentSheetV2.InputOptions<Configuration>);
+  constructor(options: DeepPartial<Configuration> & { document: Document });
 
   static override DEFAULT_OPTIONS: DocumentSheetV2.DefaultOptions;
   static override PARTS: Record<string, HandlebarsApplicationMixin.HandlebarsTemplatePart>;
@@ -47,10 +47,12 @@ declare namespace RegionBehaviorConfig {
   interface AnyConstructor extends Identity<typeof AnyRegionBehaviorConfig> {}
 
   interface RenderContext
-    extends HandlebarsApplicationMixin.RenderContext, DocumentSheetV2.RenderContext<RegionBehavior.Implementation> {}
+    extends HandlebarsApplicationMixin.RenderContext,
+      DocumentSheetV2.RenderContext<RegionBehavior.Implementation> {}
 
   interface Configuration
-    extends HandlebarsApplicationMixin.Configuration, DocumentSheetV2.Configuration<RegionBehavior.Implementation> {}
+    extends HandlebarsApplicationMixin.Configuration,
+      DocumentSheetV2.Configuration<RegionBehavior.Implementation> {}
 
   interface RenderOptions extends HandlebarsApplicationMixin.RenderOptions, DocumentSheetV2.RenderOptions {}
 }

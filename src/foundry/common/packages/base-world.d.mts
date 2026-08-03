@@ -1,8 +1,6 @@
-import type { BasePackage } from "#common/packages/_module.d.mts";
-import type { DataModel } from "#common/abstract/_module.d.mts";
-import type { fields } from "#client/data/_module.d.mts";
-
-import World = foundry.packages.World;
+import type BasePackage from "./base-package.d.mts";
+import type { AnyMutableObject, InexactPartial } from "#utils";
+import type { ReleaseData } from "../config.d.mts";
 
 declare namespace BaseWorld {
   export import Source = World.Source;
@@ -10,8 +8,6 @@ declare namespace BaseWorld {
   export import InitializedData = World.InitializedData;
   export import UpdateData = World.UpdateData;
   export import Schema = World.Schema;
-  export import ManifestData = World.ManifestData;
-  export import TestAvailabilityOptions = World.TestAvailabilityOptions;
 }
 
 /**
@@ -19,16 +15,10 @@ declare namespace BaseWorld {
  * Extends the basic PackageData schema with some additional world-specific fields.
  */
 declare class BaseWorld extends BasePackage<BaseWorld.Schema> {
-  // fake type override
-  static override type: "world";
+  // TODO(LukeAbby): This override is unsound. Revisit.
+  // static defineSchema(): BaseWorld.Schema;
 
-  // fake type override
-  static override get collection(): `${typeof BaseWorld.type}s`;
-
-  // fake type override
-  override get type(): typeof BaseWorld.type;
-
-  static override defineSchema(): BaseWorld.Schema;
+  static type: "world";
 
   /**
    * The default icon used for this type of Package.
@@ -42,26 +32,41 @@ declare class BaseWorld extends BasePackage<BaseWorld.Schema> {
    * - Enforces `compatibility` being an object
    * - `compatibility.maximum === "1.0.0"` to `undefined`
    * - If `coreVersion` but no `compatibility.verified`, sets both `compatibility.verified` and `.minimum` to `coreVersion`
-   * - Sets `background` to `null` if it's a `string` that doesn't end in a {@linkcode CONST.FILE_CATEGORIES.IMAGE} extension.
    */
-  static override migrateData(data: object): object;
+  static migrateData(data: AnyMutableObject): AnyMutableObject;
 
-  static override testAvailability(
-    data: BaseWorld.ManifestData | BaseWorld,
-    options: BaseWorld.TestAvailabilityOptions,
-  ): CONST.PACKAGE_AVAILABILITY_CODES;
+  static testAvailability(
+    data: InexactPartial<PackageManifestData>,
+    options: InexactPartial<{
+      /**
+       * A specific software release for which to test availability.
+       * Tests against the current release by default.
+       */
+      release: ReleaseData;
 
-  /* DataModel overrides */
+      /**
+       * A specific collection of modules to test availability
+       * against. Tests against the currently installed modules by
+       * default.
+       */
+      modules: Collection<foundry.packages.Module>;
 
-  static override _schema: fields.SchemaField<BaseWorld.Schema>;
+      /**
+       * A specific collection of modules to test availability
+       * against. Tests against the currently installed modules by
+       * default.
+       */
+      systems: Collection<foundry.packages.System>;
 
-  static override get schema(): fields.SchemaField<BaseWorld.Schema>;
-
-  static override validateJoint(data: BaseWorld.Source): void;
-
-  static override fromSource(source: BaseWorld.ManifestData, context?: DataModel.FromSourceOptions): BaseWorld;
-
-  static override fromJSON(json: string): BaseWorld;
+      /**
+       * Ignore the world's own core software compatibility and
+       * instead defer entirely to the system's core software
+       * compatibility, if the world's availability is less than
+       * this.
+       */
+      systemAvailabilityThreshold: foundry.CONST.PACKAGE_AVAILABILITY_CODES;
+    }>,
+  ): foundry.CONST.PACKAGE_AVAILABILITY_CODES;
 }
 
 export default BaseWorld;

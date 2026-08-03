@@ -1,4 +1,4 @@
-import type { EmptyObject, AnyObject, DeepPartial, Identity, FixedInstanceType } from "#utils";
+import type { EmptyObject, AnyObject, DeepPartial, Identity } from "#utils";
 import type ApplicationV2 from "../api/application.d.mts";
 import type HandlebarsApplicationMixin from "../api/handlebars-application.d.mts";
 import type { FormSelectOption } from "../forms/fields.d.mts";
@@ -6,7 +6,7 @@ import type { FormSelectOption } from "../forms/fields.d.mts";
 declare module "#configuration" {
   namespace Hooks {
     interface ApplicationV2Config {
-      FilePicker: FilePicker.Implementation;
+      FilePicker: FilePicker.Any;
     }
   }
 }
@@ -20,9 +20,6 @@ declare class FilePicker<
   Configuration extends FilePicker.Configuration = FilePicker.Configuration,
   RenderOptions extends FilePicker.RenderOptions = FilePicker.RenderOptions,
 > extends HandlebarsApplicationMixin(ApplicationV2)<RenderContext, Configuration, RenderOptions> {
-  // Fake override.
-  static override DEFAULT_OPTIONS: FilePicker.DefaultOptions;
-
   /**
    * The full requested path given by the user
    * @defaultValue `""`
@@ -149,6 +146,7 @@ declare class FilePicker<
    * @param options - Optional arguments
    *                  (default: `{}`)
    */
+  // not: null
   static browse(source: string, target: string, options?: FilePicker.BrowseOptions): Promise<FilePicker.BrowseReturn>;
 
   /**
@@ -158,6 +156,7 @@ declare class FilePicker<
    * @param options - Optional arguments modifying the request
    *                  (default: `{}`)
    */
+  // not: null
   static configurePath(
     source: string,
     target: string,
@@ -172,6 +171,7 @@ declare class FilePicker<
    *                  (default: `{}`)
    * @returns The full file path of the created directory
    */
+  // not: null
   static createDirectory(source: string, target: string, options?: FilePicker.BrowseOptions): Promise<string>;
 
   /**
@@ -214,6 +214,7 @@ declare class FilePicker<
    * @param options - Browsing options
    *                  (default: `{}`)
    */
+  // not: null
   browse(target?: string, options?: FilePicker.BrowseOptions): Promise<this>;
 
   // Render is overridden for no signature change but omitted here to simplify the deprecation
@@ -253,24 +254,14 @@ declare class FilePicker<
 
   /**
    * Retrieve the configured FilePicker implementation.
+   * @privateRemarks TODO: Config.ux handling
    */
-  static get implementation(): FilePicker.ImplementationClass;
+  static get implementation(): typeof FilePicker;
 }
 
 declare namespace FilePicker {
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
-  type Any = Internal.Any;
-
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyFilePicker {}
-    interface AnyConstructor extends Identity<typeof AnyFilePicker> {}
-  }
-
-  interface ImplementationClass extends Identity<typeof CONFIG.ux.FilePicker> {}
-  interface Implementation extends FixedInstanceType<ImplementationClass> {}
+  interface Any extends AnyFilePicker {}
+  interface AnyConstructor extends Identity<typeof AnyFilePicker> {}
 
   /**
    * @remarks {@linkcode FilePicker.upload} (and {@linkcode FilePicker.uploadPersistent}, which returns a call to the former)
@@ -309,7 +300,7 @@ declare namespace FilePicker {
     sources: Sources;
     target: string;
     tileSize: number | null;
-    user: User.Stored;
+    user: User.Implementation;
     favorites: Record<string, FilePicker.FavoriteFolder>;
     buttons: ApplicationV2.FormFooterButton[];
   }
@@ -326,8 +317,7 @@ declare namespace FilePicker {
     img: string;
   }
 
-  interface Configuration<FilePicker extends FilePicker.Internal.Any = FilePicker.Implementation>
-    extends HandlebarsApplicationMixin.Configuration, ApplicationV2.Configuration<FilePicker> {
+  interface Configuration extends HandlebarsApplicationMixin.Configuration, ApplicationV2.Configuration {
     /**
      * A type of file to target.
      * @defaultValue `"any"`
@@ -373,13 +363,6 @@ declare namespace FilePicker {
     /** Redirect to the root directory rather than starting in the source directory of one of these files. */
     redirectToRoot?: string[] | null | undefined;
   }
-
-  // Note(LukeAbby): This `& object` is so that the `DEFAULT_OPTIONS` can be overridden more easily
-  // Without it then `static override DEFAULT_OPTIONS = { unrelatedProp: 123 }` would error.
-  type DefaultOptions<FilePicker extends FilePicker.Internal.Any = FilePicker.Implementation> = DeepPartial<
-    Configuration<FilePicker>
-  > &
-    object;
 
   interface RenderOptions extends HandlebarsApplicationMixin.RenderOptions, ApplicationV2.RenderOptions {}
 

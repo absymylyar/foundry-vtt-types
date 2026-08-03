@@ -1,21 +1,14 @@
 import type { Identity } from "#utils";
 import type Document from "#common/abstract/document.d.mts";
-import type { WorldCollection } from "#client/documents/abstract/_module.d.mts";
-import type { Application } from "#client/appv1/api/_module.d.mts";
-import type { DocumentSheetV2 } from "#client/applications/api/_module.d.mts";
-import type { DocumentSheetConfig } from "#client/applications/apps/_module.d.mts";
 
 /**
  * The Collection of Setting documents which exist within the active World.
- * This collection is accessible as {@linkcode foundry.helpers.ClientSettings.storage | game.settings.storage}`.get("world")`
+ * This collection is accessible as game.settings.storage.get("world")
  *
- * @see {@linkcode foundry.documents.Setting} The Setting document
+ * @see {@linkcode Setting} The Setting document
  */
-declare class WorldSettings extends WorldCollection<"Setting"> {
-  static override documentName: "Setting";
-
-  /** @privateRemarks Fake type override */
-  static override get instance(): WorldSettings.Implementation;
+declare class WorldSettings extends foundry.documents.abstract.WorldCollection<"Setting", "WorldSettings"> {
+  static documentName: "Setting";
 
   override get directory(): null;
 
@@ -25,7 +18,7 @@ declare class WorldSettings extends WorldCollection<"Setting"> {
    * @param user - For user-scoped settings, the user ID. (default `null`)
    * @returns The Setting.
    */
-  getSetting(key: string, user?: string | null): Setting.Stored | undefined;
+  getSetting(key: string, user?: string | null): ReturnType<this["find"]>;
 
   /**
    * Return the serialized value of the world setting as a string
@@ -33,50 +26,15 @@ declare class WorldSettings extends WorldCollection<"Setting"> {
    * @param user - For user-scoped settings, the user ID.
    * @returns The serialized setting string
    */
-  getItem(key: string, user?: string | null): string | null;
-
-  // Fake override for the purpose of typing `options`.
-  static override registerSheet(
-    scope: string,
-    sheetClass: Application.AnyConstructor | DocumentSheetV2.AnyConstructor,
-    options?: DocumentSheetConfig.RegisterSheetOptions<Setting.ImplementationClass>,
-  ): void;
-
-  // Fake override for the purpose of typing `options`.
-  static override unregisterSheet(
-    scope: string,
-    sheetClass: Application.AnyConstructor | DocumentSheetV2.AnyConstructor,
-    options?: DocumentSheetConfig.UnregisterSheetOptions<Setting.ImplementationClass>,
-  ): void;
+  getItem(key: string, user?: string): string | null;
 }
 
 declare namespace WorldSettings {
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode WorldSettings.Implementation} instead. This will be removed in v15.
-   */
-  type Any = Internal.Any;
+  interface Any extends AnyWorldSettings {}
+  interface AnyConstructor extends Identity<typeof AnyWorldSettings> {}
 
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode WorldSettings.ImplementationClass} instead. This will be removed in v15.
-   */
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyWorldSettings {}
-    interface AnyConstructor extends Identity<typeof AnyWorldSettings> {}
-  }
-
-  interface ImplementationClass extends Document.Internal.ConfiguredCollectionClass<"Setting"> {}
-  interface Implementation extends Document.Internal.ConfiguredCollection<"Setting"> {}
-
-  /** @deprecated Replaced by {@linkcode WorldSettings.ImplementationClass}. Will be removed in v15. */
-  type ConfiguredClass = ImplementationClass;
-
-  /** @deprecated Replaced by {@linkcode WorldSettings.Implementation}. Will be removed in v15. */
-  type Configured = Implementation;
+  interface ConfiguredClass extends Document.ConfiguredCollectionClass<"Setting"> {}
+  interface Configured extends Document.ConfiguredCollection<"Setting"> {}
 }
 
 declare abstract class AnyWorldSettings extends WorldSettings {

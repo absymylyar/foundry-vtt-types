@@ -119,7 +119,7 @@ declare class StringNode {
 
 declare namespace StringNode {
   /** @internal */
-  interface _ToStringOptions {
+  type _ToStringOptions = InexactPartial<{
     /**
      * @internal
      * @defaultValue `0`
@@ -131,9 +131,9 @@ declare namespace StringNode {
      * @defaultValue `false`
      */
     _inlineParent: boolean;
-  }
+  }>;
 
-  interface ToStringOptions extends InexactPartial<_ToStringOptions> {}
+  interface ToStringOptions extends _ToStringOptions {}
 }
 
 export { StringSerializer as default, StringNode };

@@ -27,7 +27,7 @@ declare class CompendiumArtConfig<
   // placeholder private member to help subclassing
   #compendiumArtConfig: true;
 
-  static override DEFAULT_OPTIONS: CompendiumArtConfig.DefaultOptions;
+  static override DEFAULT_OPTIONS: Partial<CompendiumArtConfig.Configuration>;
   static override PARTS: CompendiumArtConfigParts;
 
   /* -------------------------------------------- */
@@ -50,16 +50,7 @@ declare namespace CompendiumArtConfig {
     buttons: ApplicationV2.FormFooterButton[];
   }
 
-  interface Configuration<CompendiumArtConfig extends CompendiumArtConfig.Any = CompendiumArtConfig.Any>
-    extends HandlebarsApplicationMixin.Configuration, ApplicationV2.Configuration<CompendiumArtConfig> {}
-
-  // Note(LukeAbby): This `& object` is so that the `DEFAULT_OPTIONS` can be overridden more easily
-  // Without it then `static override DEFAULT_OPTIONS = { unrelatedProp: 123 }` would error.
-  type DefaultOptions<CompendiumArtConfig extends CompendiumArtConfig.Any = CompendiumArtConfig.Any> = DeepPartial<
-    Configuration<CompendiumArtConfig>
-  > &
-    object;
-
+  interface Configuration extends HandlebarsApplicationMixin.Configuration, ApplicationV2.Configuration {}
   interface RenderOptions extends HandlebarsApplicationMixin.RenderOptions, ApplicationV2.RenderOptions {}
 
   interface Parts {

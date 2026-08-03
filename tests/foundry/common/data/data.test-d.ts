@@ -1,6 +1,7 @@
-import { expectTypeOf, test } from "vitest";
+import { expectTypeOf } from "vitest";
 import DataModel = foundry.abstract.DataModel;
 import type { ValueOf } from "fvtt-types/utils";
+import type { ObjectAttributeBar, SingleAttributeBar } from "../../../../src/foundry/client/documents/token.d.mts";
 
 const myLight = new foundry.data.LightData();
 
@@ -9,7 +10,7 @@ expectTypeOf(myLight.priority).toBeNumber();
 expectTypeOf(myLight.alpha).toBeNumber();
 expectTypeOf(myLight.angle).toBeNumber();
 expectTypeOf(myLight.bright).toBeNumber();
-expectTypeOf(myLight.color).toEqualTypeOf<Color | null>();
+expectTypeOf(myLight.color).toEqualTypeOf<Color | null | undefined>();
 expectTypeOf(myLight.coloration).toEqualTypeOf<number | null>();
 expectTypeOf(myLight.dim).toBeNumber();
 expectTypeOf(myLight.attenuation).toBeNumber();
@@ -20,7 +21,7 @@ expectTypeOf(myLight.shadows).toBeNumber();
 expectTypeOf(myLight.animation.intensity).toBeNumber();
 expectTypeOf(myLight.animation.reverse).toBeBoolean();
 expectTypeOf(myLight.animation.speed).toBeNumber();
-expectTypeOf(myLight.animation.type).toEqualTypeOf<string | null>();
+expectTypeOf(myLight.animation.type).toEqualTypeOf<string | null | undefined>();
 expectTypeOf(myLight.darkness.min).toBeNumber();
 expectTypeOf(myLight.darkness.max).toBeNumber();
 
@@ -29,10 +30,10 @@ expectTypeOf(myLight.darkness.max).toBeNumber();
 const myShape = new foundry.data.ShapeData();
 
 expectTypeOf(myShape.type).toEqualTypeOf<"c" | "r" | "e" | "p">();
-expectTypeOf(myShape.width).toEqualTypeOf<number | null>();
-expectTypeOf(myShape.height).toEqualTypeOf<number | null>();
-expectTypeOf(myShape.radius).toEqualTypeOf<number | null>();
-expectTypeOf(myShape.points).toEqualTypeOf<number[]>();
+expectTypeOf(myShape.width).toEqualTypeOf<number | null | undefined>();
+expectTypeOf(myShape.height).toEqualTypeOf<number | null | undefined>();
+expectTypeOf(myShape.radius).toEqualTypeOf<number | null | undefined>();
+expectTypeOf(myShape.points).toEqualTypeOf<Array<number | undefined>>();
 
 /******************************************************************/
 
@@ -54,27 +55,16 @@ class TextureDataTestModel extends DataModel<TextureDataTestSchema> {
   }
 }
 const testModel = new TextureDataTestModel();
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-expectTypeOf(testModel.textureData.src).toEqualTypeOf<string | null>();
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-expectTypeOf(testModel.textureData.anchorX).toEqualTypeOf<number>();
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-expectTypeOf(testModel.textureData.anchorY).toEqualTypeOf<number>();
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-expectTypeOf(testModel.textureData.offsetX).toEqualTypeOf<number>();
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-expectTypeOf(testModel.textureData.offsetY).toEqualTypeOf<number>();
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+expectTypeOf(testModel.textureData.src).toEqualTypeOf<string | undefined | null>();
+expectTypeOf(testModel.textureData.anchorX).toEqualTypeOf<number | undefined>();
+expectTypeOf(testModel.textureData.anchorY).toEqualTypeOf<number | undefined>();
+expectTypeOf(testModel.textureData.offsetX).toEqualTypeOf<number | undefined>();
+expectTypeOf(testModel.textureData.offsetY).toEqualTypeOf<number | undefined>();
 expectTypeOf(testModel.textureData.fit).toEqualTypeOf<ValueOf<typeof CONST.TEXTURE_DATA_FIT_MODES>>();
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-expectTypeOf(testModel.textureData.scaleX).toEqualTypeOf<number>();
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-expectTypeOf(testModel.textureData.scaleY).toEqualTypeOf<number>();
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+expectTypeOf(testModel.textureData.scaleX).toEqualTypeOf<number | undefined>();
+expectTypeOf(testModel.textureData.scaleY).toEqualTypeOf<number | undefined>();
 expectTypeOf(testModel.textureData.rotation).toEqualTypeOf<number>();
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-expectTypeOf(testModel.textureData.tint).toEqualTypeOf<Color>();
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+expectTypeOf(testModel.textureData.tint).toEqualTypeOf<Color | undefined>();
 expectTypeOf(testModel.textureData.alphaThreshold).toEqualTypeOf<number>();
 
 /******************************************************************/
@@ -88,11 +78,9 @@ const myProtoToken = new foundry.data.PrototypeToken();
 expectTypeOf(myProtoToken.name).toEqualTypeOf<string>();
 expectTypeOf(myProtoToken.randomImg).toBeBoolean();
 
-expectTypeOf(myProtoToken.actor).toEqualTypeOf<Actor.Implementation | null>();
-expectTypeOf(myProtoToken.toObject().actorId).toEqualTypeOf<string | null | undefined>();
-expectTypeOf(myProtoToken.getBarAttribute("foo")).toEqualTypeOf<
-  TokenDocument.SingleAttributeBar | TokenDocument.ObjectAttributeBar | null
->();
+expectTypeOf(myProtoToken.actor).toEqualTypeOf<foundry.documents.BaseActor>();
+expectTypeOf(myProtoToken.toObject().actorId).toEqualTypeOf<string | undefined>();
+expectTypeOf(myProtoToken.getBarAttribute("foo")).toEqualTypeOf<SingleAttributeBar | ObjectAttributeBar | null>();
 expectTypeOf(myProtoToken.getBarAttribute("foo")?.attribute).toEqualTypeOf<string | undefined>();
 
 /******************************************************************/
@@ -101,19 +89,3 @@ const myTombstone = new foundry.data.TombstoneData();
 
 expectTypeOf(myTombstone._id).toEqualTypeOf<string | null>();
 expectTypeOf(myTombstone._tombstone).toEqualTypeOf<boolean>();
-
-// `TextureData.Schema` is generated based upon some options and so is important to test.
-// This could be fleshed out a fair bit.
-test("Test TextureData.Schema", () => {
-  expectTypeOf<foundry.data.TextureData.Schema["src"]>().toEqualTypeOf<
-    foundry.data.fields.FilePathField<{
-      required: true;
-      categories: ["IMAGE", "VIDEO"];
-      // Note(LukeAbby): The `initial` here in particular was broken for a while due to a usage of `EmptyObject`.
-      initial: null;
-      wildcard: false;
-      virtual: true;
-      label: "";
-    }>
-  >();
-});

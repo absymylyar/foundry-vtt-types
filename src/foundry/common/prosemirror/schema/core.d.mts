@@ -11,5 +11,3 @@ export declare const heading: NodeSpec;
 export declare const pre: NodeSpec;
 
 export declare const br: NodeSpec;
-
-export declare const icon: NodeSpec;

@@ -7,11 +7,17 @@ import type { Document } from "#common/abstract/_module.d.mts";
  * Note that this works well for languages with alphabets (latin, cyrillic, korean, etc.), but may need more nuanced
  * handling for languages that compose characters and letters.
  */
-declare class WordTree<DocumentName extends Document.Type, Key extends Iterable<string> = string[]> extends StringTree<
+declare class WordTree<DocumentName extends Document.Type, Key = string> extends StringTree<
   WordTree.Entry<DocumentName>,
   Key
 > {
-  override addLeaf(key: Key, entry: WordTree.Entry<DocumentName>): WordTree.EntryNode<DocumentName>;
+  /**
+   * Insert an entry into the tree.
+   * @param string - The string key for the entry.
+   * @param entry - The entry to store.
+   * @returns The node the entry was added to.
+   */
+  addLeaf(key: Key, entry: WordTree.Entry<DocumentName>): WordTree.EntryNode<DocumentName>;
 
   /**
    * Return entries that match the given string prefix.
@@ -19,7 +25,7 @@ declare class WordTree<DocumentName extends Document.Type, Key extends Iterable<
    * @param options - Additional options to configure behaviour.
    * @returns A number of entries that have the given prefix.
    */
-  override lookup(prefix: Key, options?: WordTree.LookupOptions<DocumentName>): WordTree.Entry<DocumentName>[];
+  lookup(prefix: Key, options?: WordTree.LookupOptions<DocumentName>): WordTree.Entry<DocumentName>[];
 
   /**
    * Returns the node at the given prefix.
@@ -27,7 +33,7 @@ declare class WordTree<DocumentName extends Document.Type, Key extends Iterable<
    * @returns The node
    * @remarks Calls super with no way to provide options, meaning `undefined` is never allow
    */
-  override nodeAtPrefix(prefix: Key): WordTree.EntryNode<DocumentName> | undefined;
+  nodeAtPrefix(prefix: Key): WordTree.EntryNode<DocumentName> | undefined;
 }
 
 declare namespace WordTree {
@@ -35,17 +41,18 @@ declare namespace WordTree {
   interface AnyConstructor extends Identity<typeof AnyWordTree> {}
 
   /** @internal */
-  interface _LookupOptions {
+  type _LookupOptions = InexactPartial<{
     /**
      * The maximum number of items to retrieve. It is important to set this value
      * as very short prefixes will naturally match large numbers of entries.
      * @defaultValue `10`
      */
     limit: number;
-  }
+  }>;
 
   interface LookupOptions<DocumentName extends Document.Type>
-    extends Omit<StringTree.LookupOptions<Entry<DocumentName>>, "limit">, InexactPartial<_LookupOptions> {}
+    extends Omit<StringTree.LookupOptions<Entry<DocumentName>>, "limit">,
+      _LookupOptions {}
 
   /**
    * A leaf entry in the tree.

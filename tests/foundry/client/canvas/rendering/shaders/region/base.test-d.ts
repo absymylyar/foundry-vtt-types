@@ -1,6 +1,5 @@
 import { expectTypeOf } from "vitest";
-
-import RegionShader = foundry.canvas.rendering.shaders.RegionShader;
+import { RegionShader } from "#client/canvas/rendering/shaders/_module.mjs";
 
 const myRS = RegionShader.create();
 expectTypeOf(myRS).toEqualTypeOf<RegionShader>();

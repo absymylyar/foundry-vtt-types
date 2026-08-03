@@ -1,7 +1,5 @@
 import { expectTypeOf } from "vitest";
-
-import AbstractWeatherShader = foundry.canvas.rendering.shaders.AbstractWeatherShader;
-import AbstractBaseShader = foundry.canvas.rendering.shaders.AbstractBaseShader;
+import { AbstractBaseShader, AbstractWeatherShader } from "#client/canvas/rendering/shaders/_module.mjs";
 
 declare class MyWeatherShader extends AbstractWeatherShader<{
   foo: number;

@@ -3,15 +3,7 @@ import type { InterfaceToObject } from "fvtt-types/utils";
 import BaseMeasuredTemplate = foundry.documents.BaseMeasuredTemplate;
 import Document = foundry.abstract.Document;
 
-class TestBaseMeasuredTemplate extends BaseMeasuredTemplate {
-  get compendium() {
-    return this.inCompendium
-      ? (game.packs!.get(
-          this.pack!,
-        ) as foundry.documents.collections.CompendiumCollection.ForDocument<"MeasuredTemplate">)
-      : null;
-  }
-}
+class TestBaseMeasuredTemplate extends BaseMeasuredTemplate {}
 
 // MeasuredTemplate has no hard required fields for construction
 new TestBaseMeasuredTemplate();
@@ -21,7 +13,6 @@ new TestBaseMeasuredTemplate({});
 new TestBaseMeasuredTemplate({
   _id: "XXXXXSomeIDXXXXX",
   author: "YYYYYSomeIDYYYYY",
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
   t: CONST.MEASURED_TEMPLATE_TYPES.RAY,
   x: 1230,
   y: 340,
@@ -80,8 +71,7 @@ const myTemplate = new TestBaseMeasuredTemplate({
 expectTypeOf(myTemplate).toEqualTypeOf<TestBaseMeasuredTemplate>();
 
 expectTypeOf(myTemplate._id).toEqualTypeOf<string | null>();
-expectTypeOf(myTemplate.author).toEqualTypeOf<User.Stored | null>();
-// eslint-disable-next-line @typescript-eslint/no-deprecated
+expectTypeOf(myTemplate.author).toEqualTypeOf<User.Implementation | null>();
 expectTypeOf(myTemplate.t).toEqualTypeOf<CONST.MEASURED_TEMPLATE_TYPES>();
 expectTypeOf(myTemplate.x).toBeNumber();
 expectTypeOf(myTemplate.y).toBeNumber();
@@ -90,12 +80,14 @@ expectTypeOf(myTemplate.sort).toBeNumber();
 expectTypeOf(myTemplate.distance).toBeNumber();
 expectTypeOf(myTemplate.direction).toBeNumber();
 expectTypeOf(myTemplate.width).toBeNumber();
-expectTypeOf(myTemplate.texture).toEqualTypeOf<string | null>();
+expectTypeOf(myTemplate.texture).toEqualTypeOf<string | null | undefined>();
 expectTypeOf(myTemplate.hidden).toBeBoolean();
 expectTypeOf(myTemplate.flags).toEqualTypeOf<InterfaceToObject<Document.CoreFlags>>();
-expectTypeOf(myTemplate.borderColor).toEqualTypeOf<Color>();
-expectTypeOf(myTemplate.fillColor).toEqualTypeOf<Color>();
+
+// The following fields can't really be `undefined` because they have `initial`s, see https://github.com/League-of-Foundry-Developers/foundry-vtt-types/issues/3055
+expectTypeOf(myTemplate.borderColor).toEqualTypeOf<Color | undefined>();
+expectTypeOf(myTemplate.fillColor).toEqualTypeOf<Color | undefined>();
 
 // non-schema
 // eslint-disable-next-line @typescript-eslint/no-deprecated
-expectTypeOf(myTemplate.user).toEqualTypeOf<User.Stored | null>();
+expectTypeOf(myTemplate.user).toEqualTypeOf<User.Implementation | null>();

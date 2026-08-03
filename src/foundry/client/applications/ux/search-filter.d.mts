@@ -21,7 +21,6 @@ declare class SearchFilter {
 
   /**
    * The allowed Filter Operators which can be used to define a search filter
-   * @remarks Value is `Object.freeze`n
    */
   static OPERATORS: Readonly<SearchFilter.Operators>;
 
@@ -95,8 +94,6 @@ declare namespace SearchFilter {
     IS_EMPTY: "is_empty";
   }
 
-  type OPERATOR = ValueOf<Operators>;
-
   /** Options which customize the behavior of the filter */
   interface Configuration {
     /**
@@ -133,10 +130,9 @@ declare namespace SearchFilter {
 
     /**
      * The search operator, from CONST.OPERATORS
-     * @defaultValue {@linkcode SearchFilter.OPERATORS.EQUALS}
-     * @remarks `CONST.OPERATORS` isn't a thing, the description probably means {@linkcode SearchFilter.OPERATORS}
+     * @defaultValue `SearchFilter.OPERATORS.EQUALS`
      */
-    operator?: OPERATOR | undefined;
+    operator?: ValueOf<typeof SearchFilter.OPERATORS> | undefined;
 
     /**
      * Negate the filter, returning results which do NOT match the filter criteria

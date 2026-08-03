@@ -1,46 +1,30 @@
-import type { Identity } from "#utils";
-import type { DocumentCollection } from "#client/documents/abstract/_module.d.mts";
-import type { CompendiumCollection } from "#client/documents/collections/_module.d.mts";
-import type { Document } from "#common/abstract/_module.d.mts";
-
 /**
  * A Collection of Folder documents within a Compendium pack.
  */
-// TODO: find a way to allow specifying that this can contain `Folder.Stored<DocumentName>`s only
-declare class CompendiumFolderCollection<
-  DocumentName extends CompendiumCollection.DocumentName,
-> extends DocumentCollection<"Folder"> {
-  constructor(pack: CompendiumCollection<DocumentName>, data?: Folder.CreateData[]);
+declare class CompendiumFolderCollection extends foundry.documents.abstract.DocumentCollection<"Folder"> {
+  constructor(pack: foundry.documents.collections.CompendiumPacks, data: Folder.Source[]);
 
-  pack: CompendiumCollection<DocumentName>;
+  pack: foundry.documents.collections.CompendiumPacks;
 
   get documentName(): "Folder";
 
-  /** @remarks Forwards to {@linkcode CompendiumCollection.render | this.pack.render} */
-  override render(force?: boolean, options?: DocumentCollection.RenderOptions): void;
-
-  override updateAll(
-    transformation: DocumentCollection.Transformation<"Folder">,
-    condition?: ((doc: Folder.Stored<DocumentName>) => boolean) | null,
-    options?: DocumentCollection.UpdateAllOperation<"Folder">,
-  ): Promise<Folder.Stored[]>;
-
-  override _onModifyContents<Action extends Document.Database.OperationAction>(
-    action: Action,
-    documents: Folder.Stored<DocumentName>[],
-    result: Collection.OnModifyContentsResult<"Folder", Action>,
-    operation: Collection.OnModifyContentsOperation<"Folder", Action>,
-    user: User.Stored,
+  override render(
+    force?: boolean,
+    options?: foundry.appv1.api.Application.Options | foundry.applications.api.ApplicationV2.RenderOptions,
   ): void;
-}
 
-declare namespace CompendiumFolderCollection {
-  interface Any extends AnyCompendiumFolderCollection {}
-  interface AnyConstructor extends Identity<typeof AnyCompendiumFolderCollection> {}
+  /**
+   * @privateRemarks Possible this causes depth issues, this is just a small extension in the code with no meaningful transformations
+   */
+  // updateAll(
+  //   transformation:
+  //     | DeepPartial<Folder["_source"]>
+  //     | ((doc: foundry.abstract.Folder.Stored) => DeepPartial<Folder["_source"]>),
+  //   condition?: ((obj: foundry.abstract.Folder.Stored) => boolean) | null,
+  //   options?: foundry.abstract.Document.OnUpdateOptions<"Folder">,
+  // ): Promise<Folder.Implementation[]>;
+
+  // Note(LukeAbby): The override for `_onModifyContents` becomes unreasonably long and doesn't add any changes and so has been omitted.
 }
 
 export default CompendiumFolderCollection;
-
-declare abstract class AnyCompendiumFolderCollection extends CompendiumFolderCollection<CompendiumCollection.DocumentName> {
-  constructor(...args: never);
-}

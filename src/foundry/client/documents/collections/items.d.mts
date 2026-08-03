@@ -1,68 +1,27 @@
 import type { Identity } from "#utils";
 import type Document from "#common/abstract/document.d.mts";
-import type { WorldCollection } from "#client/documents/abstract/_module.d.mts";
-import type { Application } from "#client/appv1/api/_module.d.mts";
-import type { DocumentSheetV2 } from "#client/applications/api/_module.d.mts";
-import type { DocumentSheetConfig } from "#client/applications/apps/_module.d.mts";
 
 /**
  * The singleton collection of Item documents which exist within the active World.
- * This Collection is accessible within the Game object as {@linkcode foundry.Game.items | game.items}.
+ * This Collection is accessible within the Game object as game.items.
  *
- * @see {@linkcode foundry.documents.Item}: The Item document
- * @see {@linkcode foundry.applications.sidebar.tabs.ItemDirectory}: The ItemDirectory sidebar directory
+ * @see {@linkcode Item} The Item document
+ * @see {@linkcode ItemDirectory} The ItemDirectory sidebar directory
  */
-declare class Items extends WorldCollection<"Item"> {
-  static override documentName: "Item";
-
-  /** @privateRemarks Fake type override */
-  static override get instance(): Items.Implementation;
-
-  // Fake override for the purpose of typing `options`.
-  static override registerSheet(
-    scope: string,
-    sheetClass: Application.AnyConstructor | DocumentSheetV2.AnyConstructor,
-    options?: DocumentSheetConfig.RegisterSheetOptions<Item.ImplementationClass>,
-  ): void;
-
-  // Fake override for the purpose of typing `options`.
-  static override unregisterSheet(
-    scope: string,
-    sheetClass: Application.AnyConstructor | DocumentSheetV2.AnyConstructor,
-    options?: DocumentSheetConfig.UnregisterSheetOptions<Item.ImplementationClass>,
-  ): void;
+declare class Items extends foundry.documents.abstract.WorldCollection<"Item", "Items"> {
+  static documentName: "Item";
 }
 
 declare namespace Items {
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode Items.Implementation} instead. This will be removed in v15.
-   */
-  type Any = Internal.Any;
+  interface Any extends AnyItems {}
+  interface AnyConstructor extends Identity<typeof AnyItems> {}
 
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode Items.ImplementationClass} instead. This will be removed in v15.
-   */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyItems {}
-    interface AnyConstructor extends Identity<typeof AnyItems> {}
-  }
-
-  interface ImplementationClass extends Document.Internal.ConfiguredCollectionClass<"Item"> {}
-  interface Implementation extends Document.Internal.ConfiguredCollection<"Item"> {}
-
-  /** @deprecated Replaced by {@linkcode Items.ImplementationClass}. Will be removed in v15. */
-  type ConfiguredClass = ImplementationClass;
-
-  /** @deprecated Replaced by {@linkcode Items.Implementation}. Will be removed in v15. */
-  type Configured = Implementation;
+  interface ConfiguredClass extends Document.ConfiguredCollectionClass<"Item"> {}
+  interface Configured extends Document.ConfiguredCollection<"Item"> {}
 }
-
-export default Items;
 
 declare abstract class AnyItems extends Items {
   constructor(...args: never);
 }
+
+export default Items;

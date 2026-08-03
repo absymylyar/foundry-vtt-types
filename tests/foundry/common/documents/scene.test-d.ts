@@ -1,41 +1,44 @@
 import { expectTypeOf } from "vitest";
 import EmbeddedCollection = foundry.abstract.EmbeddedCollection;
 
-// @ts-expect-error A BaseScene requires data.
+// @ts-expect-error - A BaseScene requires data.
 foundry.documents.BaseScene.create();
 
-// @ts-expect-error A BaseScene requires a name.
+// @ts-expect-error - A BaseScene requires a name.
 new foundry.documents.BaseScene({});
 
 expectTypeOf(foundry.documents.BaseScene.create({ name: "My scene" })).toEqualTypeOf<
   Promise<Scene.Stored | undefined>
 >();
 
-// Subclass `BaseScene` to avoid it being abstract.
-class BaseScene extends foundry.documents.BaseScene {
-  get compendium() {
-    return this.inCompendium
-      ? (game.packs!.get(this.pack!) as foundry.documents.collections.CompendiumCollection.ForDocument<"Scene">)
-      : null;
-  }
+const myScene = await foundry.documents.BaseScene.create({ name: "My second scene" }, { temporary: true });
+if (myScene) {
+  expectTypeOf(myScene).toEqualTypeOf<Scene.Implementation>();
 }
 
-// @ts-expect-error A BaseScene requires a name.
+// Subclass `BaseScene` to avoid it being abstract.
+class BaseScene extends foundry.documents.BaseScene {}
+
+// @ts-expect-error - A BaseScene requires a name.
 new BaseScene({});
 
 const scene = new BaseScene({ name: "My third scene" });
 expectTypeOf(scene).toEqualTypeOf<BaseScene>();
 
-expectTypeOf(scene.drawings).toEqualTypeOf<EmbeddedCollection<DrawingDocument.Stored, Scene.Implementation>>();
-expectTypeOf(scene.lights).toEqualTypeOf<EmbeddedCollection<AmbientLightDocument.Stored, Scene.Implementation>>();
-expectTypeOf(scene.notes).toEqualTypeOf<EmbeddedCollection<NoteDocument.Stored, Scene.Implementation>>();
-expectTypeOf(scene.sounds).toEqualTypeOf<EmbeddedCollection<AmbientSoundDocument.Stored, Scene.Implementation>>();
-expectTypeOf(scene.templates).toEqualTypeOf<
-  EmbeddedCollection<MeasuredTemplateDocument.Stored, Scene.Implementation>
+expectTypeOf(scene.drawings).toEqualTypeOf<EmbeddedCollection<DrawingDocument.Implementation, Scene.Implementation>>();
+expectTypeOf(scene.lights).toEqualTypeOf<
+  EmbeddedCollection<AmbientLightDocument.Implementation, Scene.Implementation>
 >();
-expectTypeOf(scene.tokens).toEqualTypeOf<EmbeddedCollection<TokenDocument.Stored, Scene.Implementation>>();
-expectTypeOf(scene.tiles).toEqualTypeOf<EmbeddedCollection<TileDocument.Stored, Scene.Implementation>>();
-expectTypeOf(scene.walls).toEqualTypeOf<EmbeddedCollection<WallDocument.Stored, Scene.Implementation>>();
+expectTypeOf(scene.notes).toEqualTypeOf<EmbeddedCollection<NoteDocument.Implementation, Scene.Implementation>>();
+expectTypeOf(scene.sounds).toEqualTypeOf<
+  EmbeddedCollection<AmbientSoundDocument.Implementation, Scene.Implementation>
+>();
+expectTypeOf(scene.templates).toEqualTypeOf<
+  EmbeddedCollection<MeasuredTemplateDocument.Implementation, Scene.Implementation>
+>();
+expectTypeOf(scene.tokens).toEqualTypeOf<EmbeddedCollection<TokenDocument.Implementation, Scene.Implementation>>();
+expectTypeOf(scene.tiles).toEqualTypeOf<EmbeddedCollection<TileDocument.Implementation, Scene.Implementation>>();
+expectTypeOf(scene.walls).toEqualTypeOf<EmbeddedCollection<WallDocument.Implementation, Scene.Implementation>>();
 
 // @ts-expect-error A SceneData requires data.
 new foundry.documents.BaseScene();
@@ -62,8 +65,11 @@ expectTypeOf(
     backgroundColor: undefined,
     grid: undefined,
     tokenVision: undefined,
-    fog: null,
-    environment: null,
+    fogExploration: undefined,
+    fogReset: undefined,
+    globalLight: undefined,
+    globalLightThreshold: undefined,
+    darkness: undefined,
     drawings: undefined,
     tokens: undefined,
     lights: undefined,
@@ -100,8 +106,11 @@ expectTypeOf(
     backgroundColor: null,
     grid: null,
     tokenVision: null,
-    fog: null,
-    environment: null,
+    fogExploration: null,
+    fogReset: null,
+    globalLight: null,
+    globalLightThreshold: null,
+    darkness: null,
     drawings: null,
     tokens: null,
     lights: null,

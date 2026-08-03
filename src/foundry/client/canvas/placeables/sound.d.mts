@@ -1,9 +1,17 @@
-import type { FixedInstanceType, HandleEmptyObject, InexactPartial, IntentionalPartial, RequiredProps } from "#utils";
+import type Sound from "#client/audio/sound.d.mts";
+import type { ConfiguredObjectClassOrDefault } from "../../config.d.mts";
+import type {
+  FixedInstanceType,
+  HandleEmptyObject,
+  InexactPartial,
+  IntentionalPartial,
+  NullishProps,
+  RequiredProps,
+} from "#utils";
 import type { PlaceableObject } from "#client/canvas/placeables/_module.d.mts";
-import type { RenderFlagsMixin, RenderFlags, RenderFlag } from "#client/canvas/interaction/_module.d.mts";
-import type { Sound } from "#client/audio/_module.d.mts";
-import type { PointSoundSource } from "#client/canvas/sources/_module.d.mts";
-import type { Canvas } from "#client/canvas/_module.d.mts";
+import { RenderFlagsMixin, RenderFlags, RenderFlag } from "#client/canvas/interaction/_module.mjs";
+
+import Canvas = foundry.canvas.Canvas;
 
 declare module "#configuration" {
   namespace Hooks {
@@ -15,19 +23,18 @@ declare module "#configuration" {
 
 /**
  * An AmbientSound is an implementation of PlaceableObject which represents a dynamic audio source within the Scene.
- * @see {@linkcode foundry.documents.AmbientSoundDocument}
- * @see {@linkcode foundry.canvas.layers.SoundsLayer}
+ * @see {@linkcode AmbientSoundDocument}
+ * @see {@linkcode SoundsLayer}
  */
 declare class AmbientSound extends PlaceableObject<AmbientSoundDocument.Implementation> {
-  // fake type override
-  static override get implementation(): AmbientSound.ImplementationClass;
+  constructor(document: AmbientSoundDocument.Implementation);
 
   /**
    * The Sound which manages playback for this AmbientSound effect
    * @defaultValue `undefined`
-   * @remarks Only `undefined` prior to {@linkcode AmbientSound.sync | AmbientSound#sync}
-   * or {@linkcode AmbientSound._onUpdate | AmbientSound#_onUpdate} being called (the
-   * former likely via {@linkcode SoundsLayer._syncPositions | SoundsLayer#_syncPositions})
+   * @remarks Only `undefined` prior to {@link AmbientSound.sync | `AmbientSound#sync`}
+   * or {@link AmbientSound._onUpdate | `AmbientSound#_onUpdate`} being called (the
+   * former likely via {@link SoundsLayer._syncPositions | `SoundsLayer#_syncPositions`})
    *
    * Set `null` if this sound's document has either no `path` or no `id` (e.g if its a preview, for the latter)
    */
@@ -35,12 +42,12 @@ declare class AmbientSound extends PlaceableObject<AmbientSoundDocument.Implemen
 
   /**
    * A SoundSource object which manages the area of effect for this ambient sound
-   * @remarks Not initialized to a value in the class body, but {@linkcode AmbientSound._onCreate | AmbientSound#_onCreate}
+   * @remarks Not initialized to a value in the class body, but {@link AmbientSound._onCreate | `AmbientSound#_onCreate`}
    * calls {@linkcode AmbientSound.initializeSoundSource}.
    *
-   * Set `undefined` by {@linkcode AmbientSound._destroy | AmbientSound#_destroy}.
+   * Set `undefined` by {@link AmbientSound._destroy | `AmbientSound#_destroy`}.
    */
-  source: PointSoundSource.Implementation | undefined;
+  source: foundry.canvas.sources.PointSoundSource.Implementation | undefined;
 
   /**
    * The area that is affected by this ambient sound.
@@ -65,6 +72,7 @@ declare class AmbientSound extends PlaceableObject<AmbientSoundDocument.Implemen
   /**
    * Update the set of effects which are applied to the managed Sound.
    */
+  // options: not null (destructured)
   applyEffects(options?: AmbientSound.ApplyEffectsOptions): void;
 
   /**
@@ -85,6 +93,7 @@ declare class AmbientSound extends PlaceableObject<AmbientSoundDocument.Implemen
    * @param volume    - The target playback volume
    * @param options   - Additional options which affect sound synchronization
    */
+  // options: not null (destructured)
   sync(isAudible: boolean, volume: number, options?: AmbientSound.SyncOptions): void;
 
   override clear(): this;
@@ -124,6 +133,7 @@ declare class AmbientSound extends PlaceableObject<AmbientSoundDocument.Implemen
    * Compute the field-of-vision for an object, determining its effective line-of-sight and field-of-vision polygons
    * @param options - Options which modify how the audio source is updated
    */
+  // options: not null (destructured)
   initializeSoundSource(options?: AmbientSound.InitializeSoundSourceOptions): void;
 
   /**
@@ -131,26 +141,16 @@ declare class AmbientSound extends PlaceableObject<AmbientSoundDocument.Implemen
    */
   protected _getSoundSourceData(): AmbientSound.SoundSourceData;
 
-  protected override _onCreate(
-    data: AmbientSoundDocument.CreateData,
-    options: AmbientSoundDocument.Database.OnCreateOptions,
-    userId: string,
-  ): void;
-
-  protected override _onUpdate(
-    changed: AmbientSoundDocument.UpdateData,
-    options: AmbientSoundDocument.Database.OnUpdateOptions,
-    userId: string,
-  ): void;
-
-  protected override _onDelete(options: AmbientSoundDocument.Database.OnDeleteOptions, userId: string): void;
+  // _onCreate, _onUpdate, and _onDelete are all overridden but with no signature changes.
+  // For type simplicity they are left off. These methods historically have been the source of a large amount of computation from tsc.
 
   protected override _canHUD(user: User.Implementation, event?: Canvas.Event.Pointer): boolean;
 
-  // Always returns `false` ("Double-right does nothing")
+  /** @remarks Always returns `false` ("Double-right does nothing") */
   protected override _canConfigure(user: User.Implementation, event?: Canvas.Event.Pointer): boolean;
 
   // fake override to narrow the type from super, which had to account for this class's misbehaving siblings
+  // options: not null (destructured)
   protected override _onHoverIn(event: Canvas.Event.Pointer, options?: PlaceableObject.HoverInOptions): void;
 
   protected override _onClickRight(event: Canvas.Event.Pointer): void;
@@ -163,14 +163,12 @@ declare class AmbientSound extends PlaceableObject<AmbientSoundDocument.Implemen
   protected override _prepareDragLeftDropUpdates(event: Canvas.Event.Pointer): PlaceableObject.DragLeftDropUpdate[];
 
   /**
-   * @deprecated "`AmbientSound#updateSource` has been deprecated in favor of
-   * {@linkcode AmbientSound.initializeSoundSource | AmbientSound#initializeSoundSource}" (since v12, until v14)
-   * @privateRemarks The `defer` parameter exists in this signature but is not used by `#initializeSoundSource`,
-   * so we can just reuse that method's options interface.
+   * @deprecated since v12, until v14
+   * @remarks "`AmbientSound#updateSource` has been deprecated in favor of {@link AmbientSound.initializeSoundSource | `AmbientSound#initializeSoundSource`}"
+   *
+   * @privateRemarks The `defer` parameter exists in this signature but is not used by `#initializeSoundSource`, so we can just reuse that method's options interface
    */
   updateSource(options?: AmbientSound.InitializeSoundSourceOptions): void;
-
-  #AmbientSound: true;
 }
 
 declare namespace AmbientSound {
@@ -190,7 +188,8 @@ declare namespace AmbientSound {
    * Not to be confused with {@linkcode AmbientSoundDocument.ImplementationClass}
    * which refers to the implementation for the ambientSound document.
    */
-  type ImplementationClass = PlaceableObject.ImplementationClassFor<"AmbientSound">;
+  // eslint-disable-next-line no-restricted-syntax
+  type ImplementationClass = ConfiguredObjectClassOrDefault<typeof AmbientSound>;
 
   interface RENDER_FLAGS {
     /** @defaultValue `{ propagate: ["refresh"] }` */
@@ -215,26 +214,27 @@ declare namespace AmbientSound {
   interface RenderFlags extends RenderFlagsMixin.ToBooleanFlags<RENDER_FLAGS> {}
 
   /** @internal */
-  interface _ApplyEffectsOptions {
+  type _ApplyEffectsOptions = NullishProps<{
     /**
      * Is the sound currently muffled?
      * @defaultValue `false`
      */
     muffled: boolean;
-  }
+  }>;
 
-  interface ApplyEffectsOptions extends InexactPartial<_ApplyEffectsOptions> {}
+  interface ApplyEffectsOptions extends _ApplyEffectsOptions {}
 
   /** @internal */
-  interface _SyncOptions {
+  type _SyncOptions = InexactPartial<{
     /**
      * A duration in milliseconds to fade volume transition
      * @defaultValue `250`
+     * @remarks Can't be `null` as it only has a parameter default
      */
     fade: number;
-  }
+  }>;
 
-  interface SyncOptions extends InexactPartial<_SyncOptions>, InexactPartial<_ApplyEffectsOptions> {}
+  interface SyncOptions extends _SyncOptions, _ApplyEffectsOptions {}
 
   interface DrawOptions extends PlaceableObject.DrawOptions {}
 
@@ -244,24 +244,26 @@ declare namespace AmbientSound {
 
   interface ReleaseOptions extends PlaceableObject.ReleaseOptions {}
 
-  /** @internal */
-  interface _InitializeSoundSourceOptions {
+  /**
+   * @internal
+   */
+  type _InitializeSoundSourceOptions = NullishProps<{
     /**
      * Indicate that this SoundSource has been deleted.
      * @defaultValue `false`
      */
     deleted: boolean;
-  }
+  }>;
 
-  interface InitializeSoundSourceOptions extends InexactPartial<_InitializeSoundSourceOptions> {}
+  interface InitializeSoundSourceOptions extends _InitializeSoundSourceOptions {}
 
   /**
-   * @remarks The return of {@linkcode AmbientSound._getSoundSourceData | AmbientSound#_getSoundSourceData}, which gets passed to
-   * {@linkcode PointSoundSource.initialize | AmbientSound#source#initialize()}, so this is a `RequiredProps<IntentionalPartial<>>`
-   * rather than a `Pick<>`
+   * @remarks The return of {@link AmbientSound._getSoundSourceData | `AmbientSound#_getSoundSourceData`}, which gets passed
+   * to {@link foundry.canvas.sources.PointSoundSource.initialize | `AmbientSound#source#initialize()`}, so this is a
+   * `RequiredProps<IntentionalPartial<>>` rather than a `Pick<>`
    */
   type SoundSourceData = RequiredProps<
-    IntentionalPartial<PointSoundSource.SourceData>,
+    IntentionalPartial<foundry.canvas.sources.PointSoundSource.SourceData>,
     "x" | "y" | "elevation" | "radius" | "walls" | "disabled"
   >;
 }

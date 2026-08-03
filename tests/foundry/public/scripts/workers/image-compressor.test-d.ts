@@ -1,8 +1,6 @@
 import { expectTypeOf } from "vitest";
 import type { EmptyObject } from "fvtt-types/utils";
-
-// eslint-disable-next-line import-x/extensions
-import "fvtt-types/workers";
+import type * as _ from "fvtt-types/worker";
 
 declare const someBlob: Blob;
 declare const someBuffer: Uint8ClampedArray;

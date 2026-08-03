@@ -1,11 +1,9 @@
+/* eslint-disable import-x/extensions */
 import { expectTypeOf } from "vitest";
+import ImageLinkNode from "../../../../../src/foundry/common/prosemirror/schema/image-link-node.mjs";
 import type { AttributeSpec, Node, NodeSpec } from "prosemirror-model";
 import type { EditorView } from "prosemirror-view";
-import type SchemaDefinition from "../../../../../src/foundry/common/prosemirror/schema/schema-definition.d.mts";
-
-// Import necessary as this is otherwise inaccessible.
-
-import ImageLinkNode from "../../../../../src/foundry/common/prosemirror/schema/image-link-node.mjs";
+import type SchemaDefinition from "#common/prosemirror/schema/schema-definition.mjs";
 
 new ImageLinkNode();
 

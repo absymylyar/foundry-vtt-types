@@ -1,25 +1,19 @@
-import { expectTypeOf, test } from "vitest";
+import { expectTypeOf } from "vitest";
 import type { AnyObject } from "fvtt-types/utils";
-
-import Token = foundry.canvas.placeables.Token;
 
 expectTypeOf(new ChatMessage.implementation()).toEqualTypeOf<ChatMessage.Implementation>();
 expectTypeOf(new ChatMessage.implementation({})).toEqualTypeOf<ChatMessage.Implementation>();
 
 expectTypeOf(
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
   ChatMessage.applyRollMode({}, CONST.DICE_ROLL_MODES.BLIND),
 ).toEqualTypeOf<foundry.documents.BaseChatMessage.CreateData>();
 expectTypeOf(
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
   ChatMessage.applyRollMode({}, CONST.DICE_ROLL_MODES.PRIVATE),
 ).toEqualTypeOf<foundry.documents.BaseChatMessage.CreateData>();
 expectTypeOf(
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
   ChatMessage.applyRollMode({}, CONST.DICE_ROLL_MODES.PUBLIC),
 ).toEqualTypeOf<foundry.documents.BaseChatMessage.CreateData>();
 expectTypeOf(
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
   ChatMessage.applyRollMode({}, CONST.DICE_ROLL_MODES.SELF),
 ).toEqualTypeOf<foundry.documents.BaseChatMessage.CreateData>();
 
@@ -33,11 +27,8 @@ declare module "fvtt-types/configuration" {
   }
 }
 
-declare const tokenDoc: TokenDocument.Stored;
-declare const token: Token.Implementation;
-
 test("Regression test for CONFIG.Dice.rollModes as choices", () => {
-  new foundry.data.fields.StringField({
+  new StringField({
     blank: true,
     required: true,
     choices: CONFIG.Dice.rollModes,
@@ -48,7 +39,7 @@ expectTypeOf(
   ChatMessage.applyRollMode({}, "custom-roll-mode"),
 ).toEqualTypeOf<foundry.documents.BaseChatMessage.CreateData>();
 
-// @ts-expect-error "unknown-roll-mode" is not a valid roll mode
+// @ts-expect-error - "unknown-roll-mode" is not a valid roll mode
 ChatMessage.applyRollMode({}, "unknown-roll-mode");
 
 expectTypeOf(ChatMessage.getSpeaker()).toEqualTypeOf<ChatMessage.SpeakerData>();
@@ -60,14 +51,17 @@ if (game instanceof Game) {
     ChatMessage.getSpeaker({
       scene: game.scenes?.active,
       actor: game.user?.character,
-      token: token,
+      token: new TokenDocument.implementation(),
+      alias: "Mario",
     }),
   ).toEqualTypeOf<ChatMessage.SpeakerData>();
 }
-expectTypeOf(ChatMessage.getSpeaker({ token: tokenDoc })).toEqualTypeOf<ChatMessage.SpeakerData>();
+expectTypeOf(
+  ChatMessage.getSpeaker({ token: new TokenDocument.implementation() }),
+).toEqualTypeOf<ChatMessage.SpeakerData>();
 expectTypeOf(ChatMessage.getSpeaker({ alias: "Mario" })).toEqualTypeOf<ChatMessage.SpeakerData>();
 
-expectTypeOf(ChatMessage.getSpeakerActor(ChatMessage.getSpeaker())).toEqualTypeOf<Actor.Stored | null>();
+expectTypeOf(ChatMessage.getSpeakerActor(ChatMessage.getSpeaker())).toEqualTypeOf<Actor.Implementation | null>();
 expectTypeOf(ChatMessage.getWhisperRecipients("Mario")).toEqualTypeOf<User.Stored[]>();
 
 const chat = new ChatMessage.implementation();
@@ -77,15 +71,11 @@ expectTypeOf(chat.isContentVisible).toEqualTypeOf<boolean>();
 expectTypeOf(chat.isRoll).toEqualTypeOf<boolean>();
 expectTypeOf(chat.rolls).toEqualTypeOf<Roll[]>();
 expectTypeOf(chat.visible).toEqualTypeOf<boolean>();
-expectTypeOf(chat.author).toEqualTypeOf<User.Stored | null>();
+expectTypeOf(chat.author).toEqualTypeOf<User.Implementation>(); // TODO: This seems off? Possible issue with ForeignDocumentField
 expectTypeOf(chat.prepareData()).toEqualTypeOf<void>();
-// eslint-disable-next-line @typescript-eslint/no-deprecated
 expectTypeOf(chat.applyRollMode(CONST.DICE_ROLL_MODES.BLIND)).toEqualTypeOf<void>();
-// eslint-disable-next-line @typescript-eslint/no-deprecated
 expectTypeOf(chat.applyRollMode(CONST.DICE_ROLL_MODES.PRIVATE)).toEqualTypeOf<void>();
-// eslint-disable-next-line @typescript-eslint/no-deprecated
 expectTypeOf(chat.applyRollMode(CONST.DICE_ROLL_MODES.PUBLIC)).toEqualTypeOf<void>();
-// eslint-disable-next-line @typescript-eslint/no-deprecated
 expectTypeOf(chat.applyRollMode(CONST.DICE_ROLL_MODES.SELF)).toEqualTypeOf<void>();
 expectTypeOf(chat.applyRollMode("roll")).toEqualTypeOf<void>();
 expectTypeOf(chat.applyRollMode("custom-roll-mode")).toEqualTypeOf<void>();
@@ -93,9 +83,9 @@ expectTypeOf(chat.applyRollMode("custom-roll-mode")).toEqualTypeOf<void>();
 // Ensure that each usage of `rollModes` is compatible.
 declare const key: keyof typeof CONFIG.Dice.rollModes;
 expectTypeOf(chat.applyRollMode(key)).toEqualTypeOf<void>();
-expectTypeOf(chat.applyRollMode(game.settings!.get("core", "rollMode"))).toEqualTypeOf<void>();
+expectTypeOf(chat.applyRollMode(game.settings!.get("core", "rollMode")!)).toEqualTypeOf<void>();
 
-// @ts-expect-error "unknown-roll-mode" is not a valid roll mode
+// @ts-expect-error - "unknown-roll-mode" is not a valid roll mode
 chat.applyRollMode("unknown-roll-mode");
 
 expectTypeOf(chat.getRollData()).toEqualTypeOf<AnyObject>();

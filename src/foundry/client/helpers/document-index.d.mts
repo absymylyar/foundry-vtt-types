@@ -129,7 +129,7 @@ declare namespace DocumentIndex {
   }
 
   /** @internal */
-  interface _LookupOptions {
+  type _LookupOptions = InexactPartial<{
     /**
      * The maximum number of items per document type to retrieve. It is important to set this
      * value as very short prefixes will naturally match large numbers of entries.
@@ -154,16 +154,16 @@ declare namespace DocumentIndex {
      * Only return entries that the user meets this ownership level for.
      */
     ownership: DOCUMENT_OWNERSHIP_LEVELS;
-  }
+  }>;
 
-  interface LookupOptions extends InexactPartial<_LookupOptions> {}
+  interface LookupOptions extends _LookupOptions {}
 
-  interface _AddLeafOptions {
+  type _AddLeafOptions = InexactPartial<{
     /** The compendium that the index belongs to. */
     pack: CompendiumCollection.Any;
-  }
+  }>;
 
-  interface AddLeafOptions extends InexactPartial<_AddLeafOptions> {}
+  interface AddLeafOptions extends _AddLeafOptions {}
 }
 
 export default DocumentIndex;

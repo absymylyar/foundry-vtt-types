@@ -1,73 +1,43 @@
+import type BasePackage from "#common/packages/base-package.d.mts";
+import type AdditionalTypesField from "#common/packages/sub-types.d.mts";
+import type DataModel from "#common/abstract/data.mjs";
+import type ClientPackageMixin from "./client-package.d.mts";
 import type { SystemNameConfig } from "#configuration";
-import type { GetKey } from "#utils";
-import type { AdditionalTypesField, BasePackage, BaseSystem, RelatedPackage } from "#common/packages/_module.d.mts";
-import type { DataModel } from "#common/abstract/_module.d.mts";
-import type { ClientPackageMixin } from "#client/packages/_module.d.mts";
-import type { fields } from "#client/data/_module.d.mts";
-import type Game from "#client/game.d.mts";
+import type { GetKey } from "fvtt-types/utils";
 
-declare class System extends ClientPackageMixin(BaseSystem) {
-  // This would require a specific `ConstructionContext` interface, but `options.strictDataCleaning` is *always* overwritten by the property
-  // passed with `data`, so including it would be to no purpose.
-  constructor(data: System.ManifestData, options?: DataModel.ConstructionContext<null>);
+import fields = foundry.data.fields;
+import Game = foundry.Game;
 
+declare class System extends ClientPackageMixin(foundry.packages.BaseSystem) {
+  constructor(data: ClientPackageMixin.SystemCreateData, options: unknown);
+
+  // options: not null (parameter default only, destructured in super)
   protected override _configure(options?: DataModel.ConfigureOptions): void;
 
-  // fake type override
   id: GetKey<SystemNameConfig, "name", string>;
 
-  strictDataCleaning: boolean;
-
-  // fake type override
-  /** @deprecated `game.systems` only exists in the `setup` view, so this always throws at runtime. */
-  static override get(id: never): never;
-
-  // fake type override
-  static override getVersionBadge(
-    availability: CONST.PACKAGE_AVAILABILITY_CODES,
-    data: System.ManifestData | System,
-    options: ClientPackageMixin.GetVersionBadgeOptions,
-  ): ClientPackageMixin.CompatibilityBadge | null;
-
-  // fake type override
-  protected static override _formatBadDependenciesTooltip(
-    availability: CONST.PACKAGE_AVAILABILITY_CODES,
-    data: System.ManifestData | System,
-    deps: Iterable<RelatedPackage.Data>,
-    options?: ClientPackageMixin.FormatBadDependenciesTooltipOptions,
-  ): string;
-
-  // fake type override
-  protected static override _formatIncompatibleSystemsTooltip(
-    data: System.ManifestData | System,
-    deps: Iterable<RelatedPackage.Data>,
-    options?: ClientPackageMixin.FormatIncompatibleSystemsTooltipOptions,
-  ): string;
-
   /**
-   * @deprecated "`System#template` is deprecated in favor of {@linkcode System.documentTypes | System#documentTypes}" (since v12, until v14)
+   * @deprecated since v12, will be removed in v14
+   * @remarks `"System#template is deprecated in favor of System#documentTypes"`
    */
   get template(): Game["model"];
 }
 
 declare namespace System {
-  /** The configured System ID, if any */
-  type Id = GetKey<SystemNameConfig, "name", string>;
-
   /**
    * The data put in {@linkcode DataModel._source}. This data is what was
    * persisted to the database and therefore it must be valid JSON.
    *
-   * For example a {@linkcode fields.SetField | SetField} is persisted to the database as an array
+   * For example a {@link fields.SetField | `SetField`} is persisted to the database as an array
    * but initialized as a {@linkcode Set}.
    */
   interface Source extends fields.SchemaField.SourceData<Schema> {}
 
   /**
    * The data necessary to create a data model. Used in places like {@linkcode System.create}
-   * and {@linkcode System | new System(...)}.
+   * and {@link System | `new System(...)`}.
    *
-   * For example a {@linkcode fields.SetField | SetField} can accept any {@linkcode Iterable}
+   * For example a {@link fields.SetField | `SetField`} can accept any {@linkcode Iterable}
    * with the right values. This means you can pass a `Set` instance, an array of values,
    * a generator, or any other iterable.
    */
@@ -75,17 +45,17 @@ declare namespace System {
 
   /**
    * The data after a {@linkcode DataModel} has been initialized, for example
-   * {@linkcode System.name | System#name}.
+   * {@link System.name | `System#name`}.
    *
    * This is data transformed from {@linkcode System.Source} and turned into more
-   * convenient runtime data structures. For example a {@linkcode fields.SetField | SetField} is
+   * convenient runtime data structures. For example a {@link fields.SetField | `SetField`} is
    * persisted to the database as an array of values but at runtime it is a `Set` instance.
    */
   interface InitializedData extends fields.SchemaField.InitializedData<Schema> {}
 
   /**
-   * The data used to update a document, for example {@linkcode System.update | System#update}.
-   * It is a distinct type from {@linkcode System.CreateData | DeepPartial<System.CreateData>} because
+   * The data used to update a document, for example {@link System.update | `System#update`}.
+   * It is a distinct type from {@link System.CreateData | `DeepPartial<System.CreateData>`} because
    * it has different rules for `null` and `undefined`.
    */
   interface UpdateData extends fields.SchemaField.UpdateData<Schema> {}
@@ -95,23 +65,17 @@ declare namespace System {
    * must be structured.
    *
    * Foundry uses this schema to validate the structure of the {@linkcode System}. For example
-   * a {@linkcode fields.StringField | StringField} will enforce that the value is a string. More
-   * complex fields like {@linkcode fields.SetField | SetField} goes through various conversions
+   * a {@link fields.StringField | `StringField`} will enforce that the value is a string. More
+   * complex fields like {@link fields.SetField | `SetField`} goes through various conversions
    * starting as an array in the database, initialized as a set, and allows updates with any
    * iterable.
    */
   interface Schema extends BasePackage.Schema {
     /**
-     * The current package version. It is recommended to stick to dot-separated numbers like "5.0.3" and to not include a leading "v" to
-     * avoid string comparison. See {@linkcode foundry.utils.isNewerVersion}.
-     * @privateRemarks Fake type override; see {@linkcode BasePackage.version | BasePackage#version}
+     * The current package version
+     * @remarks Actually defined in BasePackage but defined here to avoid conflict with BaseWorld
      */
-    version: fields.StringField<{
-      required: true;
-      blank: false;
-      initial: "0";
-      validate: typeof BasePackage.validateVersion;
-    }>;
+    version: fields.StringField<{ required: true; blank: false; initial: "0" }>;
 
     /**
      * Additional document subtypes provided by this system.
@@ -129,27 +93,34 @@ declare namespace System {
     initiative: fields.StringField;
 
     /**
-     * The default grid settings to use for Scenes in this system.
+     * The default grid settings to use for Scenes in this system
      */
     grid: fields.SchemaField<{
-      /** A default grid type to use for Scenes in this system. */
+      /** A default grid type to use for Scenes in this system */
       type: fields.NumberField<{
         required: true;
-        choices: typeof CONST.GRID_TYPES;
-        initial: typeof CONST.GRID_TYPES.SQUARE;
+        choices: typeof foundry.CONST.GRID_TYPES;
+        initial: typeof foundry.CONST.GRID_TYPES.SQUARE;
       }>;
 
-      /** A default distance measurement to use for Scenes in this system. */
-      distance: fields.NumberField<{ required: true; nullable: false; positive: true; initial: 1 }>;
+      /** A default distance measurement to use for Scenes in this system */
+      distance: fields.NumberField<{
+        required: true;
+        nullable: false;
+        positive: true;
+        initial: 1;
+      }>;
 
-      /** A default unit of measure to use for distance measurement in this system. */
-      units: fields.StringField<{ required: true }>;
+      /** A default unit of measure to use for distance measurement in this system */
+      units: fields.StringField<{
+        required: true;
+      }>;
 
-      /** The default rule used by this system for diagonal measurement on square grids. */
+      /** The default rule used by this system for diagonal measurement on square grids */
       diagonals: fields.NumberField<{
         required: true;
-        choices: typeof CONST.GRID_DIAGONALS;
-        initial: typeof CONST.GRID_DIAGONALS.EQUIDISTANT;
+        choices: typeof foundry.CONST.GRID_DIAGONALS;
+        initial: typeof foundry.CONST.GRID_DIAGONALS.EQUIDISTANT;
       }>;
     }>;
 
@@ -162,10 +133,18 @@ declare namespace System {
      * An Actor data attribute path to use for Token secondary resource bars
      */
     secondaryTokenAttribute: fields.StringField;
-  }
 
-  interface ManifestData extends BasePackage.ManifestData<Schema> {
-    strictDataCleaning?: boolean | undefined;
+    /**
+     * A default distance measurement to use for Scenes in this system
+     * @deprecated since v12
+     */
+    gridDistance: fields.NumberField;
+
+    /**
+     * A default unit of measure to use for distance measurement in this system
+     * @deprecated since v12
+     */
+    gridUnits: fields.NumberField;
   }
 }
 

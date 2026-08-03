@@ -137,7 +137,7 @@ declare class DataModelValidationError extends Error {
 
 declare namespace DataModelValidationFailure {
   /** @internal */
-  interface _ConstructorOptions {
+  type _ConstructorOptions = InexactPartial<{
     /** The value that failed validation for this field. */
     invalidValue: unknown;
 
@@ -158,17 +158,17 @@ declare namespace DataModelValidationFailure {
      * @defaultValue `false`
      */
     unresolved: boolean;
-  }
+  }>;
 
-  interface ConstructorOptions extends InexactPartial<_ConstructorOptions> {}
+  interface ConstructorOptions extends _ConstructorOptions {}
 
   /** @internal */
-  interface _ElementValidationFailure {
+  type _ElementValidationFailure = InexactPartial<{
     /** Optionally a user-friendly name for the element. */
-    name: string;
-  }
+    name?: string;
+  }>;
 
-  interface ElementValidationFailure extends InexactPartial<_ElementValidationFailure> {
+  interface ElementValidationFailure extends _ElementValidationFailure {
     /** Either the element's index or some other identifier for it. */
     id: string | number;
 
@@ -180,10 +180,8 @@ declare namespace DataModelValidationFailure {
    * @remarks {@linkcode DataModelValidationFailure.toObject | DataModelValidationFailure#toObject} returns
    * its instance's properties of the same names
    */
-  interface ToObjectReturn extends Pick<
-    DataModelValidationFailure,
-    "invalidValue" | "fallback" | "dropped" | "message"
-  > {}
+  interface ToObjectReturn
+    extends Pick<DataModelValidationFailure, "invalidValue" | "fallback" | "dropped" | "message"> {}
 }
 
 export { DataModelValidationFailure, DataModelValidationError };

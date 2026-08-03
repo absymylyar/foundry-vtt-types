@@ -2,17 +2,18 @@ import { expectTypeOf } from "vitest";
 
 expectTypeOf(foundry.documents.BaseUser.create({ name: "SomeUser" })).toEqualTypeOf<Promise<User.Stored | undefined>>();
 expectTypeOf(foundry.documents.BaseUser.createDocuments([])).toEqualTypeOf<Promise<User.Stored[]>>();
-expectTypeOf(foundry.documents.BaseUser.updateDocuments([])).toEqualTypeOf<Promise<User.Stored[]>>();
-expectTypeOf(foundry.documents.BaseUser.deleteDocuments([])).toEqualTypeOf<Promise<User.Stored[]>>();
+expectTypeOf(foundry.documents.BaseUser.updateDocuments([])).toEqualTypeOf<Promise<User.Implementation[]>>();
+expectTypeOf(foundry.documents.BaseUser.deleteDocuments([])).toEqualTypeOf<Promise<User.Implementation[]>>();
 
-class TestBaseUser extends foundry.documents.BaseUser {
-  // eslint-disable-next-line @typescript-eslint/class-literal-property-style
-  get compendium() {
-    return null;
-  }
+const user = await foundry.documents.BaseUser.create({ name: "Another User" }, { temporary: true });
+if (user) {
+  // Note(LukeAbby): At one point there was a regression in `ForeignDocumentField` that would have caused this to fail.
+  expectTypeOf(user.character).toEqualTypeOf<Actor.Implementation | null>();
 }
 
-// @ts-expect-error name may not be undefined
+class TestBaseUser extends foundry.documents.BaseUser {}
+
+// @ts-expect-error - name may not be undefined
 new TestBaseUser();
 
 const baseUser = new TestBaseUser({ name: "foo" });
@@ -28,13 +29,13 @@ expectTypeOf(baseUser.hasRole(CONST.USER_ROLES.TRUSTED)).toEqualTypeOf<boolean>(
 expectTypeOf(baseUser.hasRole(CONST.USER_ROLES.ASSISTANT)).toEqualTypeOf<boolean>();
 expectTypeOf(baseUser.hasRole(CONST.USER_ROLES.GAMEMASTER)).toEqualTypeOf<boolean>();
 
-// @ts-expect-error "ACTOR_CREATE" is not a valid role.
+// @ts-expect-error - "ACTOR_CREATE" is not a valid role.
 baseUser.hasRole("ACTOR_CREATE");
 
-// @ts-expect-error -1 is not a valid role.
+// @ts-expect-error - -1 is not a valid role.
 baseUser.hasRole(-1);
 
-// @ts-expect-error 100 is not a valid role.
+// @ts-expect-error - 100 is not a valid role.
 baseUser.hasRole(100);
 
 expectTypeOf(baseUser.can("NONE")).toEqualTypeOf<boolean>();
@@ -68,13 +69,13 @@ expectTypeOf(baseUser.can("TOKEN_CREATE")).toEqualTypeOf<boolean>();
 expectTypeOf(baseUser.can("TOKEN_CONFIGURE")).toEqualTypeOf<boolean>();
 expectTypeOf(baseUser.can("WALL_DOORS")).toEqualTypeOf<boolean>();
 
-// @ts-expect-error -1 is not a valid action.
+// @ts-expect-error - -1 is not a valid action.
 baseUser.can(-1);
 
-// @ts-expect-error 0 is not a valid action.
+// @ts-expect-error - 0 is not a valid action.
 baseUser.can(100);
 
-// @ts-expect-error "SHOW_RULERS" is not a valid action.
+// @ts-expect-error - "SHOW_RULERS" is not a valid action.
 baseUser.can("SHOW_RULERS");
 
 expectTypeOf(baseUser.hasPermission("ACTOR_CREATE")).toEqualTypeOf<boolean>();
@@ -96,14 +97,14 @@ expectTypeOf(baseUser.hasPermission("TOKEN_CREATE")).toEqualTypeOf<boolean>();
 expectTypeOf(baseUser.hasPermission("TOKEN_CONFIGURE")).toEqualTypeOf<boolean>();
 expectTypeOf(baseUser.hasPermission("WALL_DOORS")).toEqualTypeOf<boolean>();
 
-// @ts-expect-error "GAMEMASTER" is not a valid permission.
+// @ts-expect-error - "GAMEMASTER" is not a valid permission.
 baseUser.hasPermission("GAMEMASTER");
 
-// @ts-expect-error CONST.USER_ROLES.GAMEMASTER is not a valid permission.
+// @ts-expect-error - CONST.USER_ROLES.GAMEMASTER is not a valid permission.
 baseUser.hasPermission(CONST.USER_ROLES.GAMEMASTER);
 
-// @ts-expect-error 10 is not a valid permission.
+// @ts-expect-error - 10 is not a valid permission.
 baseUser.hasPermission(10);
 
-// @ts-expect-error "SHOW_RULERS" is not a valid permission.
+// @ts-expect-error - "SHOW_RULERS" is not a valid permission.
 baseUser.hasPermission("SHOW_RULERS");

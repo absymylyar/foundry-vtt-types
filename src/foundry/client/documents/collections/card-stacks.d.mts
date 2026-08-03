@@ -1,67 +1,25 @@
 import type { Identity } from "#utils";
 import type Document from "#common/abstract/document.d.mts";
-import type { WorldCollection } from "#client/documents/abstract/_module.d.mts";
-import type { Application } from "#client/appv1/api/_module.d.mts";
-import type { DocumentSheetV2 } from "#client/applications/api/_module.d.mts";
-import type { DocumentSheetConfig } from "#client/applications/apps/_module.d.mts";
 
 /**
  * The collection of Cards documents which exist within the active World.
- * This Collection is accessible within the Game object as {@linkcode foundry.Game.cards | game.cards}.
- * @see {@linkcode foundry.documents.Cards}: The Cards document
- * @see {@linkcode foundry.applications.sidebar.tabs.CardsDirectory}: The CardsDirectory sidebar directory
+ * This Collection is accessible within the Game object as game.cards.
+ * @see {@linkcode Cards} The Cards document
  */
-declare class CardStacks extends WorldCollection<"Cards"> {
-  static override documentName: "Cards";
-
-  /** @privateRemarks Fake type override */
-  static override get instance(): CardStacks.Implementation;
-
-  // Fake override for the purpose of typing `options`.
-  static override registerSheet(
-    scope: string,
-    sheetClass: Application.AnyConstructor | DocumentSheetV2.AnyConstructor,
-    options?: DocumentSheetConfig.RegisterSheetOptions<Cards.ImplementationClass>,
-  ): void;
-
-  // Fake override for the purpose of typing `options`.
-  static override unregisterSheet(
-    scope: string,
-    sheetClass: Application.AnyConstructor | DocumentSheetV2.AnyConstructor,
-    options?: DocumentSheetConfig.UnregisterSheetOptions<Cards.ImplementationClass>,
-  ): void;
+declare class CardStacks extends foundry.documents.abstract.WorldCollection<"Cards", "Cards"> {
+  static documentName: "Cards";
 }
 
 declare namespace CardStacks {
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode CardStacks.Implementation} instead. This will be removed in v15.
-   */
-  type Any = Internal.Any;
+  interface Any extends AnyCardStacks {}
+  interface AnyConstructor extends Identity<typeof AnyCardStacks> {}
 
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode CardStacks.ImplementationClass} instead. This will be removed in v15.
-   */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyCardStacks {}
-    interface AnyConstructor extends Identity<typeof AnyCardStacks> {}
-  }
-
-  interface ImplementationClass extends Document.Internal.ConfiguredCollectionClass<"Cards"> {}
-  interface Implementation extends Document.Internal.ConfiguredCollection<"Cards"> {}
-
-  /** @deprecated Replaced by {@linkcode CardStacks.ImplementationClass}. Will be removed in v15. */
-  type ConfiguredClass = ImplementationClass;
-
-  /** @deprecated Replaced by {@linkcode CardStacks.Implementation}. Will be removed in v15. */
-  type Configured = Implementation;
+  interface ConfiguredClass extends Document.ConfiguredCollectionClass<"Cards"> {}
+  interface Configured extends Document.ConfiguredCollection<"Cards"> {}
 }
-
-export default CardStacks;
 
 declare abstract class AnyCardStacks extends CardStacks {
   constructor(...args: never);
 }
+
+export default CardStacks;

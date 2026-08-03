@@ -75,15 +75,14 @@ declare namespace AmbientLightConfig {
   interface AnyConstructor extends Identity<typeof AnyAmbientLightConfig> {}
 
   interface RenderContext
-    extends
-      HandlebarsApplicationMixin.RenderContext,
+    extends HandlebarsApplicationMixin.RenderContext,
       DocumentSheetV2.RenderContext<AmbientLightDocument.Implementation> {
     document: AmbientLightDocument.Implementation;
     light: AmbientLightDocument.Implementation;
     source: foundry.documents.BaseAmbientLight.Source;
 
     /**
-     * @deprecated Foundry deleted this with no deprecation in v13.
+     * @deprecated - Foundry deleted this with no deprecation in v13.
      */
     fields: foundry.documents.BaseAmbientLight.Schema;
     colorationTechniques: typeof AdaptiveLightingShader.SHADER_TECHNIQUES;
@@ -92,15 +91,14 @@ declare namespace AmbientLightConfig {
     lightAnimations: unknown; // TODO: Update after CONFIG updated
 
     /**
-     * @deprecated Foundry deleted this with no deprecation in v13.
+     * @deprecated - Foundry deleted this with no deprecation in v13.
      */
     tabs: Record<string, ApplicationV2.Tab>;
     buttons: ApplicationV2.FormFooterButton[];
   }
 
   interface Configuration
-    extends
-      HandlebarsApplicationMixin.Configuration,
+    extends HandlebarsApplicationMixin.Configuration,
       DocumentSheetV2.Configuration<AmbientLightDocument.Implementation> {}
 
   interface RenderOptions extends HandlebarsApplicationMixin.RenderOptions, DocumentSheetV2.RenderOptions {}

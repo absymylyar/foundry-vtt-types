@@ -10,7 +10,9 @@ expectTypeOf(adventureImporter.object).toEqualTypeOf<Adventure.Implementation>()
 expectTypeOf(adventureImporter.document).toEqualTypeOf<Adventure.Implementation>();
 expectTypeOf(AdventureImporter.defaultOptions).toEqualTypeOf<AdventureImporter.Options>();
 expectTypeOf(adventureImporter.options).toEqualTypeOf<AdventureImporter.Options>();
-expectTypeOf(adventureImporter.getData()).toEqualTypeOf<Promise<GetDataReturnType<AdventureImporter.Data>>>();
+expectTypeOf(adventureImporter.getData()).toEqualTypeOf<
+  Promise<GetDataReturnType<AdventureImporter.AdventureImporterData>>
+>();
 expectTypeOf(adventureImporter.render(true)).toEqualTypeOf<AdventureImporter>();
 
 expectTypeOf(adventureImporter.adventure).toEqualTypeOf<Adventure.Implementation>();

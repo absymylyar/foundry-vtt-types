@@ -1,94 +1,51 @@
 import type { Identity } from "#utils";
 import type Document from "#common/abstract/document.d.mts";
-import type { WorldCollection } from "#client/documents/abstract/_module.d.mts";
-import type { Application } from "#client/appv1/api/_module.d.mts";
-import type { DocumentSheetV2 } from "#client/applications/api/_module.d.mts";
-import type { DocumentSheetConfig } from "#client/applications/apps/_module.d.mts";
 
 /**
  * The singleton collection of Actor documents which exist within the active World.
- * This Collection is accessible within the Game object as {@linkcode foundry.Game.actors | game.actors}.
+ * This Collection is accessible within the Game object as game.actors.
  *
- * @see {@linkcode foundry.documents.Actor} The Actor document
- * @see {@linkcode foundry.applications.sidebar.tabs.ActorDirectory} The ActorDirectory sidebar directory
+ * @see {@linkcode Actor} The Actor document
+ * @see {@linkcode ActorDirectory} The ActorDirectory sidebar directory
  *
- * @example
- * Retrieve an existing Actor by its `id`
- * ```ts
+ * @example <caption>Retrieve an existing Actor by its id</caption>
+ * ```typescript
  * let actor = game.actors.get(actorId);
  * ```
  */
-declare class Actors extends WorldCollection<"Actor"> {
+declare class Actors extends foundry.documents.abstract.WorldCollection<"Actor", "Actors"> {
   /**
    * A mapping of synthetic Token Actors which are currently active within the viewed Scene.
    * Each Actor is referenced by the Token.id.
    */
-  get tokens(): Record<string, Actor.Stored>;
+  get tokens(): Partial<Record<string, Actor.Implementation>>;
 
-  static override documentName: "Actor";
+  static documentName: "Actor";
 
-  /** @privateRemarks Fake type override */
-  static override get instance(): Actors.Implementation;
-
-  /**
-   * @remarks This override doesn't change the type at all, just updates {@link ActiveEffect.origin | `ActiveEffect` origins} if
-   * {@linkcode WorldCollection.FromCompendiumOptions.keepId | keepId} is `true`
-   */
-  override fromCompendium<Options extends WorldCollection.FromCompendiumOptions | undefined = undefined>(
-    document: Actor.Implementation | Actor.Source,
+  override fromCompendium<Options extends foundry.documents.abstract.WorldCollection.FromCompendiumOptions | undefined>(
+    document: Actor.Implementation | foundry.documents.BaseActor.CreateData,
     options?: Options,
-  ): WorldCollection.FromCompendiumReturnType<"Actor", Options>;
-
-  // Fake override for the purpose of typing `options`.
-  static override registerSheet(
-    scope: string,
-    sheetClass: Application.AnyConstructor | DocumentSheetV2.AnyConstructor,
-    options?: DocumentSheetConfig.RegisterSheetOptions<Actor.ImplementationClass>,
-  ): void;
-
-  // Fake override for the purpose of typing `options`.
-  static override unregisterSheet(
-    scope: string,
-    sheetClass: Application.AnyConstructor | DocumentSheetV2.AnyConstructor,
-    options?: DocumentSheetConfig.UnregisterSheetOptions<Actor.ImplementationClass>,
-  ): void;
+  ): foundry.documents.abstract.WorldCollection.FromCompendiumReturnType<"Actor", Options>;
 }
 
 declare namespace Actors {
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode Actors.Implementation} instead. This will be removed in v15.
-   */
-  type Any = Internal.Any;
+  interface Any extends AnyActors {}
+  interface AnyConstructor extends Identity<typeof AnyActors> {}
 
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode Actors.ImplementationClass} instead. This will be removed in v15.
-   */
-  type AnyConstructor = Internal.AnyConstructor;
+  interface ConfiguredClass extends Document.ConfiguredCollectionClass<"Actor"> {}
+  interface Configured extends Document.ConfiguredCollection<"Actor"> {}
 
-  namespace Internal {
-    interface Any extends AnyActors {}
-    interface AnyConstructor extends Identity<typeof AnyActors> {}
+  interface FromCompendiumOptions extends foundry.documents.abstract.WorldCollection.FromCompendiumOptions {
+    /**
+     * Clear prototype token data to allow default token settings to be applied.
+     * @defaultValue `true`
+     */
+    clearPrototypeToken: boolean;
   }
-
-  interface ImplementationClass extends Document.Internal.ConfiguredCollectionClass<"Actor"> {}
-  interface Implementation extends Document.Internal.ConfiguredCollection<"Actor"> {}
-
-  interface FromCompendiumOptions extends WorldCollection.FromCompendiumOptions {
-    /** @deprecated Removed without replacement in v13. This warning will be removed in v14. */
-    clearPrototypeToken?: never;
-  }
-
-  /** @deprecated Replaced by {@linkcode Actors.ImplementationClass}. Will be removed in v15. */
-  type ConfiguredClass = ImplementationClass;
-
-  /** @deprecated Replaced by {@linkcode Actors.Implementation}. Will be removed in v15. */
-  type Configured = Implementation;
 }
-
-export default Actors;
 
 declare abstract class AnyActors extends Actors {
   constructor(...args: never);
 }
+
+export default Actors;

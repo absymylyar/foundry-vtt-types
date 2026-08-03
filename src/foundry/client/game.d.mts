@@ -1,13 +1,18 @@
 import type { Socket } from "socket.io-client";
-import type { ValueOf, FixedInstanceType, InitializationHook, InitializedOn, EmptyObject, GetKey } from "#utils";
+import type {
+  ConfiguredModule,
+  GetKey,
+  EmptyObject,
+  ValueOf,
+  FixedInstanceType,
+  InitializationHook,
+  InitializedOn,
+} from "#utils";
 import type BasePackage from "#common/packages/base-package.d.mts";
 import type { Document } from "#common/abstract/_module.d.mts";
 import type { Canvas } from "#client/canvas/_module.d.mts";
-import type { WorldCollection } from "#client/documents/abstract/_module.d.mts";
-import type { ClientDatabaseBackend } from "#client/data/_module.d.mts";
 
 import AVMaster = foundry.av.AVMaster;
-import Module = foundry.packages.Module;
 
 // Must be called with all hooks in a union.
 // Do not increase the complexity of this type. If you do Game related types may get complex enough to complain about not being statically known.
@@ -83,7 +88,7 @@ declare class InternalGame<RunEvents extends InitializationHook> {
   /**
    * A registry of document sub-types and their respective data models.
    */
-  get model(): Game.Model;
+  get model(): Game.Data["model"];
 
   /**
    * @deprecated since v12, will be removed in v14
@@ -114,8 +119,12 @@ declare class InternalGame<RunEvents extends InitializationHook> {
    * A mapping of WorldCollection instances, one per primary Document type.
    * @remarks Initialized just before the `"setup"` hook event is called.
    */
-  // TODO: Make this a fake Collection subclass like game.modules, return the specific `.Implementation`s for the known keys
-  readonly collections: SimpleInitializedOn<Game.WorldCollectionsCollection, "setup", RunEvents>;
+  // TODO(LukeAbby): Ideally this would be actually vary based upon `CollectionDocument`.
+  readonly collections: SimpleInitializedOn<
+    foundry.utils.Collection<foundry.documents.abstract.WorldCollection<Game.CollectionDocument, string>>,
+    "setup",
+    RunEvents
+  >;
 
   /**
    * The collection of Actor documents which exists in the World.
@@ -370,7 +379,7 @@ declare class InternalGame<RunEvents extends InitializationHook> {
    * Scopes are returned in the prioritization order that their content is loaded.
    * @returns An array of string package scopes
    */
-  getPackageScopes(): ClientDatabaseBackend.FlagScope[];
+  getPackageScopes(): string[];
 
   /**
    * Initialize the Game for the current window location
@@ -619,84 +628,15 @@ declare global {
 }
 
 declare namespace Game {
-  /**
-   * The special interface for {@linkcode Game.modules | game.modules}.
-   *
-   * This is a {@linkcode Collection} at runtime, not a subclass, but the type of its `get` method is overridden here to provide specificity
-   * where we can know which types certain keys refer to due to fvtt-types's configuration interfaces {@linkcode ModuleConfig} and
-   * {@linkcode RequiredModules}.
-   */
-  interface ModuleCollection extends Collection<foundry.packages.Module, ModuleCollectionMethods> {
+  interface ModuleCollection extends Collection<foundry.packages.Module> {
     /**
-     * @remarks Gets the module requested for by ID.
-     *
-     * Go to definition doesn't work here, see {@linkcode ModuleCollectionMethods.get}.
-     * @see {@linkcode ModuleConfig} to add custom properties to modules, for example APIs.
+     * Gets the module requested for by ID
+     * @see {@linkcode ModuleConfig} to add custom properties to modules like APIs.
      * @see {@linkcode RequiredModules} to remove `undefined` from the return type for a given module
      * @param id - The module ID to look up
-     *
-     * @privateRemarks The `Methods` hack does not pass through JSDoc, so we have this otherwise unnecessary override here.
      */
-    get: ModuleCollectionMethods["get"];
+    get<T extends string>(id: T): foundry.packages.Module & ConfiguredModule<T>;
   }
-
-  /**
-   * Methods for the {@linkcode ModuleCollection} fake class. Only `#get` needs a type override, the rest is inherited.
-   */
-  interface ModuleCollectionMethods extends Omit<Collection.Methods<foundry.packages.Module>, "get"> {
-    get<T extends string, Options extends Collection.GetOptions | undefined = undefined>(
-      id: T,
-      options?: Options,
-    ): _ModuleCollectionGetReturn<T, Options>;
-  }
-
-  /** @internal */
-  type _ModuleCollectionGetReturn<
-    Name extends string,
-    Options extends Collection.GetOptions | undefined = undefined,
-  > = Name extends keyof RequiredModules ? _Module<Name> : Collection.GetReturn<_MaybeActiveModule<Name>, Options>;
-
-  /** @internal */
-  type _Module<Name extends string> =
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-    { active: true } & Module & GetKey<ModuleConfig, Name, {}>;
-
-  /** @internal */
-  type _MaybeActiveModule<Name extends string> =
-    | _Module<Name>
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-    | ({ active: false } & Module & { [K in keyof GetKey<ModuleConfig, Name, {}>]?: never });
-
-  /**
-   * The type for {@linkcode Game.collections | game.collections} after initialization.
-   *
-   * This is a {@linkcode Collection} at runtime, not a subclass, but the type of its `get` method is overridden here to return the
-   * Foundry-provided {@linkcode WorldCollection}s for their known keys.
-   */
-  interface WorldCollectionsCollection extends Collection<WorldCollection.Any, WorldCollectionsCollectionMethods> {
-    /**
-     * @remarks Returns the appropriate {@linkcode WorldCollection} implementation
-     * when passed a key in {@linkcode CONST.WORLD_DOCUMENT_TYPES}.
-     *
-     * Go to definition breaks here, see {@linkcode WorldCollectionsCollectionMethods.get}.
-     */
-    get: WorldCollectionsCollectionMethods["get"];
-  }
-
-  interface WorldCollectionsCollectionMethods extends Omit<Collection.Methods<WorldCollection.Any>, "get"> {
-    get<Key extends string, Options extends Collection.GetOptions | undefined>(
-      key: Key,
-      options?: Options,
-    ): _WorldCollectionsCollectionGetReturn<Key, Options>;
-  }
-
-  /** @internal */
-  type _WorldCollectionsCollectionGetReturn<
-    Key extends string,
-    Options extends Collection.GetOptions | undefined,
-  > = Key extends CONST.WORLD_DOCUMENT_TYPES
-    ? WorldCollection.ForName<Key>
-    : Collection._GetReturn<WorldCollection.Any, Options>;
 
   namespace Model {
     /**
@@ -712,26 +652,13 @@ declare namespace Game {
 
   /** @internal */
   type _Model = {
-    [DocumentType in Document.Type]: DocumentType extends Document.WithSystem
-      ? _ModelType<DocumentType>
-      : { base: EmptyObject };
+    [DocumentType in Document.Type]: {
+      // The `& string` is helpful even though there should never be any numeric/symbol keys.
+      // This is because when `keyof Config<...>` is deferred then TypeScript does a bunch of proofs under the assumption that `SystemTypeNames` could be a `string | number` until proven otherwise.
+      // This causes issues where there shouldn't be, for example it has been observed to obstruct the resolution of the `Actor` class.
+      [SubType in Model.TypeNames<DocumentType>]: GetKey<GetKey<SourceConfig, DocumentType>, SubType, EmptyObject>;
+    };
   };
-
-  /** @internal */
-  type _ModelType<DocumentType extends Document.WithSystem> =
-    | (DocumentType extends "ActiveEffect" ? ActiveEffect._ModelMap : never)
-    | (DocumentType extends "ActorDelta" ? ActorDelta._ModelMap : never)
-    | (DocumentType extends "Actor" ? Actor._ModelMap : never)
-    | (DocumentType extends "Card" ? Card._ModelMap : never)
-    | (DocumentType extends "Cards" ? Cards._ModelMap : never)
-    | (DocumentType extends "ChatMessage" ? ChatMessage._ModelMap : never)
-    | (DocumentType extends "Combat" ? Combat._ModelMap : never)
-    | (DocumentType extends "Combatant" ? Combatant._ModelMap : never)
-    | (DocumentType extends "CombatantGroup" ? CombatantGroup._ModelMap : never)
-    | (DocumentType extends "Item" ? Item._ModelMap : never)
-    | (DocumentType extends "JournalEntryPage" ? JournalEntryPage._ModelMap : never)
-    | (DocumentType extends "RegionBehavior" ? RegionBehavior._ModelMap : never);
-
   interface Model extends _Model {}
 
   interface PackageWarning {
@@ -761,8 +688,7 @@ declare namespace Game {
     warning: string[];
   }
 
-  /** @internal */
-  type _Data = {
+  type Data = {
     activeUsers: string[];
     addresses: {
       local: string;
@@ -801,7 +727,17 @@ declare namespace Game {
       updateChannel: string;
     };
     packageWarnings: Record<string, PackageWarning>;
-    packs: Array<Data.Pack>;
+    packs: Array<
+      PackageCompendiumData & {
+        /** @deprecated since v11 */
+        private?: boolean;
+        system?: string | undefined;
+        type: foundry.CONST.COMPENDIUM_DOCUMENT_TYPES;
+        packageName: BasePackage["_source"]["id"];
+        packageType: BasePackage["type"];
+        id: string;
+      }
+    >;
     paused: boolean;
     release: foundry.config.ReleaseData["_source"];
     system: foundry.packages.System["_source"];
@@ -817,65 +753,12 @@ declare namespace Game {
     userId: string;
     world: foundry.packages.World["_source"];
   } & {
-    [DocumentType in
-      // TODO: the Exclude is to replace the now-removed `CONST.DOCUMENT_TYPES`, this has been stopgapped with the old value and should be replaced eventually.
-      | Exclude<CONST.WORLD_DOCUMENT_TYPES | CONST.COMPENDIUM_DOCUMENT_TYPES, "Setting" | "FogExploration">
+    [DocumentType in  // eslint-disable-next-line @typescript-eslint/no-deprecated
+      | foundry.CONST.DOCUMENT_TYPES
       | "Setting" as Document.ImplementationClassFor<DocumentType>["metadata"]["collection"]]?: FixedInstanceType<
       Document.ImplementationClassFor<DocumentType>
     >["_source"][];
   };
-
-  interface Data extends _Data {}
-
-  namespace Data {
-    interface Pack extends BasePackage.SocketCompendiumData {
-      /**
-       * @remarks Not all packs are required to specify a `system`, and those that don't will not have this key in their data,
-       * presumably because the socket eats the `undefined`-valued property.
-       *
-       * Of packs with a `system`, only ones where it matches the current world's are sent to clients.
-       */
-      system?: foundry.packages.System.Id;
-
-      packageName: BasePackage["_source"]["id"];
-      packageType: BasePackage["type"];
-
-      /** @remarks In the format `${package.id}.${pack.name}` */
-      id: string;
-
-      /**
-       * @privateRemarks For some reason {@linkcode BasePackage.Schema.path} is `required: false`, so the `UndefinedToOptional` on
-       * {@linkcode BasePackage.SocketCompendiumData} makes it optional here, but a `path` will always be in the metadata sent by
-       * the server.
-       */
-      path: string;
-
-      /**
-       * @remarks This property is deleted right before `setup` is called, most likely inadvertently.
-       * This is ultimately because `CompendiumCollection` is passed a reference to an object in
-       * `game.data.packs` and calls `delete metadata.index` and `delete metadata.folders`.
-       *
-       * Specifically `Game#setupGame` calls `Game#setupPacks` and initializes `CompendiumCollection`
-       * with `new CompendiumCollection(metadata)` where `metadata` is defined from
-       * `for ( const metadata of this.data.packs ) {`.
-       */
-      // TODO(LukeAbby): Technically should be updated with compendium index types.
-      // It's probably not worth it because it is deleted after setup.
-      index?: { _id: string; uuid: string } & Record<string, unknown>;
-
-      /**
-       * @remarks This property is deleted after `setup`, most likely inadvertently.
-       * This is ultimately because `CompendiumCollection` is passed a reference to an object in
-       * `game.data.packs` and calls `delete metadata.index` and `delete metadata.folders`.
-       *
-       * Specifically `Game#setupGame` calls `Game#setupPacks` and initializes `CompendiumCollection`
-       * with `new CompendiumCollection(metadata)` where `metadata` is defined from
-       * `for ( const metadata of this.data.packs ) {`.
-       */
-      // TODO(LukeAbby): Technically a bit underspecified; may be more specific, though unlikely.
-      folders?: Folder.Source[];
-    }
-  }
 
   type Permissions = {
     [Key in keyof typeof foundry.CONST.USER_PERMISSIONS]: foundry.CONST.USER_ROLES[];
@@ -897,6 +780,21 @@ declare namespace Game {
      */
     userId?: string | undefined;
   }
+
+  // Note(LukeAbby): See `Game#initializeDocuments`'s `initOrder`.
+  type CollectionDocument =
+    | "User"
+    | "Folder"
+    | "Actor"
+    | "Item"
+    | "Scene"
+    | "Combat"
+    | "JournalEntry"
+    | "Macro"
+    | "Playlist"
+    | "RollTable"
+    | "Cards"
+    | "ChatMessage";
 }
 
 declare global {
@@ -907,7 +805,7 @@ declare global {
   let canvas: InitializedOn<Canvas, "init">;
 }
 
-type ConfiguredCollectionClassForName<Name extends CONST.WORLD_DOCUMENT_TYPES> = FixedInstanceType<
+type ConfiguredCollectionClassForName<Name extends foundry.CONST.WORLD_DOCUMENT_TYPES> = FixedInstanceType<
   CONFIG[Name]["collection"]
 >;
 

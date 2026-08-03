@@ -18,7 +18,7 @@ declare namespace DashLineShader {
   interface AnyConstructor extends Identity<typeof AnyDashLineShader> {}
 
   /** @internal */
-  interface _ConstructorOptions {
+  type _ConstructorOptions = InexactPartial<{
     /**
      * The length of the dash
      * @defaultValue `8.0`
@@ -36,9 +36,9 @@ declare namespace DashLineShader {
      * @defaultValue `0.0`
      */
     offset: number;
-  }
+  }>;
 
-  interface ConstructorOptions extends InexactPartial<_ConstructorOptions> {}
+  interface ConstructorOptions extends _ConstructorOptions {}
 }
 
 export default DashLineShader;

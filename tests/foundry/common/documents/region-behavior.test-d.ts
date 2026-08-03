@@ -3,23 +3,15 @@ import type { InterfaceToObject } from "fvtt-types/utils";
 import BaseRegionBehavior = foundry.documents.BaseRegionBehavior;
 import Document = foundry.abstract.Document;
 
-class TestBaseRegionBehavior extends BaseRegionBehavior {
-  get compendium() {
-    return this.inCompendium
-      ? (game.packs!.get(
-          this.pack!,
-        ) as foundry.documents.collections.CompendiumCollection.ForDocument<"RegionBehavior">)
-      : null;
-  }
-}
+class TestRegionBehavior extends BaseRegionBehavior {}
 
 // @ts-expect-error RegionBehavior requires a `type` for creation
-new TestBaseRegionBehavior();
+new TestRegionBehavior();
 
 // @ts-expect-error RegionBehavior requires a `type` for creation
-new TestBaseRegionBehavior({});
+new TestRegionBehavior({});
 
-new TestBaseRegionBehavior({
+new TestRegionBehavior({
   _id: "XXXXXSomeIDXXXXX",
   name: "Some Behaviour",
   type: "executeScript", // required for creation
@@ -42,7 +34,7 @@ new TestBaseRegionBehavior({
   },
 });
 
-new TestBaseRegionBehavior({
+new TestRegionBehavior({
   _id: null,
   name: null,
   type: "executeScript", // required for creation
@@ -61,12 +53,12 @@ new TestBaseRegionBehavior({
   },
 });
 
-new TestBaseRegionBehavior({
+new TestRegionBehavior({
   type: "executeScript", // required for creation
   _stats: null,
 });
 
-new TestBaseRegionBehavior({
+new TestRegionBehavior({
   _id: undefined,
   name: undefined,
   type: "executeScript", // required for creation
@@ -85,14 +77,14 @@ new TestBaseRegionBehavior({
   },
 });
 
-new TestBaseRegionBehavior({
+new TestRegionBehavior({
   type: "executeScript", // required for creation
   _stats: undefined,
 });
 
-declare const myRB: TestBaseRegionBehavior;
+declare const myRB: TestRegionBehavior;
 
-expectTypeOf(myRB).toEqualTypeOf<TestBaseRegionBehavior>();
+expectTypeOf(myRB).toEqualTypeOf<BaseRegionBehavior>();
 
 expectTypeOf(myRB._id).toEqualTypeOf<string | null>();
 expectTypeOf(myRB.name).toBeString();

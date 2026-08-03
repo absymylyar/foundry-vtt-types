@@ -3,13 +3,7 @@ import type { InterfaceToObject } from "fvtt-types/utils";
 import BaseWall = foundry.documents.BaseWall;
 import Document = foundry.abstract.Document;
 
-class TestBaseWall extends BaseWall {
-  get compendium() {
-    return this.inCompendium
-      ? (game.packs!.get(this.pack!) as foundry.documents.collections.CompendiumCollection.ForDocument<"Wall">)
-      : null;
-  }
-}
+class TestBaseWall extends BaseWall {}
 
 // TODO: ensure `c` required for creation
 // @ts-expect-error Wall requires `c` for creation
@@ -18,62 +12,62 @@ new TestBaseWall();
 // @ts-expect-error Wall requires `c` for creation
 new TestBaseWall({});
 
-// @ts-expect-error c must be a length-4 array of integer coordinates
+// @ts-expect-error - c must be a length-4 array of integer coordinates
 new TestBaseWall({ c: [10, 20] });
 
-// @ts-expect-error c must be a length-4 array of integer coordinates
+// @ts-expect-error - c must be a length-4 array of integer coordinates
 new TestBaseWall({ c: [10, 20, 30, 40, 50] });
 
 new TestBaseWall({
   c: [10, 20, 30, 40],
-  // @ts-expect-error light can't be an arbitrary number
+  // @ts-expect-error - light can't be an arbitrary number
   light: 9999,
 });
 
 new TestBaseWall({
   c: [10, 20, 30, 40],
-  // @ts-expect-error move can't be an arbitrary number
+  // @ts-expect-error - move can't be an arbitrary number
   move: 9999,
 });
 
 new TestBaseWall({
   c: [10, 20, 30, 40],
-  // @ts-expect-error sight can't be an arbitrary number
+  // @ts-expect-error - sight can't be an arbitrary number
   sight: 9999,
 });
 
 new TestBaseWall({
   c: [10, 20, 30, 40],
-  // @ts-expect-error sound can't be an arbitrary number
+  // @ts-expect-error - sound can't be an arbitrary number
   sound: 9999,
 });
 
 new TestBaseWall({
   c: [10, 20, 30, 40],
-  // @ts-expect-error dir can't be an arbitrary number
+  // @ts-expect-error - dir can't be an arbitrary number
   dir: 9999,
 });
 
 new TestBaseWall({
   c: [10, 20, 30, 40],
-  // @ts-expect-error door can't be an arbitrary number
+  // @ts-expect-error - door can't be an arbitrary number
   door: 9999,
 });
 
 new TestBaseWall({
   c: [10, 20, 30, 40],
-  // @ts-expect-error ds can't be an arbitrary number
+  // @ts-expect-error - ds can't be an arbitrary number
   ds: 9999,
 });
 
 new TestBaseWall({
   _id: "XXXXXSomeIDXXXXX",
   c: [20, 30, 240, 340],
-  light: CONST.EDGE_SENSE_TYPES.DISTANCE,
+  light: CONST.WALL_SENSE_TYPES.DISTANCE,
   move: CONST.WALL_MOVEMENT_TYPES.NORMAL,
-  sight: CONST.EDGE_SENSE_TYPES.LIMITED,
-  sound: CONST.EDGE_SENSE_TYPES.PROXIMITY,
-  dir: CONST.EDGE_DIRECTIONS.LEFT,
+  sight: CONST.WALL_SENSE_TYPES.LIMITED,
+  sound: CONST.WALL_SENSE_TYPES.PROXIMITY,
+  dir: CONST.WALL_DIRECTIONS.LEFT,
   door: CONST.WALL_DOOR_TYPES.SECRET,
   ds: CONST.WALL_DOOR_STATES.LOCKED,
   doorSound: "futuristicForcefield",
@@ -134,15 +128,15 @@ new TestBaseWall({
 
 const myWall = new TestBaseWall({ c: [20, 30, 240, 340], threshold: undefined });
 
-expectTypeOf(myWall).toEqualTypeOf<TestBaseWall>();
+expectTypeOf(myWall).toEqualTypeOf<foundry.documents.BaseWall>();
 
 expectTypeOf(myWall._id).toEqualTypeOf<string | null>();
 expectTypeOf(myWall.c).toEqualTypeOf<[number, number, number, number]>();
-expectTypeOf(myWall.light).toEqualTypeOf<CONST.EDGE_SENSE_TYPES | null>();
+expectTypeOf(myWall.light).toEqualTypeOf<CONST.WALL_SENSE_TYPES | null>();
 expectTypeOf(myWall.move).toEqualTypeOf<CONST.WALL_MOVEMENT_TYPES | null>();
-expectTypeOf(myWall.sight).toEqualTypeOf<CONST.EDGE_SENSE_TYPES | null>();
-expectTypeOf(myWall.sound).toEqualTypeOf<CONST.EDGE_SENSE_TYPES | null>();
-expectTypeOf(myWall.dir).toEqualTypeOf<CONST.EDGE_DIRECTIONS | null>();
+expectTypeOf(myWall.sight).toEqualTypeOf<CONST.WALL_SENSE_TYPES | null>();
+expectTypeOf(myWall.sound).toEqualTypeOf<CONST.WALL_SENSE_TYPES | null>();
+expectTypeOf(myWall.dir).toEqualTypeOf<CONST.WALL_DIRECTIONS | null>();
 expectTypeOf(myWall.door).toEqualTypeOf<CONST.WALL_DOOR_TYPES | null>();
 expectTypeOf(myWall.ds).toEqualTypeOf<CONST.WALL_DOOR_STATES | null>();
 expectTypeOf(myWall.doorSound).toEqualTypeOf<string | undefined>();
@@ -150,8 +144,4 @@ expectTypeOf(myWall.threshold.light).toEqualTypeOf<number | null>();
 expectTypeOf(myWall.threshold.sight).toEqualTypeOf<number | null>();
 expectTypeOf(myWall.threshold.sound).toEqualTypeOf<number | null>();
 expectTypeOf(myWall.threshold.attenuation).toBeBoolean();
-expectTypeOf(myWall.flags).toEqualTypeOf<
-  foundry.data.fields.DocumentFlagsField._TwoLevelPartial<
-    InterfaceToObject<Document.CoreFlags> & InterfaceToObject<WallDocument.CoreFlags>
-  >
->();
+expectTypeOf(myWall.flags).toEqualTypeOf<InterfaceToObject<Document.CoreFlags>>();

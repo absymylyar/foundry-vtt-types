@@ -53,7 +53,7 @@ declare class CanvasDepthMask extends CachedContainer {
   /**
    * Clear the depth mask.
    */
-  override clear(): this;
+  clear(): void;
 }
 
 declare namespace CanvasDepthMask {

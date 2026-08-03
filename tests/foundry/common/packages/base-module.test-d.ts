@@ -1,10 +1,8 @@
 import { expectTypeOf } from "vitest";
-
-import AdditionalTypesField = foundry.packages.AdditionalTypesField;
+import type AdditionalTypesField from "../../../../src/foundry/common/packages/sub-types.d.mts";
 
 const baseModule = new foundry.packages.BaseModule({
-  id: "123",
-  title: "Test Title",
+  changelog: "Test",
 });
 
 // schema fields
@@ -13,7 +11,7 @@ expectTypeOf(baseModule.library).toEqualTypeOf<boolean>();
 expectTypeOf(baseModule.coreTranslation).toEqualTypeOf<boolean>();
 
 // It's *not* ever undefined though, possibly as a product of the server's work?
-expectTypeOf(baseModule.documentTypes).toEqualTypeOf<AdditionalTypesField.DocumentTypesConfiguration>();
+expectTypeOf(baseModule.documentTypes).toEqualTypeOf<AdditionalTypesField.ServerTypeDeclarations>();
 
 expectTypeOf(foundry.packages.BaseModule.defineSchema()).toEqualTypeOf<foundry.packages.BaseModule.Schema>();
 expectTypeOf(foundry.packages.BaseModule.type).toEqualTypeOf<"module">();

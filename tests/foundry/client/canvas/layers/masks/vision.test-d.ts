@@ -1,10 +1,8 @@
 import { expectTypeOf } from "vitest";
-
-import AlphaBlurFilter = foundry.canvas.rendering.filters.AlphaBlurFilter;
-import VoidFilter = foundry.canvas.rendering.filters.VoidFilter;
-import CanvasVisionMask = foundry.canvas.layers.CanvasVisionMask;
-import CachedContainer = foundry.canvas.containers.CachedContainer;
-import SpriteMesh = foundry.canvas.containers.SpriteMesh;
+import AlphaBlurFilter from "#client/canvas/rendering/filters/blur.mjs";
+import { VoidFilter } from "#client/canvas/rendering/filters/_module.mjs";
+import { CanvasVisionMask } from "#client/canvas/layers/_module.mjs";
+import { CachedContainer, SpriteMesh } from "#client/canvas/containers/_module.mjs";
 
 expectTypeOf(CanvasVisionMask.textureConfiguration).toEqualTypeOf<CachedContainer.TextureConfiguration>();
 
@@ -38,3 +36,10 @@ expectTypeOf(myVisionMask.draw()).toEqualTypeOf<Promise<void>>();
 declare const someVisionContainer: CanvasVisionMask.CanvasVisionContainer;
 expectTypeOf(myVisionMask.attachVision(someVisionContainer)).toEqualTypeOf<CanvasVisionMask.CanvasVisionContainer>();
 expectTypeOf(myVisionMask.detachVision()).toEqualTypeOf<CanvasVisionMask.CanvasVisionContainer>();
+
+// deprecated since v11, until v13
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+expectTypeOf(myVisionMask.filter).toEqualTypeOf<AlphaBlurFilter | undefined>();
+declare const someBlurFilter: AlphaBlurFilter;
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+myVisionMask.filter = someBlurFilter;

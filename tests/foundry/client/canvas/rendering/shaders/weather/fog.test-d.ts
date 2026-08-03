@@ -1,7 +1,5 @@
 import { expectTypeOf } from "vitest";
-
-import FogShader = foundry.canvas.rendering.shaders.FogShader;
-import AbstractBaseShader = foundry.canvas.rendering.shaders.AbstractBaseShader;
+import { AbstractBaseShader, FogShader } from "#client/canvas/rendering/shaders/_module.mjs";
 
 const myFS = FogShader.create();
 expectTypeOf(myFS).toEqualTypeOf<FogShader>();

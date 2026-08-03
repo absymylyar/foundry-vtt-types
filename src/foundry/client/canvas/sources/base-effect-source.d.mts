@@ -59,7 +59,8 @@ declare abstract class BaseEffectSource<
    * Some other object which is responsible for this source.
    * @privateRemarks see {@linkcode BaseEffectSource.ConstructorOptions.object}
    */
-  object: placeables.PlaceableObject.Any | EnvironmentCanvasGroup.Implementation | null;
+  // TODO: 4th type param for this?
+  object: placeables.PlaceableObject.Any | EnvironmentCanvasGroup.Any | null;
 
   /**
    * The source id linked to this effect source.
@@ -222,14 +223,14 @@ declare namespace BaseEffectSource {
   interface AnyConstructor extends Identity<typeof AnyBaseEffectSource> {}
 
   /** @internal */
-  interface _ConstructorOptions {
+  type _ConstructorOptions = InexactPartial<{
     /**
      * An optional PlaceableObject which is responsible for this source
      * @remarks The {@linkcode EnvironmentCanvasGroup} passes itself when creating the global light source during its construction,
      * as an exception to Foundry's typing of just {@linkcode PlaceableObject}. Otherwise, is only ever {@linkcode placeables.AmbientLight | AmbientLight},
      * {@linkcode placeables.AmbientSound | AmbientSound}, or {@linkcode placeables.Token | Token} in Foundry usage
      */
-    object: placeables.PlaceableObject.Any | EnvironmentCanvasGroup.Implementation;
+    object: placeables.PlaceableObject.Any | EnvironmentCanvasGroup.Any;
 
     /**
      * A unique ID for this source. This will be set automatically if an object is provided, otherwise is required.
@@ -240,9 +241,9 @@ declare namespace BaseEffectSource {
      * {@linkcode BaseEffectSource.effectsCollection | #effectsCollection}
      */
     sourceId: string;
-  }
+  }>;
 
-  interface ConstructorOptions extends InexactPartial<_ConstructorOptions> {}
+  interface ConstructorOptions extends _ConstructorOptions {}
 
   interface SourceData {
     /**
@@ -271,15 +272,15 @@ declare namespace BaseEffectSource {
   }
 
   /** @internal */
-  interface _InitializeOptions {
+  type _InitializeOptions = InexactPartial<{
     /**
      * Should source data be reset to default values before applying changes?
      * @defaultValue `false`
      */
     reset: boolean;
-  }
+  }>;
 
-  interface InitializeOptions extends InexactPartial<_InitializeOptions> {}
+  interface InitializeOptions extends _InitializeOptions {}
 
   /** @privateRemarks The `| number` is from Foundry's typing, but core only uses boolean flags in v12.331 */
   interface Flags extends Record<string, boolean | number | undefined> {

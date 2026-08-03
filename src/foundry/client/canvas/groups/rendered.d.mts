@@ -1,10 +1,10 @@
-import type { FixedInstanceType, Identity } from "#utils";
+import type { Identity } from "#utils";
 import type { CanvasGroupMixin } from "#client/canvas/groups/_module.d.mts";
 
 declare module "#configuration" {
   namespace Hooks {
     interface CanvasGroupConfig {
-      RenderedCanvasGroup: RenderedCanvasGroup.Implementation;
+      RenderedCanvasGroup: RenderedCanvasGroup.Any;
     }
   }
 }
@@ -16,8 +16,6 @@ declare class RenderedCanvasGroup<
   DrawOptions extends RenderedCanvasGroup.DrawOptions = RenderedCanvasGroup.DrawOptions,
   TearDownOptions extends RenderedCanvasGroup.TearDownOptions = RenderedCanvasGroup.TearDownOptions,
 > extends CanvasGroupMixin<typeof PIXI.Container, "rendered">(PIXI.Container)<DrawOptions, TearDownOptions> {
-  // static override groupName is handled by the CanvasGroupMixin type
-
   /**
    * Should this group tear down its non-layer children?
    * @defaultValue `false`
@@ -26,19 +24,8 @@ declare class RenderedCanvasGroup<
 }
 
 declare namespace RenderedCanvasGroup {
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
-  type Any = Internal.Any;
-
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyRenderedCanvasGroup {}
-    interface AnyConstructor extends Identity<typeof AnyRenderedCanvasGroup> {}
-  }
-
-  interface ImplementationClass extends Identity<typeof CONFIG.Canvas.groups.rendered.groupClass> {}
-  interface Implementation extends FixedInstanceType<ImplementationClass> {}
+  interface Any extends AnyRenderedCanvasGroup {}
+  interface AnyConstructor extends Identity<typeof AnyRenderedCanvasGroup> {}
 
   interface DrawOptions extends CanvasGroupMixin.DrawOptions {}
 

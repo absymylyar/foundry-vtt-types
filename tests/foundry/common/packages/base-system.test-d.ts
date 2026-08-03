@@ -1,6 +1,4 @@
 import { expectTypeOf } from "vitest";
-
-// Import necessary as this is otherwise inaccessible.
 import type AdditionalTypesField from "../../../../src/foundry/common/packages/sub-types.d.mts";
 
 const baseSystem = new foundry.packages.BaseSystem({
@@ -12,16 +10,16 @@ expectTypeOf(baseSystem.strictDataCleaning).toEqualTypeOf<boolean>();
 
 // schema fields
 expectTypeOf(baseSystem.version).toEqualTypeOf<string>();
-expectTypeOf(baseSystem.documentTypes).toEqualTypeOf<AdditionalTypesField.DocumentTypesConfiguration>();
-expectTypeOf(baseSystem.documentTypes.Actor["character"]).toEqualTypeOf<
-  AdditionalTypesField.ServerSanitizationFields | undefined
->();
+expectTypeOf(baseSystem.documentTypes).toEqualTypeOf<AdditionalTypesField.ServerTypeDeclarations>();
 expectTypeOf(baseSystem.background).toEqualTypeOf<string | undefined>();
 expectTypeOf(baseSystem.initiative).toEqualTypeOf<string | undefined>();
+
+// these all want undefined, but I don't think that's right
 expectTypeOf(baseSystem.grid.type).toEqualTypeOf<number>();
 expectTypeOf(baseSystem.grid.distance).toEqualTypeOf<number>();
 expectTypeOf(baseSystem.grid.units).toEqualTypeOf<string>();
 expectTypeOf(baseSystem.grid.diagonals).toEqualTypeOf<number>();
+
 expectTypeOf(baseSystem.primaryTokenAttribute).toEqualTypeOf<string | undefined>();
 expectTypeOf(baseSystem.secondaryTokenAttribute).toEqualTypeOf<string | undefined>();
 

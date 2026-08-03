@@ -13,6 +13,7 @@ import type {
   Override,
 } from "#utils";
 import type { SchemaField } from "../data/fields.d.mts";
+import type { DatabaseCreateOperation, DatabaseDeleteOperation, DatabaseUpdateOperation } from "./_types.d.mts";
 import type { DataModel } from "./data.d.mts";
 import type Document from "./document.d.mts";
 import type TextEditor from "#client/applications/ux/text-editor.mjs";
@@ -25,25 +26,15 @@ interface _InternalTypeDataModelInterface extends DataModel.AnyConstructor {
   ): DataModelOverride<Schema, Parent, _ComputedInstance>;
 }
 
-// Patterns of the form `interface Example<T> extends T {}` don't count as using `T`. From tsc's
-// point of view when calculating variance it may as well look like `interface Example<T> {}`.
-// Fundamentally this ordinarily means `Example<T>` will always be assignable to `Example<U>` and
-// vice versa.
-//
-// Obviously this is a problem, so `Uses` exists to add an unobtrusive covariant usage of the type
-// parameter, making `Example<T>` assignable to `Example<U>` only if `T` is a subtype of `U`.
-declare class Uses<T> {
-  #t?: T;
-}
-
 // Note(LukeAbby): This is carefully written to ensure that TypeScript allows overriding `protected`
 // methods of `DataModel` in subclasses. If `Override<DataModel<Schema, Parent>, _ComputedInstance>`
 // is used instead. it doesn't work.
 //
 // See: https://gist.github.com/LukeAbby/b9fd57eeba778a25297721e88b3e6bdd
-// @ts-expect-error This pattern is inherently an error.
+// @ts-expect-error - This pattern is inherently an error.
 interface DataModelOverride<Schema extends DataSchema, Parent extends Document.Any, _ComputedInstance extends object>
-  extends _ComputedInstance, DataModel<Schema, Parent>, Uses<_ComputedInstance> {}
+  extends _ComputedInstance,
+    DataModel<Schema, Parent> {}
 
 type UnmergePartial<
   Schema extends DataSchema,
@@ -64,37 +55,20 @@ type UnmergePartial<
   [K in keyof Initialized as K extends keyof BaseData ? never : K]: Initialized[K];
 };
 
-type MergePartial<BaseThis, BaseData, DerivedData> = {
-  [K in keyof BaseThis as K extends keyof BaseData | keyof DerivedData ? never : K]: BaseThis[K];
-} & {
+type MergePartial<BaseData, DerivedData> = {
   [K in keyof BaseData as K extends keyof DerivedData ? never : K]: BaseData[K];
 } & {
-  [K in keyof DerivedData as K extends PartialKey<BaseData, DerivedData> ? K : never]?: _MergePartial<
-    K,
-    BaseThis,
-    BaseData,
-    DerivedData[K]
-  >;
+  [K in keyof DerivedData as K extends PartialKey<BaseData, DerivedData> ? K : never]?: K extends keyof BaseData
+    ? _MergePartial<BaseData[K], DerivedData[K]>
+    : DerivedData[K];
 } & {
-  [K in keyof DerivedData as K extends PartialKey<BaseData, DerivedData> ? never : K]: _MergePartial<
-    K,
-    BaseThis,
-    BaseData,
-    DerivedData[K]
-  >;
+  [K in keyof DerivedData as K extends PartialKey<BaseData, DerivedData> ? never : K]: K extends keyof BaseData
+    ? _MergePartial<BaseData[K], DerivedData[K]>
+    : DerivedData[K];
 };
 
 // TODO(LukeAbby): The logic here is over-simplified.
-type _MergePartial<K extends PropertyKey, BaseThis, BaseData, Derived> =
-  IsObject<Derived> extends true ? MergePartial<GetObject<BaseThis, K>, GetObject<BaseData, K>, Derived> : Derived;
-
-type GetObject<T, K extends PropertyKey> = T extends { readonly [_ in K]?: infer Result }
-  ? IsObject<Result> extends true
-    ? Result
-    : // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-      {}
-  : // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-    {};
+type _MergePartial<Base, Derived> = [Base, Derived] extends [object, object] ? MergePartial<Base, Derived> : Derived;
 
 type PartialKey<BaseData, DerivedData> = {
   [K in keyof MetadataFor<DerivedData>]: _PartialKey<K, GetKey<MetadataFor<BaseData>, K>, MetadataFor<DerivedData>[K]>;
@@ -188,16 +162,8 @@ declare namespace TypeDataModel {
       : never;
 
   type PrepareDerivedDataThis<BaseThis extends Internal.Instance.Any> =
-    BaseThis extends Internal.Instance<infer Schema, infer _1, infer _2, infer BaseData, infer DerivedData>
-      ? Override<
-          BaseThis,
-          MergePartial<
-            // TODO: Put back in `BaseThis` and write as yet another unmerge
-            SchemaField.InitializedData<Schema>,
-            RemoveIndexSignatures<BaseData>,
-            RemoveIndexSignatures<DerivedData>
-          >
-        >
+    BaseThis extends Internal.Instance<infer _1, infer _2, infer _3, infer BaseData, infer DerivedData>
+      ? Override<BaseThis, MergePartial<RemoveIndexSignatures<BaseData>, RemoveIndexSignatures<DerivedData>>>
       : never;
 
   type ParentAssignmentType<Schema extends DataSchema, Parent extends Document.Internal.Instance.Any> = SimpleMerge<
@@ -219,8 +185,9 @@ declare abstract class AnyTypeDataModel extends TypeDataModel<any, any, any, any
  * Systems or Modules that provide DataModel implementations for sub-types of Documents (such as Actors or Items)
  * should subclass this class instead of the base DataModel class.
  *
- * @example
- * Registering a custom sub-type for a Module.
+ *
+ * @example Registering a custom sub-type for a Module.
+ *
  * **module.json**
  * ```json
  * {
@@ -268,23 +235,6 @@ declare abstract class AnyTypeDataModel extends TypeDataModel<any, any, any, any
  *   }
  * }
  * ```
- *
- * **en.json** To provide the localization for methods like `ClientDocument.createDialog`
- *
- * ```json
- * {
- *   "TYPES": {
- *     "Actor": {
- *       "sidekick": "Sidekick",
- *       "villain": "Villain"
- *     },
- *     "JournalEntryPage": {
- *       "dossier": "Dossier",
- *       "quest": "Quest"
- *     }
- *   }
- * }
- * ```
  */
 declare abstract class TypeDataModel<
   Schema extends DataSchema,
@@ -302,49 +252,23 @@ declare abstract class TypeDataModel<
 
   modelProvider: foundry.packages.System | foundry.packages.Module | null;
 
-  static override LOCALIZATION_PREFIXES: string[];
+  /**
+   * A set of localization prefix paths which are used by this data model.
+   */
+  static LOCALIZATION_PREFIXES: string[];
 
   /**
-   * Prepare data related to this DataModel itself, before any derived data (including Active Effects)
-   * is computed. This is especially useful for initializing numbers, arrays, and sets you expect to be
-   * modified by active effects.
+   * Prepare data related to this DataModel itself, before any derived data is computed.
    *
-   * Called before {@linkcode foundry.documents.abstract.ClientDocumentMixin.AnyMixed.prepareBaseData | ClientDocument#prepareBaseData} in
-   * {@linkcode foundry.documents.abstract.ClientDocumentMixin.AnyMixed.prepareData | ClientDocument#prepareData}.
-   *
-   * @example
-   * ```js
-   * prepareBaseData() {
-   *   // Ensures an active effect of `system.encumbrance.max | ADD | 10` doesn't produce `NaN`
-   *   this.encumbrance = {
-   *     max: 0
-   *   }
-   *   // If you need to access the owning Document, `this.parent` provides a reference for properties like the name
-   *   // or embedded collections, e.g. `this.parent.name` or `this.parent.items`
-   * }
-   * ```
+   * Called before {@link ClientDocument.prepareBaseData | `ClientDocument#prepareBaseData`} in {@link ClientDocument.prepareData | `ClientDocument#prepareData`}.
    */
   prepareBaseData(this: TypeDataModel.PrepareBaseDataThis<this>): void;
 
   /**
-   * Apply transformations or derivations to the values of the source data object.
+   * Apply transformations of derivations to the values of the source data object.
    * Compute data fields whose values are not stored to the database.
    *
-   * Called before {@linkcode foundry.abstract.ClientDocumentMixin.AnyMixed.prepareDerivedData | ClientDocument#prepareDerivedData} in
-   * {@linkcode foundry.abstract.ClientDocumentMixin.AnyMixed.prepareData | ClientDocument#prepareData}.
-   *
-   * @example
-   * ```js
-   * prepareDerivedData() {
-   *   this.hp.bloodied = Math.floor(this.hp.max / 2);
-   *
-   *   // this.parent accesses the Document, allowing access to embedded collections
-   *   this.encumbrance.value = this.parent.items.reduce((total, item) => {
-   *     total += item.system.weight;
-   *     return total;
-   *   }, 0)
-   * }
-   * ```
+   * Called before {@link ClientDocument.prepareDerivedData | `ClientDocument#prepareDerivedData`} in {@link ClientDocument.prepareData | `ClientDocument#prepareData`}.
    */
   prepareDerivedData(this: TypeDataModel.PrepareDerivedDataThis<this>): void;
 
@@ -373,8 +297,8 @@ declare abstract class TypeDataModel<
    */
   protected _preCreate(
     data: TypeDataModel.ParentAssignmentType<Schema, Parent>,
-    options: Document.Database.PreCreateOptionsForName<Parent["documentName"]>,
-    user: User.Stored,
+    options: Document.Database.PreCreateOptions<DatabaseCreateOperation>,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   /**
@@ -384,9 +308,10 @@ declare abstract class TypeDataModel<
    * @param options - Additional options which modify the creation request
    * @param userId  - The id of the User requesting the document update
    */
+  // TODO: should be `MaybePromise<void>` to allow async subclassing?
   protected _onCreate(
     data: TypeDataModel.ParentAssignmentType<Schema, Parent>,
-    options: Document.Database.OnCreateOptionsForName<Parent["documentName"]>,
+    options: Document.Database.CreateOptions<DatabaseCreateOperation>,
     userId: string,
   ): void;
 
@@ -400,8 +325,8 @@ declare abstract class TypeDataModel<
    */
   protected _preUpdate(
     changes: DeepPartial<TypeDataModel.ParentAssignmentType<Schema, Parent>>,
-    options: Document.Database.PreUpdateOptionsForName<Parent["documentName"]>,
-    user: User.Stored,
+    options: Document.Database.PreUpdateOptions<DatabaseUpdateOperation>,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   /**
@@ -411,9 +336,10 @@ declare abstract class TypeDataModel<
    * @param options - Additional options which modify the update request
    * @param userId  - The id of the User requesting the document update
    */
+  // TODO: should be `MaybePromise<void>` to allow async subclassing?
   protected _onUpdate(
     changed: DeepPartial<TypeDataModel.ParentAssignmentType<Schema, Parent>>,
-    options: Document.Database.OnUpdateOptionsForName<Parent["documentName"]>,
+    options: Document.Database.UpdateOptions<DatabaseUpdateOperation>,
     userId: string,
   ): void;
 
@@ -425,8 +351,8 @@ declare abstract class TypeDataModel<
    * @returns A return value of false indicates the deletion operation should be cancelled.
    */
   protected _preDelete(
-    options: Document.Database.PreDeleteOptionsForName<Parent["documentName"]>,
-    user: User.Stored,
+    options: Document.Database.PreDeleteOperationInstance<DatabaseDeleteOperation>,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   /**
@@ -435,7 +361,8 @@ declare abstract class TypeDataModel<
    * @param options - Additional options which modify the deletion request
    * @param userId  - The id of the User requesting the document update
    */
-  protected _onDelete(options: Document.Database.OnDeleteOptionsForName<Parent["documentName"]>, userId: string): void;
+  // TODO: should be `MaybePromise<void>` to allow async subclassing?
+  protected _onDelete(options: Document.Database.DeleteOptions<DatabaseDeleteOperation>, userId: string): void;
 }
 
 declare class ConfigurationFailure extends TypeDataModel<any, any, any, any> {}

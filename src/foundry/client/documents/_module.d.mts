@@ -1,6 +1,7 @@
 // In Foundry itself this file contains re-exports of these other modules.
 // Therefore it has a runtime effect and uses `.mjs` instead of `.d.mts`.
 // While `.mts` could work, to avoid `import-x/no-unresolved` from erroring `.mjs` is used.
+/* eslint-disable import-x/extensions */
 
 export * from "#common/documents/_module.mjs";
 export * as types from "./_types.mjs";
@@ -34,7 +35,6 @@ export { default as Combatant } from "./combatant.mjs";
 export { default as CombatantGroup } from "./combatant-group.mjs";
 export { default as JournalEntryCategory } from "./journal-entry-category.mjs";
 export { default as JournalEntryPage } from "./journal-entry-page.mjs";
-export { default as Level } from "./level.mjs";
 export { default as PlaylistSound } from "./playlist-sound.mjs";
 export { default as RegionBehavior } from "./region-behavior.mjs";
 export { default as TableResult } from "./table-result.mjs";

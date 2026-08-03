@@ -1,6 +1,5 @@
 import { expectTypeOf } from "vitest";
-
-import GlowOverlayFilter = foundry.canvas.rendering.filters.GlowOverlayFilter;
+import { GlowOverlayFilter } from "#client/canvas/rendering/filters/_module.mjs";
 
 const myGOF = GlowOverlayFilter.create();
 expectTypeOf(myGOF).toEqualTypeOf<GlowOverlayFilter>();

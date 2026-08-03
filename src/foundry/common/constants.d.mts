@@ -32,117 +32,57 @@ export const ASCII = `__________________________________________________________
 ===============================================================`;
 
 /**
- * Time-based units in which an `ActiveEffect`'s duration can be expressed
+ * Define the allowed ActiveEffect application modes.
+ * Other arbitrary mode numbers can be used by systems and modules to identify special behaviors and are ignored
  */
-export const ACTIVE_EFFECT_TIME_DURATION_UNITS: Readonly<["years", "months", "days", "hours", "minutes", "seconds"]>;
-export type ACTIVE_EFFECT_TIME_DURATION_UNITS = ValueOf<typeof ACTIVE_EFFECT_TIME_DURATION_UNITS>;
-
-/**
- * All units in which an `ActiveEffect`'s duration can be expressed
- */
-export const ACTIVE_EFFECT_DURATION_UNITS: Readonly<[...typeof ACTIVE_EFFECT_TIME_DURATION_UNITS, "rounds", "turns"]>;
-export type ACTIVE_EFFECT_DURATION_UNITS = ValueOf<typeof ACTIVE_EFFECT_DURATION_UNITS>;
-
-/**
- * Define the core `ActiveEffect` expiry events.
- * Other events can be defined by systems and modules, with their handling also left to them.
- */
-export const ACTIVE_EFFECT_EXPIRY_EVENTS: Readonly<
-  ["combatStart", "roundStart", "turnStart", "combatEnd", "roundEnd", "turnEnd"]
->;
-export type ACTIVE_EFFECT_EXPIRY_EVENTS = ValueOf<typeof ACTIVE_EFFECT_EXPIRY_EVENTS>;
-
-/**
- * Define the core ActiveEffect change-application phases.
- * Additional phases can be registered by systems and modules, with the registering package also responsible for
- * calling `Actor#applyActiveEffects("myNewPhase")` at the desired time.
- */
-export const ACTIVE_EFFECT_CHANGE_PHASES: Readonly<["initial", "final"]>;
-export type ACTIVE_EFFECT_CHANGE_PHASES = ValueOf<typeof ACTIVE_EFFECT_CHANGE_PHASES>;
-
-/**
- * Define the core ActiveEffect change types and their default priorities. Other arbitrary string types can be used by
- * systems and modules to identify special behaviors and are ignored.
- */
-export const ACTIVE_EFFECT_CHANGE_TYPES: Readonly<{
+export declare const ACTIVE_EFFECT_MODES: Readonly<{
   /**
    * Used to denote that the handling of the effect is programmatically provided by a system or module.
    */
-  custom: 0 & ACTIVE_EFFECT_CHANGE_TYPES;
+  CUSTOM: 0 & ACTIVE_EFFECT_MODES;
 
   /**
    * Multiplies a numeric base value by the numeric effect value
    * @example
    * 2 (base value) * 3 (effect value) = 6 (derived value)
    */
-  multiply: 10 & ACTIVE_EFFECT_CHANGE_TYPES;
+  MULTIPLY: 1 & ACTIVE_EFFECT_MODES;
 
   /**
-   * Sums two values, concatenates strings, pushes onto Arrays, or adds to Sets.
+   * Adds a numeric base value to a numeric effect value, or concatenates strings
    * @example
-   * `2 (base value) + 3 (effect value) = 5 (derived value)`
+   * 2 (base value) + 3 (effect value) = 5 (derived value)
    * @example
-   * `"Hello" (base value) + " World" (effect value) = "Hello World"`
+   * "Hello" (base value) + " World" (effect value) = "Hello World"
    */
-  add: 20 & ACTIVE_EFFECT_CHANGE_TYPES;
+  ADD: 2 & ACTIVE_EFFECT_MODES;
 
   /**
-   * Subtracts a numeric change values from target values, splices values from Arrays, or deletes an element from Sets.
+   * Keeps the lower value of the base value and the effect value
    * @example
-   * `3 (base value) - 2 (effect value) = 1 (derived value)`
+   * 2 (base value), 0 (effect value) = 0 (derived value)
    * @example
-   * `Set<"hello"|"world"> - "world" = Set<"hello">`
+   * 2 (base value), 3 (effect value) = 2 (derived value)
    */
-  subtract: 20 & ACTIVE_EFFECT_CHANGE_TYPES;
+  DOWNGRADE: 3 & ACTIVE_EFFECT_MODES;
 
   /**
-   * Keeps the lower value of the base value and the effect value. The lower value of a Set is a subset.
+   * Keeps the greater value of the base value and the effect value
    * @example
-   * `2 (base value), 0 (effect value) = 0 (derived value)`
+   * 2 (base value), 4 (effect value) = 4 (derived value)
    * @example
-   * `2 (base value), 3 (effect value) = 2 (derived value)`
+   * 2 (base value), 1 (effect value) = 2 (derived value)
    */
-  downgrade: 30 & ACTIVE_EFFECT_CHANGE_TYPES;
+  UPGRADE: 4 & ACTIVE_EFFECT_MODES;
 
   /**
-   * Keeps the greater value of the base value and the effect value. The higher value of a Set is a superset.
+   * Directly replaces the base value with the effect value
    * @example
-   * `2 (base value), 4 (effect value) = 4 (derived value)`
-   * @example
-   * `2 (base value), 1 (effect value) = 2 (derived value)`
+   * 2 (base value), 4 (effect value) = 4 (derived value)
    */
-  upgrade: 40 & ACTIVE_EFFECT_CHANGE_TYPES;
-
-  /**
-   * Directly replaces the base value with the effect value.
-   * @example
-   * `2 (base value), 4 (effect value) = 4 (derived value)`
-   */
-  override: 50 & ACTIVE_EFFECT_CHANGE_TYPES;
+  OVERRIDE: 5 & ACTIVE_EFFECT_MODES;
 }>;
-export type ACTIVE_EFFECT_CHANGE_TYPES = Brand<number, "constants.ACTIVE_EFFECT_CHANGE_TYPES">;
-
-/**
- * Possible values for ActiveEffectData#showIcon: the default is CONDITIONAL, dependent on whether the ActiveEffect has
- * a temporary duration.
- */
-export declare const ACTIVE_EFFECT_SHOW_ICON: Readonly<{
-  /**
-   * The icon is never shown.
-   */
-  NEVER: 0 & ACTIVE_EFFECT_SHOW_ICON;
-
-  /**
-   * The icon is showed if the ActiveEffect has a temporary duration.
-   */
-  CONDITIONAL: 1 & ACTIVE_EFFECT_SHOW_ICON;
-
-  /**
-   * The icon is always shown.
-   */
-  ALWAYS: 2 & ACTIVE_EFFECT_SHOW_ICON;
-}>;
-export type ACTIVE_EFFECT_SHOW_ICON = Brand<number, "constants.ACTIVE_EFFECT_SHOW_ICON">;
+export type ACTIVE_EFFECT_MODES = Brand<number, "constants.ACTIVE_EFFECT_MODES">;
 
 /**
  * Define the string name used for the base document type when specific sub-types are not defined by the system
@@ -222,6 +162,19 @@ export declare const CHAT_MESSAGE_STYLES: Readonly<{
    * Entering "/emote waves his hand." while controlling a character named Simon will send the message, "Simon waves his hand."
    */
   EMOTE: 3 & CHAT_MESSAGE_STYLES;
+
+  /**
+   * @deprecated "`CONST.CHAT_MESSAGE_STYLES.ROLL` is deprecated in favor of defining rolls directly in
+   * {@linkcode ChatMessage.rolls | ChatMessage#rolls}" (since v12, until v14)
+   */
+  ROLL: 0 & CHAT_MESSAGE_STYLES;
+
+  /**
+   * @deprecated "`CONST.CHAT_MESSAGE_STYLES.Whisper` is deprecated in favor of defining whisper recipients
+   * directly in {@linkcode ChatMessage.whisper | ChatMessage#whisper}"
+   * (since v12, until v14)
+   */
+  WHISPER: 0 & CHAT_MESSAGE_STYLES;
 }>;
 export type CHAT_MESSAGE_STYLES = Brand<number, "constants.CHAT_MESSAGE_STYLES">;
 
@@ -305,7 +258,6 @@ export type DEFAULT_TOKEN = typeof DEFAULT_TOKEN;
  * Define the allowed Document class types.
  */
 export declare const PRIMARY_DOCUMENT_TYPES: readonly [
-  "ActiveEffect",
   "Actor",
   "Adventure",
   "Cards",
@@ -339,12 +291,11 @@ export const EMBEDDED_DOCUMENT_TYPES: readonly [
   "Item",
   "JournalEntryCategory",
   "JournalEntryPage",
-  "MeasuredTemplate", // TODO: Remove
+  "MeasuredTemplate",
   "Note",
   "PlaylistSound",
   "Region",
   "RegionBehavior",
-  "Level",
   "TableResult",
   "Tile",
   "Token",
@@ -383,7 +334,6 @@ export type WORLD_DOCUMENT_TYPES = ValueOf<typeof WORLD_DOCUMENT_TYPES>;
  * The allowed primary Document types which may exist within a Compendium pack.
  */
 export declare const COMPENDIUM_DOCUMENT_TYPES: readonly [
-  "ActiveEffect",
   "Actor",
   "Adventure",
   "Cards",
@@ -395,27 +345,6 @@ export declare const COMPENDIUM_DOCUMENT_TYPES: readonly [
   "Scene",
 ];
 export type COMPENDIUM_DOCUMENT_TYPES = ValueOf<typeof COMPENDIUM_DOCUMENT_TYPES>;
-
-/**
- * Define the Fog Exploration modes available for a given scene.
- */
-export const FOG_EXPLORATION_MODES: Readonly<{
-  /**
-   * The fog of war exploration is disabled.
-   */
-  DISABLED: 0 & FOG_EXPLORATION_MODES;
-
-  /**
-   * The fog of war exploration is enabled for this scene and each user has its own personal fog of war.
-   */
-  INDIVIDUAL: 1 & FOG_EXPLORATION_MODES;
-
-  /**
-   * The fog of war exploration is enabled for this scene and shared among all users.
-   */
-  SHARED: 2 & FOG_EXPLORATION_MODES;
-}>;
-export type FOG_EXPLORATION_MODES = Brand<number, "constants.FOG_EXPLORATION_MODES">;
 
 /**
  * Define the allowed ownership levels for a Document.
@@ -477,6 +406,33 @@ export declare const DOCUMENT_LINK_TYPES: readonly [
 export type DOCUMENT_LINK_TYPES = ValueOf<typeof DOCUMENT_LINK_TYPES>;
 
 /**
+ * The supported dice roll visibility modes
+ * @see {@link https://foundryvtt.com/article/dice/}
+ */
+export declare const DICE_ROLL_MODES: Readonly<{
+  /**
+   * This roll is visible to all players.
+   */
+  PUBLIC: "publicroll";
+
+  /**
+   * Rolls of this type are only visible to the player that rolled and any Game Master users.
+   */
+  PRIVATE: "gmroll";
+
+  /**
+   * A private dice roll only visible to Gamemaster users. The rolling player will not see the result of their own roll.
+   */
+  BLIND: "blindroll";
+
+  /**
+   * A private dice roll which is only visible to the user who rolled it.
+   */
+  SELF: "selfroll";
+}>;
+export type DICE_ROLL_MODES = ValueOf<typeof DICE_ROLL_MODES>;
+
+/**
  * The allowed fill types which a Drawing object may display
  * @see {@link https://foundryvtt.com/article/drawings/}
  */
@@ -502,7 +458,6 @@ export type DRAWING_FILL_TYPES = Brand<number, "constants.DRAWING_FILL_TYPES">;
  * Define the allowed Document types which Folders may contain
  */
 export declare const FOLDER_DOCUMENT_TYPES: readonly [
-  "ActiveEffect",
   "Actor",
   "Adventure",
   "Item",
@@ -740,7 +695,7 @@ export type GRID_SNAPPING_MODES = Brand<number, "constants.GRID_SNAPPING_MODES">
 /**
  * A list of supported setup URL names
  */
-export declare const SETUP_VIEWS: readonly ["auth", "license", "setup", "players", "join", "create", "update"];
+export declare const SETUP_VIEWS: readonly ["auth", "license", "setup", "players", "join", "update"];
 export type SETUP_VIEWS = ValueOf<typeof SETUP_VIEWS>;
 
 /**
@@ -892,15 +847,9 @@ export declare const PACKAGE_AVAILABILITY_CODES: Readonly<{
   REQUIRES_CORE_UPGRADE_UNSTABLE: 9 & PACKAGE_AVAILABILITY_CODES;
 
   /**
-   * The Package is compatible with a newer version of Foundry than the currently installed version, and it is not known
-   * whether that version is Stable
-   */
-  REQUIRES_CORE_UPGRADE_UNKNOWN: 10 & PACKAGE_AVAILABILITY_CODES;
-
-  /**
    * A required dependency is not compatible with the current version of Foundry
    */
-  REQUIRES_DEPENDENCY_UPDATE: 11 & PACKAGE_AVAILABILITY_CODES;
+  REQUIRES_DEPENDENCY_UPDATE: 10 & PACKAGE_AVAILABILITY_CODES;
 }>;
 export type PACKAGE_AVAILABILITY_CODES = Brand<number, "constants.PACKAGE_AVAILABILITY_CODES">;
 
@@ -908,7 +857,6 @@ export type PACKAGE_AVAILABILITY_CODES = Brand<number, "constants.PACKAGE_AVAILA
  * A safe password string which can be displayed
  */
 export declare const PASSWORD_SAFE_STRING: "••••••••••••••••";
-export type PASSWORD_SAFE_STRING = typeof PASSWORD_SAFE_STRING;
 
 /**
  * The allowed software update channels
@@ -1017,6 +965,7 @@ export type TEXT_ANCHOR_POINTS = Brand<number, "constants.TEXT_ANCHOR_POINTS">;
 
 /**
  * Define the valid occlusion modes which a tile can use
+ * @remarks Foundry leaves a comment in the middle of the object: "// ROOF: 2;  This mode is no longer supported so we don't use 2 for any other mode"
  * @see {@link https://foundryvtt.com/article/tiles/}
  */
 export declare const OCCLUSION_MODES: Readonly<{
@@ -1027,32 +976,29 @@ export declare const OCCLUSION_MODES: Readonly<{
 
   /**
    * Causes the whole tile to fade when an actor token moves under it.
+   * @defaultValue
    */
   FADE: 1 & OCCLUSION_MODES;
 
   /**
-   * Causes the tile to be partially revealed based on the occluded surfaces.
-   */
-  SURFACE: 2 & OCCLUSION_MODES;
-
-  /**
    * Causes the tile to reveal the background in the vicinity of an actor token under it. The radius is determined by the token's size.
    */
-  RADIAL: 4 & OCCLUSION_MODES;
+  RADIAL: 3 & OCCLUSION_MODES;
 
   /**
    * Causes the tile to be partially revealed based on the vision of the actor, which does not need to be under the tile to see what's beneath it.
    * This is useful for roofs on buildings where players could see through a window or door, viewing only a portion of what is obscured by the roof itself.
    */
-  VISION: 8 & OCCLUSION_MODES;
+  VISION: 4 & OCCLUSION_MODES;
 }>;
 export type OCCLUSION_MODES = Brand<number, "constants.OCCLUSION_MODES">;
 
 /**
  * Alias for old tile occlusion modes definition
+ * @remarks Foundry leaves a comment in the middle of the object: "// ROOF: 2;  This mode is no longer supported so we don't use 2 for any other mode"
  * @privateRemarks Foundry just does `export const TILE_OCCLUSION_MODES = OCCLUSION_MODES` but we have to be un-DRY if we want a different brand
  */
-export declare const TILE_OCCLUSION_MODES: Readonly<{
+export declare const TILE_OCCLUSION_MODES: {
   /**
    * Turns off occlusion, making the tile never fade while tokens are under it.
    */
@@ -1065,21 +1011,16 @@ export declare const TILE_OCCLUSION_MODES: Readonly<{
   FADE: 1 & TILE_OCCLUSION_MODES;
 
   /**
-   * Causes the tile to be partially revealed based on the occluded surfaces.
-   */
-  SURFACE: 2 & TILE_OCCLUSION_MODES;
-
-  /**
    * Causes the tile to reveal the background in the vicinity of an actor token under it. The radius is determined by the token's size.
    */
-  RADIAL: 4 & TILE_OCCLUSION_MODES;
+  RADIAL: 3 & TILE_OCCLUSION_MODES;
 
   /**
    * Causes the tile to be partially revealed based on the vision of the actor, which does not need to be under the tile to see what's beneath it.
    * This is useful for roofs on buildings where players could see through a window or door, viewing only a portion of what is obscured by the roof itself.
    */
-  VISION: 8 & TILE_OCCLUSION_MODES;
-}>;
+  VISION: 4 & TILE_OCCLUSION_MODES;
+};
 export type TILE_OCCLUSION_MODES = Brand<number, "constants.TILE_OCCLUSION_MODES">;
 
 /**
@@ -1255,7 +1196,7 @@ export declare const USER_ROLES: Readonly<{
 
   /**
    * Similar to the Player role, except a Trusted User has the ability to perform some more advanced actions
-   * like create drawings, or even to (optionally) upload media files to the server.
+   * like create drawings, measured templates, or even to (optionally) upload media files to the server.
    */
   TRUSTED: 2 & USER_ROLES;
 
@@ -1312,16 +1253,38 @@ export declare const USER_ROLE_NAMES: Readonly<{
 }>;
 export type USER_ROLE_NAMES = ValueOf<typeof USER_ROLE_NAMES>;
 
+/**
+ * An enumeration of the allowed types for a MeasuredTemplate embedded document
+ * @see {@link https://foundryvtt.com/article/measurement/}
+ */
+export declare const MEASURED_TEMPLATE_TYPES: Readonly<{
+  /**
+   * Circular templates create a radius around the starting point.
+   */
+  CIRCLE: "circle";
+
+  /**
+   * Cones create an effect in the shape of a triangle or pizza slice from the starting point.
+   */
+  CONE: "cone";
+
+  /**
+   * A rectangle uses the origin point as one of the corners, treating the origin as being inside of the rectangle's area.
+   */
+  RECTANGLE: "rect";
+
+  /**
+   * A ray creates a single line that is one square in width and as long as you want it to be.
+   */
+  RAY: "ray";
+}>;
+export type MEASURED_TEMPLATE_TYPES = ValueOf<typeof MEASURED_TEMPLATE_TYPES>;
+
 export interface UserPermission {
+  disableGM: boolean;
   hint: string;
   label: string;
   defaultRole: USER_ROLES;
-
-  /** @remarks This appears to be the replacement for `disableGM` in v14, where an empty array is equivalent to `disableGM: true` */
-  requiredRoles: USER_ROLES[];
-
-  /** @deprecated Foundry doesn't use this property anymore as of v14. This warning will be removed in v15. */
-  disableGM?: never;
 }
 
 /**
@@ -1330,11 +1293,11 @@ export interface UserPermission {
 export declare const USER_PERMISSIONS: DeepReadonly<{
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *    label: "PERMISSION.ActorCreate",
    *    hint: "PERMISSION.ActorCreateHint",
-   *    requiredRoles: [USER_ROLES.ASSISTANT, USER_ROLES.GAMEMASTER],
+   *    disableGM: false,
    *    defaultRole: USER_ROLES.ASSISTANT
    * }
    * ```
@@ -1343,11 +1306,11 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *    label: "PERMISSION.BroadcastAudio",
    *    hint: "PERMISSION.BroadcastAudioHint",
-   *    requiredRoles: [],
+   *    disableGM: true,
    *    defaultRole: USER_ROLES.TRUSTED
    * }
    * ```
@@ -1356,11 +1319,11 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *    label: "PERMISSION.BroadcastVideo",
    *    hint: "PERMISSION.BroadcastVideoHint",
-   *    requiredRoles: [],
+   *    disableGM: true,
    *    defaultRole: USER_ROLES.TRUSTED
    * }
    * ```
@@ -1369,11 +1332,11 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *   label: "PERMISSION.CardsCreate",
    *   hint: "PERMISSION.CardsCreateHint",
-   *   requiredRoles: [USER_ROLES.ASSISTANT, USER_ROLES.GAMEMASTER],
+   *   disableGM: false,
    *   defaultRole: USER_ROLES.ASSISTANT
    * }
    * ```
@@ -1383,11 +1346,11 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *    label: "PERMISSION.DrawingCreate",
    *    hint: "PERMISSION.DrawingCreateHint",
-   *    requiredRoles: [USER_ROLES.ASSISTANT, USER_ROLES.GAMEMASTER],
+   *    disableGM: false,
    *    defaultRole: USER_ROLES.TRUSTED
    * }
    * ```
@@ -1396,11 +1359,11 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *    label: "PERMISSION.ItemCreate",
    *    hint: "PERMISSION.ItemCreateHint",
-   *    requiredRoles: [USER_ROLES.ASSISTANT, USER_ROLES.GAMEMASTER],
+   *    disableGM: false,
    *    defaultRole: USER_ROLES.ASSISTANT
    * }
    * ```
@@ -1409,11 +1372,11 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *    label: "PERMISSION.FilesBrowse",
    *    hint: "PERMISSION.FilesBrowseHint",
-   *    requiredRoles: [USER_ROLES.ASSISTANT, USER_ROLES.GAMEMASTER],
+   *    disableGM: false,
    *    defaultRole: USER_ROLES.TRUSTED
    * }
    * ```
@@ -1422,11 +1385,11 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *    label: "PERMISSION.FilesUpload",
    *    hint: "PERMISSION.FilesUploadHint",
-   *    requiredRoles: [USER_ROLES.GAMEMASTER],
+   *    disableGM: false,
    *    defaultRole: USER_ROLES.ASSISTANT
    * }
    * ```
@@ -1435,11 +1398,11 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *    label: "PERMISSION.JournalCreate"
    *    hint: "PERMISSION.JournalCreateHint",
-   *    requiredRoles: [USER_ROLES.ASSISTANT, USER_ROLES.GAMEMASTER],
+   *    disableGM: false,
    *    defaultRole: USER_ROLES.TRUSTED
    * }
    * ```
@@ -1448,11 +1411,11 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *    label: "PERMISSION.MacroScript",
    *    hint: "PERMISSION.MacroScriptHint",
-   *    requiredRoles: [USER_ROLES.GAMEMASTER],
+   *    disableGM: false,
    *    defaultRole: USER_ROLES.PLAYER
    * }
    * ```
@@ -1461,11 +1424,11 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *    label: "PERMISSION.ManualRolls",
    *    hint: "PERMISSION.ManualRollsHint",
-   *    requiredRoles: [],
+   *    disableGM: true,
    *    defaultRole: USER_ROLES.TRUSTED
    * }
    * ```
@@ -1474,11 +1437,11 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *    label: "PERMISSION.MessageWhisper",
    *    hint: "PERMISSION.MessageWhisperHint",
-   *    requiredRoles: [USER_ROLES.ASSISTANT, USER_ROLES.GAMEMASTER],
+   *    disableGM: false,
    *    defaultRole: USER_ROLES.PLAYER
    * }
    * ```
@@ -1487,11 +1450,11 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *    label: "PERMISSION.NoteCreate",
    *    hint: "PERMISSION.NoteCreateHint",
-   *    requiredRoles: [USER_ROLES.ASSISTANT, USER_ROLES.GAMEMASTER],
+   *    disableGM: false,
    *    defaultRole: USER_ROLES.TRUSTED
    * }
    * ```
@@ -1504,7 +1467,7 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
    * {
    *   label: "PERMISSION.NoteCreate",
    *   hint: "PERMISSION.NoteCreateHint",
-   *   requiredRoles: [],
+   *   disableGM: false,
    *   defaultRole: USER_ROLES.TRUSTED
    * }
    * ```
@@ -1513,11 +1476,11 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *   label: "PERMISSION.PlaylistCreate",
    *   hint: "PERMISSION.PlaylistCreateHint",
-   *   requiredRoles: [USER_ROLES.ASSISTANT, USER_ROLES.GAMEMASTER],
+   *   disableGM: false,
    *   defaultRole: USER_ROLES.ASSISTANT
    * }
    * ```
@@ -1526,24 +1489,11 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 
   /**
    * @defaultValue
-   * ```ts
-   * {
-   *   label: "PERMISSION.RegionCreate",
-   *   hint: "PERMISSION.RegionCreateHint",
-   *   requiredRoles: [USER_ROLES.ASSISTANT, USER_ROLES.GAMEMASTER],
-   *   defaultRole: USER_ROLES.PLAYER
-   * }
-   * ```
-   */
-  REGION_CREATE: UserPermission;
-
-  /**
-   * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *    label: "PERMISSION.SettingsModify",
    *    hint: "PERMISSION.SettingsModifyHint",
-   *    requiredRoles: [USER_ROLES.GAMEMASTER],
+   *    disableGM: false,
    *    defaultRole: USER_ROLES.ASSISTANT
    * }
    * ```
@@ -1552,11 +1502,11 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *    label: "PERMISSION.ShowCursor",
    *    hint: "PERMISSION.ShowCursorHint",
-   *    requiredRoles: [],
+   *    disableGM: true,
    *    defaultRole: USER_ROLES.PLAYER
    * }
    * ```
@@ -1565,27 +1515,37 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *    label: "PERMISSION.ShowRuler",
    *    hint: "PERMISSION.ShowRulerHint",
-   *    requiredRoles: [],
+   *    disableGM: true,
    *    defaultRole: USER_ROLES.PLAYER
    * }
    * ```
    */
   SHOW_RULER: UserPermission;
 
-  /** @deprecated This entry was removed and semi-replaced with {@linkcode REGION_CREATE}. This warning will be removed in v15. */
-  TEMPLATE_CREATE: never;
+  /**
+   * @defaultValue
+   * ```typescript
+   * {
+   *    label: "PERMISSION.TemplateCreate",
+   *    hint: "PERMISSION.TemplateCreateHint",
+   *    disableGM: false,
+   *    defaultRole: USER_ROLES.PLAYER
+   * }
+   * ```
+   */
+  TEMPLATE_CREATE: UserPermission;
 
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *    label: "PERMISSION.TokenCreate",
    *    hint: "PERMISSION.TokenCreateHint",
-   *    requiredRoles: [USER_ROLES.ASSISTANT, USER_ROLES.GAMEMASTER],
+   *    disableGM: false,
    *    defaultRole: USER_ROLES.ASSISTANT
    * }
    * ```
@@ -1594,11 +1554,11 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *    label: "PERMISSION.TokenDelete",
    *    hint: "PERMISSION.TokenDeleteHint",
-   *    requiredRoles: [USER_ROLES.ASSISTANT, USER_ROLES.GAMEMASTER],
+   *    disableGM: false,
    *    defaultRole: USER_ROLES.ASSISTANT
    * }
    * ```
@@ -1607,11 +1567,11 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *    label: "PERMISSION.TokenConfigure",
    *    hint: "PERMISSION.TokenConfigureHint",
-   *    requiredRoles: [USER_ROLES.ASSISTANT, USER_ROLES.GAMEMASTER],
+   *    disableGM: false,
    *    defaultRole: USER_ROLES.TRUSTED
    * }
    * ```
@@ -1620,11 +1580,11 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 
   /**
    * @defaultValue
-   * ```ts
+   * ```typescript
    * {
    *    label: "PERMISSION.WallDoors",
    *    hint: "PERMISSION.WallDoorsHint",
-   *    requiredRoles: [USER_ROLES.ASSISTANT, USER_ROLES.GAMEMASTER],
+   *    disableGM: false,
    *    defaultRole: USER_ROLES.PLAYER
    * }
    * ```
@@ -1637,7 +1597,7 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
    * {
    *   label: "PERMISSION.QueryUser",
    *   hint: "PERMISSION.QueryUserHint",
-   *   requiredRoles: [USER_ROLES.ASSISTANT, USER_ROLES.GAMEMASTER],
+   *   disableGM: false,
    *   defaultRole: USER_ROLES.PLAYER
    * }
    * ```
@@ -1647,82 +1607,26 @@ export declare const USER_PERMISSIONS: DeepReadonly<{
 export type USER_PERMISSIONS = keyof typeof USER_PERMISSIONS;
 
 /**
- * The edge properties which restrict the way interaction occurs with a specific edge
+ * The allowed directions of effect that a Wall can have
  * @see {@link https://foundryvtt.com/article/walls/}
  */
-export declare const EDGE_RESTRICTION_TYPES: Readonly<["light", "darkness", "sight", "sound", "move"]>;
-export type EDGE_RESTRICTION_TYPES = ValueOf<typeof EDGE_RESTRICTION_TYPES>;
-
-/**
- * The types of sensory collision which an Edge may impose
- * @see {@link https://foundryvtt.com/article/walls/}
- */
-export declare const EDGE_SENSE_TYPES: Readonly<{
+export declare const WALL_DIRECTIONS: Readonly<{
   /**
-   * Senses do not collide with this edge.
+   * The wall collides from both directions.
    */
-  NONE: 0 & EDGE_SENSE_TYPES;
+  BOTH: 0 & WALL_DIRECTIONS;
 
   /**
-   * Senses collide with this edge.
+   * The wall collides only when a ray strikes its left side.
    */
-  LIMITED: 10 & EDGE_SENSE_TYPES;
+  LEFT: 1 & WALL_DIRECTIONS;
 
   /**
-   * Senses collide with the second intersection, bypassing the first.
+   * The wall collides only when a ray strikes its right side.
    */
-  NORMAL: 20 & EDGE_SENSE_TYPES;
-
-  /**
-   * Senses bypass the edge within a certain proximity threshold.
-   */
-  PROXIMITY: 30 & EDGE_SENSE_TYPES;
-
-  /**
-   * Senses bypass the edge outside a certain proximity threshold.
-   */
-  DISTANCE: 40 & EDGE_SENSE_TYPES;
+  RIGHT: 2 & WALL_DIRECTIONS;
 }>;
-export type EDGE_SENSE_TYPES = Brand<number, "constants.EDGE_SENSE_TYPES">;
-
-export declare const EDGE_DIRECTIONS: Readonly<{
-  /**
-   * The edge collides from both directions.
-   */
-  BOTH: 0 & EDGE_DIRECTIONS;
-
-  /**
-   * The edge collides only when a ray strikes its left side.
-   */
-  LEFT: 1 & EDGE_DIRECTIONS;
-
-  /**
-   * The edge collides only when a ray strikes its right side.
-   */
-  RIGHT: 2 & EDGE_DIRECTIONS;
-}>;
-export type EDGE_DIRECTIONS = Brand<number, "constants.EDGE_DIRECTIONS">;
-
-/**
- * The possible direction modes.
- */
-export declare const EDGE_DIRECTION_MODES: Readonly<{
-  /**
-   * The edge direction applies normally.
-   */
-  NORMAL: 0 & EDGE_DIRECTION_MODES;
-
-  /**
-   * The edge direction applies reversed.
-   */
-  REVERSED: 1 & EDGE_DIRECTION_MODES;
-
-  /**
-   * The edge blocks in both directions always.
-   */
-  BOTH: 2 & EDGE_DIRECTION_MODES;
-}>;
-export type EDGE_DIRECTION_MODES = Brand<number, "constants.EDGE_DIRECTION_MODES">;
+export type WALL_DIRECTIONS = Brand<number, "constants.WALL_DIRECTIONS">;
 
 /**
  * The allowed door types which a Wall may contain
@@ -1781,9 +1685,41 @@ export declare const WALL_RESTRICTION_TYPES: readonly ["light", "sight", "sound"
 export type WALL_RESTRICTION_TYPES = ValueOf<typeof WALL_RESTRICTION_TYPES>;
 
 /**
+ * The types of sensory collision which a Wall may impose
+ * @see {@link https://foundryvtt.com/article/walls/}
+ */
+export declare const WALL_SENSE_TYPES: Readonly<{
+  /**
+   * Senses do not collide with this wall.
+   */
+  NONE: 0 & WALL_SENSE_TYPES;
+
+  /**
+   * Senses collide with this wall.
+   */
+  LIMITED: 10 & WALL_SENSE_TYPES;
+
+  /**
+   * Senses collide with the second intersection, bypassing the first.
+   */
+  NORMAL: 20 & WALL_SENSE_TYPES;
+
+  /**
+   * Senses bypass the wall within a certain proximity threshold.
+   */
+  PROXIMITY: 30 & WALL_SENSE_TYPES;
+
+  /**
+   * Senses bypass the wall outside a certain proximity threshold.
+   */
+  DISTANCE: 40 & WALL_SENSE_TYPES;
+}>;
+export type WALL_SENSE_TYPES = Brand<number, "constants.WALL_SENSE_TYPES">;
+
+/**
  * The types of movement collision which a Wall may impose
  * @see {@link https://foundryvtt.com/article/walls/}
- * @privateRemarks Foundry just does `NONE: EDGE_SENSE_TYPES.NONE` etc but we want to have a separate brand.
+ * @privateRemarks Foundry just does `NONE: WALL_SENSE_TYPES.NONE` etc but we want to have a separate brand
  */
 export declare const WALL_MOVEMENT_TYPES: Readonly<{
   /**
@@ -1864,19 +1800,6 @@ export declare const VIDEO_FILE_EXTENSIONS: Readonly<{
 }>;
 export type VIDEO_FILE_EXTENSIONS = keyof typeof VIDEO_FILE_EXTENSIONS;
 
-/** @internal */
-interface _TEXTURE_FILE_EXTENSIONS
-  extends Identity<typeof IMAGE_FILE_EXTENSIONS>, Identity<typeof VIDEO_FILE_EXTENSIONS> {
-  basis: "application/octet-stream";
-  ktx2: "image/ktx2";
-}
-
-/**
- * The supported file extensions for texture-type files, and their corresponding mime types.
- */
-export const TEXTURE_FILE_EXTENSIONS: Readonly<_TEXTURE_FILE_EXTENSIONS>;
-export type TEXTURE_FILE_EXTENSIONS = keyof typeof TEXTURE_FILE_EXTENSIONS;
-
 /**
  * The supported file extensions for audio-type files, and their corresponding mime types.
  */
@@ -1938,13 +1861,11 @@ export type GRAPHICS_FILE_EXTENSIONS = keyof typeof GRAPHICS_FILE_EXTENSIONS;
  * @privateRemarks Video is spread in after audio, so its `ogg` and `webm` keys override
  */
 interface _UPLOADABLE_FILE_EXTENSIONS
-  extends
-    Identity<typeof IMAGE_FILE_EXTENSIONS>,
+  extends Identity<typeof IMAGE_FILE_EXTENSIONS>,
     Omit<typeof AUDIO_FILE_EXTENSIONS, "ogg" | "webm">,
     Identity<typeof VIDEO_FILE_EXTENSIONS>,
     Identity<typeof TEXT_FILE_EXTENSIONS>,
     Identity<typeof FONT_FILE_EXTENSIONS>,
-    Identity<typeof TEXTURE_FILE_EXTENSIONS>,
     Identity<typeof GRAPHICS_FILE_EXTENSIONS> {}
 
 export declare const UPLOADABLE_FILE_EXTENSIONS: Readonly<_UPLOADABLE_FILE_EXTENSIONS>;
@@ -1960,7 +1881,6 @@ export declare const FILE_CATEGORIES: Readonly<{
   AUDIO: typeof AUDIO_FILE_EXTENSIONS;
   TEXT: typeof TEXT_FILE_EXTENSIONS;
   FONT: typeof FONT_FILE_EXTENSIONS;
-  TEXTURE: typeof TEXTURE_FILE_EXTENSIONS;
   GRAPHICS: typeof GRAPHICS_FILE_EXTENSIONS;
 
   /**
@@ -2033,7 +1953,7 @@ export declare const TIMEOUTS: Readonly<{
 /**
  * A subset of Compendium types which require a specific system to be designated
  */
-export declare const SYSTEM_SPECIFIC_COMPENDIUM_TYPES: readonly ["ActiveEffect", "Actor", "Item"];
+export declare const SYSTEM_SPECIFIC_COMPENDIUM_TYPES: readonly ["Actor", "Item"];
 export type SYSTEM_SPECIFIC_COMPENDIUM_TYPES = ValueOf<typeof SYSTEM_SPECIFIC_COMPENDIUM_TYPES>;
 
 /**
@@ -2154,8 +2074,7 @@ export declare const ALLOWED_HTML_TAGS: readonly [
   "range-picker",
   "secret-block",
   "string-tags",
-  "prose-mirror",
-  "formula-input", // Custom elements
+  "prose-mirror", // Custom elements
 ];
 export type ALLOWED_HTML_TAGS = ValueOf<typeof ALLOWED_HTML_TAGS>;
 
@@ -2195,14 +2114,13 @@ export const ALLOWED_HTML_ATTRIBUTES: DeepReadonly<{
   colgroup: ["span"];
   "code-mirror": ["disabled", "name", "value", "placeholder", "readonly", "required", "language", "indent", "nowrap"];
   "color-picker": ["disabled", "name", "value", "placeholder", "readonly", "required"];
-  details: ["name", "open"];
+  details: ["open"];
   "document-embed": ["uuid"];
   "document-tags": ["disabled", "name", "value", "placeholder", "readonly", "required", "type", "single", "max"];
   "enriched-content": ["enricher"];
   fieldset: ["disabled"];
   "file-picker": ["disabled", "name", "value", "placeholder", "readonly", "required", "type", "noupload"];
   form: ["name"];
-  "formula-input": ["disabled", "name", "value", "placeholder", "readonly", "required", "context"];
   "hue-slider": ["disabled", "name", "value", "readonly", "required"];
   iframe: ["src", "srcdoc", "name", "height", "width", "loading", "sandbox"];
   img: ["height", "src", "width", "usemap", "sizes", "srcset", "alt"];
@@ -2284,7 +2202,6 @@ export type WORLD_JOIN_THEMES = ValueOf<typeof WORLD_JOIN_THEMES>;
 export declare const SETUP_PACKAGE_PROGRESS: DeepReadonly<{
   ACTIONS: {
     CREATE_BACKUP: "createBackup";
-    CREATE_WORLD: "createWorld";
     RESTORE_BACKUP: "restoreBackup";
     DELETE_BACKUP: "deleteBackup";
     CREATE_SNAPSHOT: "createSnapshot";
@@ -2317,7 +2234,6 @@ export declare const SETUP_PACKAGE_PROGRESS: DeepReadonly<{
     SNAPSHOT_MODULES: "snapshotModules";
     SNAPSHOT_SYSTEMS: "snapshotSystems";
     SNAPSHOT_WORLDS: "snapshotWorlds";
-    IMPORT_ADVENTURE: "importAdventure";
   };
 }>;
 declare namespace SETUP_PACKAGE_PROGRESS {
@@ -2348,22 +2264,14 @@ export const TEXT_ENRICH_EMBED_MAX_DEPTH: number;
  */
 export declare const REGION_EVENTS: Readonly<{
   /**
-   * Triggered when the shapes, bottom/top elevation, levels, or restriction of the Region are changed.
+   * Triggered when the shapes or bottom/top elevation of the Region are changed.
    *
    * @see {@linkcode foundry.documents.types.RegionRegionBoundaryEvent}
    */
   REGION_BOUNDARY: "regionBoundary";
 
   /**
-   * Triggered when the animation state of the Region is changed.
-   *
-   * @see {@link foundry.documents.types.RegionRegionAnimationEvent}
-   */
-  REGION_ANIMATION: "regionAnimation";
-
-  /**
-   * Triggered when the Region Behavior becomes active, i.e. is enabled or created without being disabled
-   * while its Region isn't hidden, or its Region becomes unhidden while it's enabled.
+   * Triggered when the Region Behavior becomes active, i.e. is enabled or created without being disabled.
    *
    * The event is triggered only for this Region Behavior.
    *
@@ -2372,8 +2280,7 @@ export declare const REGION_EVENTS: Readonly<{
   BEHAVIOR_ACTIVATED: "behaviorActivated";
 
   /**
-   * Triggered when the Region Behavior becomes inactive, i.e. is disabled or deleted without being disabled
-   * while its Region isn't hidden, or its Region becomes hidden while it's enabled.
+   * Triggered when the Region Behavior becomes inactive, i.e. is disabled or deleted without being disabled.
    *
    * The event is triggered only for this Region Behavior.
    *
@@ -2405,7 +2312,7 @@ export declare const REGION_EVENTS: Readonly<{
    * A Token enters a Region whenever ...
    *   - it is created within the Region,
    *   - the boundary of the Region has changed such that the Token is now inside the Region,
-   *   - the Token moves into the Region (the Token's x, y, elevation, width, height, depth, shape, or level
+   *   - the Token moves into the Region (the Token's x, y, elevation, width, height, or shape
    *     has changed such that it is now inside the Region), or
    *   - a Region Behavior becomes active (i.e., is enabled or created while enabled), in which case
    *     the event it triggered only for this Region Behavior.
@@ -2420,7 +2327,7 @@ export declare const REGION_EVENTS: Readonly<{
    * A Token exits a Region whenever ...
    *   - it is deleted while inside the Region,
    *   - the boundary of the Region has changed such that the Token is no longer inside the Region,
-   *   - the Token moves out of the Region (the Token's x, y, elevation, width, height, depth, shape, or level
+   *   - the Token moves out of the Region (the Token's x, y, elevation, width, height, or shape
    *     has changed such that it is no longer inside the Region), or
    *   - a Region Behavior becomes inactive (i.e., is disabled or deleted while enabled), in which case
    *     the event it triggered only for this Region Behavior.
@@ -2432,7 +2339,7 @@ export declare const REGION_EVENTS: Readonly<{
   /**
    * Triggered when a Token moves into a Region.
    *
-   * A Token moves whenever its x, y, elevation, width, height, depth, shape, or level is changed.
+   * A Token moves whenever its x, y, elevation, width, height, or shape is changed.
    *
    * @see {@linkcode foundry.documents.types.RegionTokenMoveInEvent}
    */
@@ -2441,7 +2348,7 @@ export declare const REGION_EVENTS: Readonly<{
   /**
    * Triggered when a Token moves out of a Region.
    *
-   * A Token moves whenever its x, y, elevation, width, height, depth, shape, or level is changed.
+   * A Token moves whenever its x, y, elevation, width, height, or shape is changed.
    *
    * @see {@linkcode foundry.documents.types.RegionTokenMoveOutEvent}
    */
@@ -2450,7 +2357,7 @@ export declare const REGION_EVENTS: Readonly<{
   /**
    * Triggered when a Token moves within a Region.
    *
-   * A Token moves whenever its x, y, elevation, width, height, depth, shape, or level is changed.
+   * A token moves whenever its x, y, elevation, width, height, or shape is changed.
    *
    * @see {@linkcode foundry.documents.types.RegionTokenMoveWithinEvent}
    */
@@ -2527,27 +2434,17 @@ export type REGION_EVENTS = ValueOf<typeof REGION_EVENTS>;
  */
 export declare const REGION_VISIBILITY: Readonly<{
   /**
-   * Only visible on the RegionLayer to Users with Observer permissions when unlocked.
-   */
-  LAYER_UNLOCKED: 4 & REGION_VISIBILITY;
-
-  /**
-   * Only visible on the RegionLayer to Users with Observer permissions.
+   * Only visible on the RegionLayer.
    */
   LAYER: 0 & REGION_VISIBILITY;
 
   /**
-   * Always visible to Gamemasters.
+   * Only visible to Gamemasters.
    */
   GAMEMASTER: 1 & REGION_VISIBILITY;
 
   /**
-   * Always visible to Observers.
-   */
-  OBSERVER: 3 & REGION_VISIBILITY;
-
-  /**
-   * Always visible to anyone.
+   * Visible to anyone.
    */
   ALWAYS: 2 & REGION_VISIBILITY;
 }>;
@@ -2599,173 +2496,58 @@ export type SETTING_SCOPES = ValueOf<typeof SETTING_SCOPES>;
 export declare const CLIPPER_SCALING_FACTOR: number;
 
 /**
- * A threshold of time in milliseconds after which a player is considered idle if they have no observed activity.
- * @defaultValue `5 * 60 * 1000 // 5 minutes`
+ * @deprecated (since v12, until v14)
  */
-export declare const IDLE_THRESHOLD_MS: number;
+export declare const CHAT_MESSAGE_TYPES: Readonly<{
+  /**
+   * @deprecated "`CONST.CHAT_MESSAGE_TYPES` is deprecated in favor of {@linkcode CONST.CHAT_MESSAGE_STYLES} because the {@linkcode ChatMessage.type | ChatMessage#type}
+   * field has been renamed to {@linkcode ChatMessage.style | ChatMessage#style}" (since v12, until v14)
+   */
+  OTHER: typeof CHAT_MESSAGE_STYLES.OTHER;
 
-/* -------------------------------------------- */
-/*  Deprecations and Compatibility              */
-/* -------------------------------------------- */
+  /**
+   * @deprecated "`CONST.CHAT_MESSAGE_TYPES` is deprecated in favor of {@linkcode CONST.CHAT_MESSAGE_STYLES} because the {@linkcode ChatMessage.type | ChatMessage#type}
+   * field has been renamed to {@linkcode ChatMessage.style | ChatMessage#style}" (since v12, until v14)
+   */
+  OOC: typeof CHAT_MESSAGE_STYLES.OOC;
 
-/** @deprecated "`CONST.TOKEN_HEXAGONAL_SHAPES` is deprecated in favor of {@linkcode CONST.TOKEN_SHAPES}." (since v13, until v15) */
+  /**
+   * @deprecated "`CONST.CHAT_MESSAGE_TYPES` is deprecated in favor of {@linkcode CONST.CHAT_MESSAGE_STYLES} because the {@linkcode ChatMessage.type | ChatMessage#type}
+   * field has been renamed to {@linkcode ChatMessage.style | ChatMessage#style}" (since v12, until v14)
+   */
+  IC: typeof CHAT_MESSAGE_STYLES.IC;
+
+  /**
+   * @deprecated "`CONST.CHAT_MESSAGE_TYPES` is deprecated in favor of {@linkcode CONST.CHAT_MESSAGE_STYLES} because the {@linkcode ChatMessage.type | ChatMessage#type}
+   * field has been renamed to {@linkcode ChatMessage.style | ChatMessage#style}" (since v12, until v14)
+   */
+  EMOTE: typeof CHAT_MESSAGE_STYLES.EMOTE;
+
+  /**
+   * @deprecated "`CONST.CHAT_MESSAGE_TYPES` is deprecated in favor of {@linkcode CONST.CHAT_MESSAGE_STYLES} because the {@linkcode ChatMessage.type | ChatMessage#type}
+   * field has been renamed to {@linkcode ChatMessage.style | ChatMessage#style}" (since v12, until v14)
+   */
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
+  ROLL: typeof CHAT_MESSAGE_STYLES.ROLL;
+
+  /**
+   * @deprecated "`CONST.CHAT_MESSAGE_TYPES` is deprecated in favor of {@linkcode CONST.CHAT_MESSAGE_STYLES} because the {@linkcode ChatMessage.type | ChatMessage#type}
+   * field has been renamed to {@linkcode ChatMessage.style | ChatMessage#style}" (since v12, until v14)
+   */
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
+  WHISPER: typeof CHAT_MESSAGE_STYLES.WHISPER;
+}>;
+export type CHAT_MESSAGE_TYPES = CHAT_MESSAGE_STYLES;
+
+/**
+ * @deprecated "`CONST.DOCUMENT_TYPES` is deprecated in favor of either {@linkcode CONST.WORLD_DOCUMENT_TYPES} or {@linkcode CONST.COMPENDIUM_DOCUMENT_TYPES}." (since v12, until 14)
+ */
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+export declare const DOCUMENT_TYPES: DOCUMENT_TYPES[];
+export type DOCUMENT_TYPES = Exclude<WORLD_DOCUMENT_TYPES, "FogExploration" | "Setting">;
+
+/**
+ * @deprecated "`CONST.TOKEN_HEXAGONAL_SHAPES` is deprecated in favor of {@linkcode CONST.TOKEN_SHAPES}." (since v13, until v15)
+ */
 export declare const TOKEN_HEXAGONAL_SHAPES: typeof TOKEN_SHAPES;
-
-/** @deprecated "`CONST.TOKEN_HEXAGONAL_SHAPES` is deprecated in favor of {@linkcode CONST.TOKEN_SHAPES}." (since v13, until v15) */
 export type TOKEN_HEXAGONAL_SHAPES = TOKEN_SHAPES;
-
-/**
- * The types of sensory collision which a Wall may impose
- * @see {@link https://foundryvtt.com/article/walls/}
- * @deprecated "`CONST.WALL_SENSE_TYPES` is deprecated in favor of {@linkcode CONST.EDGE_SENSE_TYPES}." (since v14, until v16)
- */
-export declare const WALL_SENSE_TYPES: typeof EDGE_SENSE_TYPES;
-
-/** @deprecated "`CONST.WALL_SENSE_TYPES` is deprecated in favor of {@linkcode CONST.EDGE_SENSE_TYPES}." (since v14, until v16) */
-export type WALL_SENSE_TYPES = EDGE_SENSE_TYPES;
-
-/**
- * The allowed directions of effect that a Wall can have
- * @see {@link https://foundryvtt.com/article/walls/}
- * @deprecated "`CONST.WALL_DIRECTIONS` is deprecated in favor of {@linkcode CONST.EDGE_DIRECTIONS}." (since v14, until v16)
- */
-export declare const WALL_DIRECTIONS: typeof EDGE_DIRECTIONS;
-
-/** @deprecated "`CONST.WALL_DIRECTIONS` is deprecated in favor of {@linkcode CONST.EDGE_DIRECTIONS}." (since v14, until v16) */
-export type WALL_DIRECTIONS = EDGE_DIRECTIONS;
-
-/**
- * An enumeration of the allowed types for a MeasuredTemplate embedded document
- * @see {@link https://foundryvtt.com/article/measurement/}
- * @deprecated "`CONST.MEASURED_TEMPLATE_TYPES` is deprecated without replacement." (since v14, until v16)
- */
-export declare const MEASURED_TEMPLATE_TYPES: Readonly<{
-  /**
-   * Circular templates create a radius around the starting point.
-   */
-  CIRCLE: "circle";
-
-  /**
-   * Cones create an effect in the shape of a triangle or pizza slice from the starting point.
-   */
-  CONE: "cone";
-
-  /**
-   * A rectangle uses the origin point as one of the corners, treating the origin as being inside of the rectangle's area.
-   */
-  RECTANGLE: "rect";
-
-  /**
-   * A ray creates a single line that is one square in width and as long as you want it to be.
-   */
-  RAY: "ray";
-}>;
-
-/**
- * @deprecated "`CONST.MEASURED_TEMPLATE_TYPES` is deprecated without replacement." (since v14, until v16)
- */
-// eslint-disable-next-line @typescript-eslint/no-deprecated
-export type MEASURED_TEMPLATE_TYPES = ValueOf<typeof MEASURED_TEMPLATE_TYPES>;
-
-/**
- * Define the allowed ActiveEffect application modes.
- * Other arbitrary mode numbers can be used by systems and modules to identify special behaviors and are ignored
- * @deprecated "You are accessing `CONST.ACTIVE_EFFECT_MODES`. Changes now have string types
- * (see {@linkcode CONST.ACTIVE_EFFECT_CHANGE_TYPES})." (since v14, until v16)
- */
-export declare const ACTIVE_EFFECT_MODES: Readonly<{
-  /**
-   * Used to denote that the handling of the effect is programmatically provided by a system or module.
-   */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  CUSTOM: 0 & ACTIVE_EFFECT_MODES;
-
-  /**
-   * Multiplies a numeric base value by the numeric effect value
-   * @example
-   * 2 (base value) * 3 (effect value) = 6 (derived value)
-   */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  MULTIPLY: 1 & ACTIVE_EFFECT_MODES;
-
-  /**
-   * Adds a numeric base value to a numeric effect value, or concatenates strings
-   * @example
-   * 2 (base value) + 3 (effect value) = 5 (derived value)
-   * @example
-   * "Hello" (base value) + " World" (effect value) = "Hello World"
-   */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  ADD: 2 & ACTIVE_EFFECT_MODES;
-
-  /**
-   * Keeps the lower value of the base value and the effect value
-   * @example
-   * 2 (base value), 0 (effect value) = 0 (derived value)
-   * @example
-   * 2 (base value), 3 (effect value) = 2 (derived value)
-   */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  DOWNGRADE: 3 & ACTIVE_EFFECT_MODES;
-
-  /**
-   * Keeps the greater value of the base value and the effect value
-   * @example
-   * 2 (base value), 4 (effect value) = 4 (derived value)
-   * @example
-   * 2 (base value), 1 (effect value) = 2 (derived value)
-   */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  UPGRADE: 4 & ACTIVE_EFFECT_MODES;
-
-  /**
-   * Directly replaces the base value with the effect value
-   * @example
-   * 2 (base value), 4 (effect value) = 4 (derived value)
-   */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  OVERRIDE: 5 & ACTIVE_EFFECT_MODES;
-}>;
-
-/**
- * @deprecated "You are accessing `CONST.ACTIVE_EFFECT_MODES`. Changes now have string types
- * (see {@linkcode CONST.ACTIVE_EFFECT_CHANGE_TYPES})." (since v14, until v16)
- */
-export type ACTIVE_EFFECT_MODES = Brand<number, "constants.ACTIVE_EFFECT_MODES">;
-
-/**
- * The supported dice roll visibility modes
- * @see {@link https://foundryvtt.com/article/dice/}
- * @deprecated "`CONST.DICE_ROLL_MODES` is deprecated in favor of configured {@linkcode CONFIG.ChatMessage.modes}. Its returned values are
- * also deprecated in favor of new string values. Migration is facilitated by the {@linkcode foundry.dice.Roll._mapLegacyRollMode} helper
- * method" (since v14, until v16)
- */
-export declare const DICE_ROLL_MODES: Readonly<{
-  /**
-   * This roll is visible to all players.
-   */
-  PUBLIC: "publicroll";
-
-  /**
-   * Rolls of this type are only visible to the player that rolled and any Game Master users.
-   */
-  PRIVATE: "gmroll";
-
-  /**
-   * A private dice roll only visible to Gamemaster users. The rolling player will not see the result of their own roll.
-   */
-  BLIND: "blindroll";
-
-  /**
-   * A private dice roll which is only visible to the user who rolled it.
-   */
-  SELF: "selfroll";
-}>;
-
-/**
- * @deprecated "`CONST.DICE_ROLL_MODES` is deprecated in favor of configured {@linkcode CONFIG.ChatMessage.modes}. Its returned values are
- * also deprecated in favor of new string values. Migration is facilitated by the {@linkcode foundry.dice.Roll._mapLegacyRollMode} helper
- * method" (since v14, until v16)
- */
-// eslint-disable-next-line @typescript-eslint/no-deprecated
-export type DICE_ROLL_MODES = ValueOf<typeof DICE_ROLL_MODES>;

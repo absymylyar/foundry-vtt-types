@@ -1,7 +1,7 @@
 import { expectTypeOf } from "vitest";
+import { Roll } from "#client/dice/_module.mjs";
 import type { AnyObject, EmptyObject } from "fvtt-types/utils";
-
-import Roll = foundry.dice.Roll;
+import type { RollParseNode } from "../../../../src/foundry/client/dice/_types.d.mts";
 
 class CustomRoll<D extends Record<string, unknown> = EmptyObject> extends Roll<D> {}
 
@@ -95,7 +95,7 @@ expectTypeOf(Roll.simulate("")).toEqualTypeOf<Promise<number[]>>();
 expectTypeOf(Roll.registerResult("", "", 1)).toEqualTypeOf<boolean | void>();
 expectTypeOf(Roll.parse("", {})).toEqualTypeOf<foundry.dice.terms.RollTerm[]>();
 
-declare const rpn: foundry.dice.types.RollParseNode;
+declare const rpn: RollParseNode;
 expectTypeOf(Roll.instantiateAST(rpn)).toEqualTypeOf<foundry.dice.terms.RollTerm[]>();
 expectTypeOf(Roll.replaceFormulaData("", {})).toEqualTypeOf<string>();
 expectTypeOf(Roll.validate("")).toEqualTypeOf<boolean>();

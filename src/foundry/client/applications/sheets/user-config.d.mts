@@ -1,7 +1,7 @@
 import type { DeepPartial, Identity } from "#utils";
 import type DocumentSheetV2 from "../api/document-sheet.d.mts";
 import type HandlebarsApplicationMixin from "../api/handlebars-application.d.mts";
-import type { DataField } from "#common/data/fields.d.mts";
+import type { CustomFormGroup } from "../forms/fields.d.mts";
 
 declare module "#configuration" {
   namespace Hooks {
@@ -43,15 +43,17 @@ declare namespace UserConfig {
   interface AnyConstructor extends Identity<typeof AnyUserConfig> {}
 
   interface RenderContext
-    extends HandlebarsApplicationMixin.RenderContext, DocumentSheetV2.RenderContext<User.Implementation> {
+    extends HandlebarsApplicationMixin.RenderContext,
+      DocumentSheetV2.RenderContext<User.Implementation> {
     user: User.Implementation;
     source: foundry.documents.BaseUser.Source;
     fields: foundry.documents.BaseUser.Schema;
-    characterWidget: DataField.CustomFormGroup;
+    characterWidget: CustomFormGroup;
   }
 
   interface Configuration
-    extends HandlebarsApplicationMixin.Configuration, DocumentSheetV2.Configuration<User.Implementation> {}
+    extends HandlebarsApplicationMixin.Configuration,
+      DocumentSheetV2.Configuration<User.Implementation> {}
 
   interface RenderOptions extends HandlebarsApplicationMixin.RenderOptions, DocumentSheetV2.RenderOptions {}
 }

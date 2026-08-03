@@ -1,7 +1,5 @@
 import { expectTypeOf } from "vitest";
-
-import Edge = foundry.canvas.geometry.edges.Edge;
-import PolygonVertex = foundry.canvas.geometry.edges.PolygonVertex;
+import { Edge, PolygonVertex } from "#client/canvas/geometry/edges/_module.mjs";
 
 declare const somePV: PolygonVertex;
 declare const someEdge: Edge;

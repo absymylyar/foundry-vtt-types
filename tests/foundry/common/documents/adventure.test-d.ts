@@ -1,13 +1,7 @@
 import { expectTypeOf } from "vitest";
 
 // This exists to make the class non-abstract.
-class TestBaseAdventure extends foundry.documents.BaseAdventure {
-  get compendium() {
-    return this.inCompendium
-      ? (game.packs!.get(this.pack!) as foundry.documents.collections.CompendiumCollection.ForDocument<"Adventure">)
-      : null;
-  }
-}
+class TestBaseAdventure extends foundry.documents.BaseAdventure {}
 
 // @ts-expect-error name is a required field
 new TestBaseAdventure();
@@ -17,7 +11,7 @@ new TestBaseAdventure({});
 
 const myAdventure = new TestBaseAdventure({ name: "foo" });
 
-expectTypeOf(myAdventure.img).toEqualTypeOf<string | null>();
+expectTypeOf(myAdventure.img).toEqualTypeOf<string | null | undefined>();
 expectTypeOf(myAdventure.macros.first()!.command).toEqualTypeOf<string>();
 
 // Static Methods

@@ -1,7 +1,6 @@
 import { expectTypeOf } from "vitest";
 
 import AVMaster = foundry.av.AVMaster;
-import AVSettings = foundry.av.AVSettings;
 import SimplePeerAVClient = foundry.av.clients.SimplePeerAVClient;
 
 declare const avMaster: AVMaster;

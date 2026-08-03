@@ -1,5 +1,3 @@
-import type { PackageCompendiumFolder, PackageRelationships } from "#common/packages/base-package.d.mts";
-
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 // After seeing that none of these types add anything or are even exported a
@@ -9,36 +7,21 @@ import type { PackageCompendiumFolder, PackageRelationships } from "#common/pack
 // them here because it has poor discoverability. The names Foundry has chosen
 // also overlaps with other existing names, such as SettingConfig vs. ClientSetting.SettingConfig
 
+// TODO: Stubs
 export {};
 
-type PackageAuthorData = foundry.packages.BasePackage.AuthorData;
+type PackageAuthorData = unknown;
 
-type CompendiumArtFlag = foundry.packages.BasePackage.Flags.CompendiumArtFlag;
+type PackageCompendiumData = unknown;
 
-type PackageFlagsData = foundry.packages.BasePackage.Flags.Core;
+type PackageLanguageData = unknown;
 
-type PackageMediaData = foundry.packages.BasePackage.MediaData;
+type RelatedPackageData = unknown;
 
-type PackageCompendiumData = foundry.packages.BasePackage.CompendiumData;
+type PackageCompatibilityData = unknown;
 
-type PackFolderData = PackageCompendiumFolder.Data;
+type PackageRelationshipsData = unknown;
 
-type PackageLanguageData = foundry.packages.BasePackage.LanguageData;
+type PackageManifestData = unknown;
 
-type RelatedPackageData = foundry.packages.RelatedPackage.Data;
-
-type PackageCompatibilityData = foundry.packages.PackageCompatibility.Data;
-
-type PackageRelationshipsData = PackageRelationships.Data;
-
-type PackageManifestData = foundry.packages.BasePackage.ManifestData;
-
-type ServerSanitizationFields = foundry.packages.AdditionalTypesField.ServerSanitizationFields;
-
-type DocumentTypesConfiguration = foundry.packages.AdditionalTypesField.DocumentTypesConfiguration;
-
-type SystemManifestData = foundry.packages.System.ManifestData;
-
-type ModuleManifestData = foundry.packages.Module.ManifestData;
-
-type WorldManifestData = foundry.packages.World.ManifestData;
+type DocumentTypesConfiguration = unknown;

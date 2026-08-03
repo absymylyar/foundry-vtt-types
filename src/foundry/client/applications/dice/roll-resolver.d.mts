@@ -1,8 +1,6 @@
-import type { DeepPartial, Identity } from "#utils";
+import type { DeepPartial, EmptyObject, Identity, InexactPartial } from "#utils";
 import type ApplicationV2 from "../api/application.d.mts";
 import type HandlebarsApplicationMixin from "../api/handlebars-application.d.mts";
-
-import DiceTerm = foundry.dice.terms.DiceTerm;
 
 declare module "#configuration" {
   namespace Hooks {
@@ -16,14 +14,11 @@ declare module "#configuration" {
  * An application responsible for handling unfulfilled dice terms in a roll.
  */
 declare class RollResolver<
-  RenderContext extends RollResolver.RenderContext = RollResolver.RenderContext,
+  RenderContext extends RollResolver.RenderContext = EmptyObject,
   Configuration extends RollResolver.Configuration = RollResolver.Configuration,
   RenderOptions extends RollResolver.RenderOptions = RollResolver.RenderOptions,
 > extends HandlebarsApplicationMixin(ApplicationV2)<RenderContext, Configuration, RenderOptions> {
   constructor(roll: Roll, options?: DeepPartial<Configuration>);
-
-  // Fake override.
-  static override DEFAULT_OPTIONS: RollResolver.DefaultOptions;
 
   // a placeholder private method to help subclassing
   #rollResolver: true;
@@ -63,7 +58,13 @@ declare class RollResolver<
   resolveResult(
     term: foundry.dice.terms.DiceTerm,
     method: string,
-    options?: RollResolver.ResolveResultOptions,
+    options?: InexactPartial<{
+      /** @defaultValue `false` */
+      reroll: boolean;
+
+      /** @defaultValue `false` */
+      explode: boolean;
+    }>,
   ): Promise<number | void>;
 
   /**
@@ -101,58 +102,15 @@ declare namespace RollResolver {
   interface Any extends AnyRollResolver {}
   interface AnyConstructor extends Identity<typeof AnyRollResolver> {}
 
-  interface RenderContext {
-    formula: string;
-    groups: Record<string, Group>;
-  }
-
-  interface Configuration<RollResolver extends RollResolver.Any = RollResolver.Any>
-    extends HandlebarsApplicationMixin.Configuration, ApplicationV2.Configuration<RollResolver> {}
-
-  // Note(LukeAbby): This `& object` is so that the `DEFAULT_OPTIONS` can be overridden more easily
-  // Without it then `static override DEFAULT_OPTIONS = { unrelatedProp: 123 }` would error.
-  type DefaultOptions<RollResolver extends RollResolver.Any = RollResolver.Any> = DeepPartial<
-    Configuration<RollResolver>
-  > &
-    object;
-
+  interface RenderContext extends HandlebarsApplicationMixin.RenderContext, ApplicationV2.RenderContext {}
+  interface Configuration extends HandlebarsApplicationMixin.Configuration, ApplicationV2.Configuration {}
   interface RenderOptions extends HandlebarsApplicationMixin.RenderOptions, ApplicationV2.RenderOptions {}
-
-  interface Group {
-    results: Result[];
-    label: string;
-    icon: string;
-    tooltip: string;
-  }
-
-  interface Result {
-    denomination: string;
-    faces: number | undefined;
-    id: string;
-    method: string;
-    icon: string;
-    exploded: boolean | undefined;
-    rerolled: boolean | undefined;
-    isNew: boolean | undefined;
-    // Note(LukeAbby): The logic here is a bit suspicious.
-    value: string | number;
-    readonly: boolean;
-    disabled: boolean;
-  }
 
   interface DiceTermFulfillmentDescriptor {
     id: string;
-    term: DiceTerm;
+    term: foundry.dice.terms.DiceTerm;
     method: string;
     isNew?: boolean | undefined;
-  }
-
-  interface ResolveResultOptions {
-    /** @defaultValue `false` */
-    reroll?: boolean | undefined;
-
-    /** @defaultValue `false` */
-    explode?: boolean | undefined;
   }
 }
 

@@ -1,6 +1,5 @@
 import { expectTypeOf } from "vitest";
-
-import HighlightRegionShader = foundry.canvas.rendering.shaders.HighlightRegionShader;
+import { HighlightRegionShader } from "#client/canvas/rendering/shaders/_module.mjs";
 
 const myHRS = HighlightRegionShader.create();
 expectTypeOf(myHRS).toEqualTypeOf<HighlightRegionShader>();

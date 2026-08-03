@@ -1,18 +1,12 @@
-import type { ConfiguredJournalEntryPage } from "#configuration";
-import type { AnyObject, Identity, InexactPartial, MaybeArray, Merge } from "#utils";
-import type { fields } from "#common/data/_module.d.mts";
-import type { DatabaseBackend, Document } from "#common/abstract/_module.d.mts";
-import type { BaseJournalEntryPage } from "#common/documents/_module.d.mts";
-import type { TextEditor } from "#client/applications/ux/_module.d.mts";
+import type { ConfiguredJournalEntryPage } from "fvtt-types/configuration";
+import type { AnyObject, InexactPartial, Merge, NullishProps } from "#utils";
+import type Document from "#common/abstract/document.d.mts";
+import type { DataSchema } from "#common/data/fields.d.mts";
+import type BaseJournalEntryPage from "#common/documents/journal-entry-page.d.mts";
+import type TextEditor from "#client/applications/ux/text-editor.mjs";
 import type { Note } from "#client/canvas/placeables/_module.d.mts";
-import type { DialogV2 } from "#client/applications/api/_module.d.mts";
-import type { HTMLDocumentEmbedElement } from "#client/applications/elements/_module.d.mts";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type ClientDatabaseBackend from "#client/data/client-backend.d.mts";
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type ClientDocumentMixin from "#client/documents/abstract/client-document.d.mts";
+import fields = foundry.data.fields;
 
 declare namespace JournalEntryPage {
   /**
@@ -31,15 +25,14 @@ declare namespace JournalEntryPage {
   type Hierarchy = Readonly<Document.HierarchyOf<Schema>>;
 
   /**
-   * The implementation of the `JournalEntryPage` document instance configured through
-   * {@linkcode CONFIG.JournalEntryPage.documentClass} in Foundry and {@linkcode DocumentClassConfig} or
-   * {@linkcode ConfiguredJournalEntryPage | fvtt-types/configuration/ConfiguredJournalEntryPage} in fvtt-types.
+   * The implementation of the `JournalEntryPage` document instance configured through `CONFIG.JournalEntryPage.documentClass` in Foundry and
+   * {@linkcode DocumentClassConfig} or {@link ConfiguredJournalEntryPage | `fvtt-types/configuration/ConfiguredJournalEntryPage`} in fvtt-types.
    */
   type Implementation = Document.ImplementationFor<Name>;
 
   /**
-   * The implementation of the `JournalEntryPage` document configured through
-   * {@linkcode CONFIG.JournalEntryPage.documentClass} in Foundry and {@linkcode DocumentClassConfig} in fvtt-types.
+   * The implementation of the `JournalEntryPage` document configured through `CONFIG.JournalEntryPage.documentClass` in Foundry and
+   * {@linkcode DocumentClassConfig} in fvtt-types.
    */
   type ImplementationClass = Document.ImplementationClassFor<Name>;
 
@@ -47,21 +40,22 @@ declare namespace JournalEntryPage {
    * A document's metadata is special information about the document ranging anywhere from its name,
    * whether it's indexed, or to the permissions a user has over it.
    */
-  interface Metadata extends Merge<
-    Document.Metadata.Default,
-    Readonly<{
-      name: "JournalEntryPage";
-      collection: "pages";
-      hasTypeData: true;
-      indexed: true;
-      label: "DOCUMENT.JournalEntryPage";
-      labelPlural: "DOCUMENT.JournalEntryPages";
-      coreTypes: ["text", "image", "pdf", "video"];
-      compendiumIndexFields: ["name", "type", "sort"];
-      permissions: Metadata.Permissions;
-      schemaVersion: "13.341";
-    }>
-  > {}
+  interface Metadata
+    extends Merge<
+      Document.Metadata.Default,
+      Readonly<{
+        name: "JournalEntryPage";
+        collection: "pages";
+        hasTypeData: true;
+        indexed: true;
+        label: string;
+        labelPlural: string;
+        coreTypes: ["text", "image", "pdf", "video"];
+        compendiumIndexFields: ["name", "type", "sort"];
+        permissions: Metadata.Permissions;
+        schemaVersion: string;
+      }>
+    > {}
 
   namespace Metadata {
     interface Permissions {
@@ -83,53 +77,42 @@ declare namespace JournalEntryPage {
   type SubType = foundry.Game.Model.TypeNames<"JournalEntryPage">;
 
   /**
-   * `ConfiguredSubType` represents the subtypes a user explicitly registered. This excludes
+   * `ConfiguredSubTypes` represents the subtypes a user explicitly registered. This excludes
    * subtypes like the Foundry builtin subtype `"base"` and the catch-all subtype for arbitrary
    * module subtypes `${string}.${string}`.
    *
    * @see {@link SubType} for more information.
    */
-  type ConfiguredSubType = Document.ConfiguredSubTypeOf<"JournalEntryPage">;
+  type ConfiguredSubTypes = Document.ConfiguredSubTypesOf<"JournalEntryPage">;
 
   /**
    * `Known` represents the types of `JournalEntryPage` that a user explicitly registered.
    *
-   * @see {@link ConfiguredSubType} for more information.
+   * @see {@link ConfiguredSubTypes} for more information.
    */
-  type Known = JournalEntryPage.OfType<JournalEntryPage.ConfiguredSubType>;
+  type Known = JournalEntryPage.OfType<JournalEntryPage.ConfiguredSubTypes>;
 
   /**
    * `OfType` returns an instance of `JournalEntryPage` with the corresponding type. This works with both the
    * builtin `JournalEntryPage` class or a custom subclass if that is set up in
-   * {@linkcode ConfiguredJournalEntryPage | fvtt-types/configuration/ConfiguredJournalEntryPage}.
+   * {@link ConfiguredJournalEntryPage | `fvtt-types/configuration/ConfiguredJournalEntryPage`}.
    * up.
    */
-  type OfType<Type extends SubType> = Document.Internal.DiscriminateSystem<Name, _OfType, Type, ConfiguredSubType>;
-
-  /** @internal */
-  interface _OfType extends Identity<{
-    [Type in SubType]: Type extends unknown
-      ? ConfiguredJournalEntryPage<Type> extends { document: infer Document }
-        ? Document
-        : // eslint-disable-next-line @typescript-eslint/no-restricted-types
-          JournalEntryPage<Type>
-      : never;
-  }> {}
+  type OfType<Type extends SubType> = Document.Internal.OfType<
+    ConfiguredJournalEntryPage<Type>,
+    // eslint-disable-next-line @typescript-eslint/no-restricted-types
+    () => JournalEntryPage<Type>
+  >;
 
   /**
    * `SystemOfType` returns the system property for a specific `JournalEntryPage` subtype.
    */
-  type SystemOfType<Type extends SubType> = Document.Internal.SystemOfType<Name, _SystemMap, Type, ConfiguredSubType>;
+  type SystemOfType<Type extends SubType> = Document.Internal.SystemOfType<_SystemMap, Type>;
 
   /**
    * @internal
    */
-  interface _ModelMap extends Document.Internal.ModelMap<Name> {}
-
-  /**
-   * @internal
-   */
-  interface _SystemMap extends Document.Internal.SystemMap<Name> {}
+  interface _SystemMap extends Document.Internal.SystemMap<"JournalEntryPage"> {}
 
   /**
    * A document's parent is something that can contain it.
@@ -150,6 +133,15 @@ declare namespace JournalEntryPage {
   type DescendantClass = never;
 
   /**
+   * Types of `CompendiumCollection` this document might be contained in.
+   * Note that `this.pack` will always return a string; this is the type for `game.packs.get(this.pack)`
+   *
+   * Will be `never` if cannot be contained in a `CompendiumCollection`.
+   */
+  // Note: Takes any document in the heritage chain (i.e. itself or any parent, transitive or not) that can be contained in a compendium.
+  type Pack = foundry.documents.collections.CompendiumCollection.ForDocument<"JournalEntry">;
+
+  /**
    * An embedded document is a document contained in another.
    * For example an `Item` can be contained by an `Actor` which means `Item` can be embedded in `Actor`.
    *
@@ -160,8 +152,7 @@ declare namespace JournalEntryPage {
   /**
    * The name of the world or embedded collection this document can find itself in.
    * For example an `Item` is always going to be inside a collection with a key of `items`.
-   * This is a fixed string per document type and is primarily useful for the descendant Document operation methods, e.g
-   * {@linkcode ClientDocumentMixin.AnyMixed._preCreateDescendantDocuments | ClientDocument._preCreateDescendantDocuments}.
+   * This is a fixed string per document type and is primarily useful for {@link ClientDocumentMixin | `Descendant Document Events`}.
    */
   type ParentCollectionName = Metadata["collection"];
 
@@ -179,7 +170,7 @@ declare namespace JournalEntryPage {
    * An instance of `JournalEntryPage` that comes from the database but failed validation meaning that
    * its `system` and `_source` could theoretically be anything.
    */
-  type Invalid = Document.Internal.Invalid<Implementation>;
+  interface Invalid extends Document.Internal.Invalid<Implementation> {}
 
   /**
    * An instance of `JournalEntryPage` that comes from the database.
@@ -189,78 +180,52 @@ declare namespace JournalEntryPage {
   >;
 
   /**
-   * The data put in {@linkcode JournalEntryPage._source | JournalEntryPage#_source}. This data is what was
+   * The data put in {@link JournalEntryPage._source | `JournalEntryPage#_source`}. This data is what was
    * persisted to the database and therefore it must be valid JSON.
    *
-   * For example a {@linkcode fields.SetField | SetField} is persisted to the database as an array
+   * For example a {@link fields.SetField | `SetField`} is persisted to the database as an array
    * but initialized as a {@linkcode Set}.
    */
   interface Source extends fields.SchemaField.SourceData<Schema> {}
 
   /**
    * The data necessary to create a document. Used in places like {@linkcode JournalEntryPage.create}
-   * and {@linkcode JournalEntryPage | new JournalEntryPage(...)}.
+   * and {@link JournalEntryPage | `new JournalEntryPage(...)`}.
    *
-   * For example a {@linkcode fields.SetField | SetField} can accept any {@linkcode Iterable}
+   * For example a {@link fields.SetField | `SetField`} can accept any {@linkcode Iterable}
    * with the right values. This means you can pass a `Set` instance, an array of values,
    * a generator, or any other iterable.
    */
-  interface CreateData<SubType extends JournalEntryPage.SubType = JournalEntryPage.SubType> extends fields.SchemaField
-    .CreateData<Schema> {
-    type?: SubType | null | undefined;
-  }
+  interface CreateData extends fields.SchemaField.CreateData<Schema> {}
 
   /**
-   * Used in the {@linkcode JournalEntryPage.create} and {@linkcode JournalEntryPage.createDocuments} signatures, and
-   * {@linkcode JournalEntryPage.Database.CreateOperation} and its derivative interfaces.
-   */
-  type CreateInput = CreateData | Implementation;
-
-  /**
-   * The helper type for the return of {@linkcode JournalEntryPage.create}, returning (a single | an array of) (temporary | stored)
-   * `JournalEntryPage`s.
-   *
-   * `| undefined` is included in the non-array branch because if a `.create` call with non-array data is cancelled by the `preCreate`
-   * method or hook, `shift`ing the return of `.createDocuments` produces `undefined`
-   */
-  type CreateReturn<Data extends MaybeArray<CreateInput>> =
-    Data extends Array<CreateInput> ? JournalEntryPage.Stored[] : JournalEntryPage.Stored | undefined;
-
-  /**
-   * The data after a {@linkcode Document} has been initialized, for example
-   * {@linkcode JournalEntryPage.name | JournalEntryPage#name}.
+   * The data after a {@link foundry.abstract.Document | `Document`} has been initialized, for example
+   * {@link JournalEntryPage.name | `JournalEntryPage#name`}.
    *
    * This is data transformed from {@linkcode JournalEntryPage.Source} and turned into more
-   * convenient runtime data structures. For example a {@linkcode fields.SetField | SetField} is
+   * convenient runtime data structures. For example a {@link fields.SetField | `SetField`} is
    * persisted to the database as an array of values but at runtime it is a `Set` instance.
    */
   interface InitializedData extends fields.SchemaField.InitializedData<Schema> {}
 
   /**
-   * The data used to update a document, for example {@linkcode JournalEntryPage.update | JournalEntryPage#update}.
-   * It is a distinct type from {@linkcode JournalEntryPage.CreateData | DeepPartial<JournalEntryPage.CreateData>} because
+   * The data used to update a document, for example {@link JournalEntryPage.update | `JournalEntryPage#update`}.
+   * It is a distinct type from {@link JournalEntryPage.CreateData | `DeepPartial<JournalEntryPage.CreateData>`} because
    * it has different rules for `null` and `undefined`.
    */
   interface UpdateData extends fields.SchemaField.UpdateData<Schema> {}
 
   /**
-   * Used in the {@linkcode JournalEntryPage.update | JournalEntryPage#update} and
-   * {@linkcode JournalEntryPage.updateDocuments} signatures, and {@linkcode JournalEntryPage.Database.UpdateOperation}
-   * and its derivative interfaces.
-   */
-  type UpdateInput = UpdateData | Implementation;
-
-  /**
-   * The schema for {@linkcode JournalEntryPage}. This is the source of truth for how a `JournalEntryPage` document
+   * The schema for {@linkcode JournalEntryPage}. This is the source of truth for how an JournalEntryPage document
    * must be structured.
    *
    * Foundry uses this schema to validate the structure of the {@linkcode JournalEntryPage}. For example
-   * a {@linkcode fields.StringField | StringField} will enforce that the value is a string. More
-   * complex fields like {@linkcode fields.SetField | SetField} goes through various conversions
+   * a {@link fields.StringField | `StringField`} will enforce that the value is a string. More
+   * complex fields like {@link fields.SetField | `SetField`} goes through various conversions
    * starting as an array in the database, initialized as a set, and allows updates with any
    * iterable.
    */
-  interface Schema extends fields.DataSchema {
+  interface Schema extends DataSchema {
     /**
      * The _id which uniquely identifies this JournalEntryPage embedded document.
      * @defaultValue `null`
@@ -270,7 +235,13 @@ declare namespace JournalEntryPage {
     /**
      * The text name of this page.
      */
-    name: fields.StringField<{ required: true; blank: false; label: "JOURNALENTRYPAGE.PageTitle"; textSearch: true }>;
+    name: fields.StringField<
+      { required: true; blank: false; label: "JOURNALENTRYPAGE.PageTitle"; textSearch: true },
+      // Note(LukeAbby): Field override because `blank: false` isn't fully accounted for or something.
+      string,
+      string,
+      string
+    >;
 
     /**
      * The type of this page, in {@linkcode BaseJournalEntryPage.TYPES}.
@@ -435,549 +406,154 @@ declare namespace JournalEntryPage {
   }
 
   namespace Database {
-    /* ***********************************************
-     *                GET OPERATIONS                 *
-     *************************************************/
+    /** Options passed along in Get operations for JournalEntryPages */
+    interface Get extends foundry.abstract.types.DatabaseGetOperation<JournalEntryPage.Parent> {}
 
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.GetOperation | GetOperation} interface for
-     * `JournalEntryPage` documents. Valid for passing to
-     * {@linkcode ClientDatabaseBackend._getDocuments | ClientDatabaseBackend#_getDocuments}.
-     *
-     * The {@linkcode GetDocumentsOperation} and {@linkcode BackendGetOperation} interfaces derive from this one.
-     */
-    interface GetOperation extends DatabaseBackend.GetOperation<JournalEntryPage.Parent> {}
-
-    /**
-     * The interface for passing to {@linkcode JournalEntryPage.get}.
-     * @see {@linkcode Document.Database.GetDocumentsOperation}
-     */
-    interface GetDocumentsOperation extends Document.Database.GetDocumentsOperation<GetOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.get | DatabaseBackend#get} for `JournalEntryPage` documents.
-     * @see {@linkcode Document.Database.BackendGetOperation}
-     */
-    interface BackendGetOperation extends Document.Database.BackendGetOperation<GetOperation> {}
-
-    /* ***********************************************
-     *              CREATE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.CreateOperation | DatabaseCreateOperation}
-     * interface for `JournalEntryPage` documents.
-     *
-     * See {@linkcode DatabaseBackend.CreateOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode JournalEntryPage.create}. The new name for that
-     * interface is {@linkcode CreateDocumentsOperation}.
-     */
-    interface CreateOperation extends DatabaseBackend.CreateOperation<
-      JournalEntryPage.CreateInput,
-      JournalEntryPage.Parent
-    > {}
-
-    /**
-     * The interface for passing to {@linkcode JournalEntryPage.create} or {@linkcode JournalEntryPage.createDocuments}.
-     * @see {@linkcode Document.Database.CreateDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface CreateDocumentsOperation extends Document.Database.CreateDocumentsOperation<CreateOperation> {}
-
-    /**
-     * The interface for passing to the {@linkcode Document.createEmbeddedDocuments | #createEmbeddedDocuments} method of any Documents that
-     * can contain `JournalEntryPage` documents. (see {@linkcode JournalEntryPage.Parent})
-     * @see {@linkcode Document.Database.CreateEmbeddedOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface CreateEmbeddedOperation extends Document.Database.CreateEmbeddedOperation<CreateOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.create | DatabaseBackend#create} for `JournalEntryPage` documents.
-     * @see {@linkcode Document.Database.BackendCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendCreateOperation extends Document.Database.BackendCreateOperation<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode JournalEntryPage._preCreate | JournalEntryPage#_preCreate} and
-     * {@link Hooks.PreCreateDocument | the `preCreateJournalEntryPage` hook}.
-     * @see {@linkcode Document.Database.PreCreateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreCreateOptions extends Document.Database.PreCreateOptions<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode JournalEntryPage._preCreateOperation}.
-     * @see {@linkcode Document.Database.PreCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreCreateOperation extends Document.Database.PreCreateOperation<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode JournalEntryPage._onCreate | JournalEntryPage#_onCreate} and
-     * {@link Hooks.CreateDocument | the `createJournalEntryPage` hook}.
-     * @see {@linkcode Document.Database.OnCreateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnCreateOptions extends Document.Database.OnCreateOptions<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode JournalEntryPage._onCreateOperation} and `JournalEntryPage`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnCreateOperation extends Document.Database.OnCreateOperation<CreateOperation> {}
-
-    /* ***********************************************
-     *              UPDATE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.UpdateOperation | DatabaseUpdateOperation}
-     * interface for `JournalEntryPage` documents.
-     *
-     * See {@linkcode DatabaseBackend.UpdateOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode JournalEntryPage.update | JournalEntryPage#update}.
-     * The new name for that interface is {@linkcode UpdateOneDocumentOperation}.
-     */
-    interface UpdateOperation extends DatabaseBackend.UpdateOperation<
-      JournalEntryPage.UpdateInput,
-      JournalEntryPage.Parent
-    > {}
-
-    /**
-     * The interface for passing to {@linkcode JournalEntryPage.update | JournalEntryPage#update}.
-     * @see {@linkcode Document.Database.UpdateOneDocumentOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateOneDocumentOperation extends Document.Database.UpdateOneDocumentOperation<UpdateOperation> {}
-
-    /**
-     * The interface for passing to the {@linkcode Document.updateEmbeddedDocuments | #updateEmbeddedDocuments} method of any Documents that
-     * can contain `JournalEntryPage` documents (see {@linkcode JournalEntryPage.Parent}). This interface is just an alias
-     * for {@linkcode UpdateOneDocumentOperation}, as the same keys are provided by the method in both cases.
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateEmbeddedOperation extends UpdateOneDocumentOperation {}
-
-    /**
-     * The interface for passing to {@linkcode JournalEntryPage.updateDocuments}.
-     * @see {@linkcode Document.Database.UpdateManyDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateManyDocumentsOperation extends Document.Database.UpdateManyDocumentsOperation<UpdateOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.update | DatabaseBackend#update} for `JournalEntryPage` documents.
-     * @see {@linkcode Document.Database.BackendUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendUpdateOperation extends Document.Database.BackendUpdateOperation<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode JournalEntryPage._preUpdate | JournalEntryPage#_preUpdate} and
-     * {@link Hooks.PreUpdateDocument | the `preUpdateJournalEntryPage` hook}.
-     * @see {@linkcode Document.Database.PreUpdateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreUpdateOptions extends Document.Database.PreUpdateOptions<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode JournalEntryPage._preUpdateOperation}.
-     * @see {@linkcode Document.Database.PreUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreUpdateOperation extends Document.Database.PreUpdateOperation<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode JournalEntryPage._onUpdate | JournalEntryPage#_onUpdate} and
-     * {@link Hooks.UpdateDocument | the `updateJournalEntryPage` hook}.
-     * @see {@linkcode Document.Database.OnUpdateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnUpdateOptions extends Document.Database.OnUpdateOptions<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode JournalEntryPage._onUpdateOperation} and `JournalEntryPage`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnUpdateOperation extends Document.Database.OnUpdateOperation<UpdateOperation> {}
-
-    /* ***********************************************
-     *              DELETE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.DeleteOperation | DatabaseDeleteOperation}
-     * interface for `JournalEntryPage` documents.
-     *
-     * See {@linkcode DatabaseBackend.DeleteOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode JournalEntryPage.delete | JournalEntryPage#delete}.
-     * The new name for that interface is {@linkcode DeleteOneDocumentOperation}.
-     */
-    interface DeleteOperation extends DatabaseBackend.DeleteOperation<JournalEntryPage.Parent> {}
-
-    /**
-     * The interface for passing to {@linkcode JournalEntryPage.delete | JournalEntryPage#delete}.
-     * @see {@linkcode Document.Database.DeleteOneDocumentOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteOneDocumentOperation extends Document.Database.DeleteOneDocumentOperation<DeleteOperation> {}
-
-    /**
-     * The interface for passing to the {@linkcode Document.deleteEmbeddedDocuments | #deleteEmbeddedDocuments} method of any Documents that
-     * can contain `JournalEntryPage` documents (see {@linkcode JournalEntryPage.Parent}). This interface is just an alias
-     * for {@linkcode DeleteOneDocumentOperation}, as the same keys are provided by the method in both cases.
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteEmbeddedOperation extends DeleteOneDocumentOperation {}
-
-    /**
-     * The interface for passing to {@linkcode JournalEntryPage.deleteDocuments}.
-     * @see {@linkcode Document.Database.DeleteManyDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteManyDocumentsOperation extends Document.Database.DeleteManyDocumentsOperation<DeleteOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.delete | DatabaseBackend#delete} for `JournalEntryPage` documents.
-     * @see {@linkcode Document.Database.BackendDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendDeleteOperation extends Document.Database.BackendDeleteOperation<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode JournalEntryPage._preDelete | JournalEntryPage#_preDelete} and
-     * {@link Hooks.PreDeleteDocument | the `preDeleteJournalEntryPage` hook}.
-     * @see {@linkcode Document.Database.PreDeleteOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreDeleteOptions extends Document.Database.PreDeleteOptions<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode JournalEntryPage._preDeleteOperation}.
-     * @see {@linkcode Document.Database.PreDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreDeleteOperation extends Document.Database.PreDeleteOperation<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode JournalEntryPage._onDelete | JournalEntryPage#_onDelete} and
-     * {@link Hooks.DeleteDocument | the `deleteJournalEntryPage` hook}.
-     * @see {@linkcode Document.Database.OnDeleteOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnDeleteOptions extends Document.Database.OnDeleteOptions<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode JournalEntryPage._onDeleteOperation} and `JournalEntryPage`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnDeleteOperation extends Document.Database.OnDeleteOperation<DeleteOperation> {}
-
-    namespace Internal {
-      interface OperationNameMap {
-        GetDocumentsOperation: JournalEntryPage.Database.GetDocumentsOperation;
-        BackendGetOperation: JournalEntryPage.Database.BackendGetOperation;
-        GetOperation: JournalEntryPage.Database.GetOperation;
-
-        CreateDocumentsOperation: JournalEntryPage.Database.CreateDocumentsOperation;
-        CreateEmbeddedOperation: JournalEntryPage.Database.CreateEmbeddedOperation;
-        BackendCreateOperation: JournalEntryPage.Database.BackendCreateOperation;
-        CreateOperation: JournalEntryPage.Database.CreateOperation;
-        PreCreateOptions: JournalEntryPage.Database.PreCreateOptions;
-        PreCreateOperation: JournalEntryPage.Database.PreCreateOperation;
-        OnCreateOptions: JournalEntryPage.Database.OnCreateOptions;
-        OnCreateOperation: JournalEntryPage.Database.OnCreateOperation;
-
-        UpdateOneDocumentOperation: JournalEntryPage.Database.UpdateOneDocumentOperation;
-        UpdateEmbeddedOperation: JournalEntryPage.Database.UpdateEmbeddedOperation;
-        UpdateManyDocumentsOperation: JournalEntryPage.Database.UpdateManyDocumentsOperation;
-        BackendUpdateOperation: JournalEntryPage.Database.BackendUpdateOperation;
-        UpdateOperation: JournalEntryPage.Database.UpdateOperation;
-        PreUpdateOptions: JournalEntryPage.Database.PreUpdateOptions;
-        PreUpdateOperation: JournalEntryPage.Database.PreUpdateOperation;
-        OnUpdateOptions: JournalEntryPage.Database.OnUpdateOptions;
-        OnUpdateOperation: JournalEntryPage.Database.OnUpdateOperation;
-
-        DeleteOneDocumentOperation: JournalEntryPage.Database.DeleteOneDocumentOperation;
-        DeleteEmbeddedOperation: JournalEntryPage.Database.DeleteEmbeddedOperation;
-        DeleteManyDocumentsOperation: JournalEntryPage.Database.DeleteManyDocumentsOperation;
-        BackendDeleteOperation: JournalEntryPage.Database.BackendDeleteOperation;
-        DeleteOperation: JournalEntryPage.Database.DeleteOperation;
-        PreDeleteOptions: JournalEntryPage.Database.PreDeleteOptions;
-        PreDeleteOperation: JournalEntryPage.Database.PreDeleteOperation;
-        OnDeleteOptions: JournalEntryPage.Database.OnDeleteOptions;
-        OnDeleteOperation: JournalEntryPage.Database.OnDeleteOperation;
-      }
+    /** Options passed along in Create operations for JournalEntryPages */
+    interface Create<Temporary extends boolean | undefined = boolean | undefined>
+      extends foundry.abstract.types.DatabaseCreateOperation<
+        JournalEntryPage.CreateData,
+        JournalEntryPage.Parent,
+        Temporary
+      > {
+      animate?: boolean;
     }
-  }
 
-  /**
-   * If `Temporary` is true then {@linkcode JournalEntryPage.Implementation}, otherwise {@linkcode JournalEntryPage.Stored}.
-   * @deprecated `Document.create`/`Documents` can no longer return temporary documents as of v14. This type will be removed in v15.
-   */
-  type TemporaryIf<Temporary extends boolean | undefined> =
-    true extends Extract<Temporary, true> ? JournalEntryPage.Implementation : JournalEntryPage.Stored;
+    /** Options passed along in Delete operations for JournalEntryPages */
+    interface Delete extends foundry.abstract.types.DatabaseDeleteOperation<JournalEntryPage.Parent> {
+      animate?: boolean;
+    }
+
+    /** Options passed along in Update operations for JournalEntryPages */
+    interface Update
+      extends foundry.abstract.types.DatabaseUpdateOperation<JournalEntryPage.UpdateData, JournalEntryPage.Parent> {
+      animate?: boolean;
+    }
+
+    /** Operation for {@linkcode JournalEntryPage.createDocuments} */
+    interface CreateDocumentsOperation<Temporary extends boolean | undefined>
+      extends Document.Database.CreateOperation<JournalEntryPage.Database.Create<Temporary>> {}
+
+    /** Operation for {@linkcode JournalEntryPage.updateDocuments} */
+    interface UpdateDocumentsOperation
+      extends Document.Database.UpdateDocumentsOperation<JournalEntryPage.Database.Update> {}
+
+    /** Operation for {@linkcode JournalEntryPage.deleteDocuments} */
+    interface DeleteDocumentsOperation
+      extends Document.Database.DeleteDocumentsOperation<JournalEntryPage.Database.Delete> {}
+
+    /** Operation for {@linkcode JournalEntryPage.create} */
+    interface CreateOperation<Temporary extends boolean | undefined>
+      extends Document.Database.CreateOperation<JournalEntryPage.Database.Create<Temporary>> {}
+
+    /** Operation for {@link JournalEntryPage.update | `JournalEntryPage#update`} */
+    interface UpdateOperation extends Document.Database.UpdateOperation<Update> {}
+
+    interface DeleteOperation extends Document.Database.DeleteOperation<Delete> {}
+
+    /** Options for {@linkcode JournalEntryPage.get} */
+    interface GetOptions extends Document.Database.GetOptions {}
+
+    /** Options for {@link JournalEntryPage._preCreate | `JournalEntryPage#_preCreate`} */
+    interface PreCreateOptions extends Document.Database.PreCreateOptions<Create> {}
+
+    /** Options for {@link JournalEntryPage._onCreate | `JournalEntryPage#_onCreate`} */
+    interface OnCreateOptions extends Document.Database.CreateOptions<Create> {}
+
+    /** Operation for {@linkcode JournalEntryPage._preCreateOperation} */
+    interface PreCreateOperation extends Document.Database.PreCreateOperationStatic<JournalEntryPage.Database.Create> {}
+
+    /** Operation for {@link JournalEntryPage._onCreateOperation | `JournalEntryPage#_onCreateOperation`} */
+    interface OnCreateOperation extends JournalEntryPage.Database.Create {}
+
+    /** Options for {@link JournalEntryPage._preUpdate | `JournalEntryPage#_preUpdate`} */
+    interface PreUpdateOptions extends Document.Database.PreUpdateOptions<Update> {}
+
+    /** Options for {@link JournalEntryPage._onUpdate | `JournalEntryPage#_onUpdate`} */
+    interface OnUpdateOptions extends Document.Database.UpdateOptions<Update> {}
+
+    /** Operation for {@linkcode JournalEntryPage._preUpdateOperation} */
+    interface PreUpdateOperation extends JournalEntryPage.Database.Update {}
+
+    /** Operation for {@link JournalEntryPage._onUpdateOperation | `JournalEntryPage._preUpdateOperation`} */
+    interface OnUpdateOperation extends JournalEntryPage.Database.Update {}
+
+    /** Options for {@link JournalEntryPage._preDelete | `JournalEntryPage#_preDelete`} */
+    interface PreDeleteOptions extends Document.Database.PreDeleteOperationInstance<Delete> {}
+
+    /** Options for {@link JournalEntryPage._onDelete | `JournalEntryPage#_onDelete`} */
+    interface OnDeleteOptions extends Document.Database.DeleteOptions<Delete> {}
+
+    /** Options for {@link JournalEntryPage._preDeleteOperation | `JournalEntryPage#_preDeleteOperation`} */
+    interface PreDeleteOperation extends JournalEntryPage.Database.Delete {}
+
+    /** Options for {@link JournalEntryPage._onDeleteOperation | `JournalEntryPage#_onDeleteOperation`} */
+    interface OnDeleteOperation extends JournalEntryPage.Database.Delete {}
+
+    /** Context for {@linkcode JournalEntryPage._onDeleteOperation} */
+    interface OnDeleteDocumentsContext extends Document.ModificationContext<JournalEntryPage.Parent> {}
+
+    /** Context for {@linkcode JournalEntryPage._onCreateDocuments} */
+    interface OnCreateDocumentsContext extends Document.ModificationContext<JournalEntryPage.Parent> {}
+
+    /** Context for {@linkcode JournalEntryPage._onUpdateDocuments} */
+    interface OnUpdateDocumentsContext extends Document.ModificationContext<JournalEntryPage.Parent> {}
+
+    /**
+     * Options for {@link JournalEntryPage._preCreateDescendantDocuments | `JournalEntryPage#_preCreateDescendantDocuments`}
+     * and {@link JournalEntryPage._onCreateDescendantDocuments | `JournalEntryPage#_onCreateDescendantDocuments`}
+     */
+    interface CreateOptions extends Document.Database.CreateOptions<JournalEntryPage.Database.Create> {}
+
+    /**
+     * Options for {@link JournalEntryPage._preUpdateDescendantDocuments | `JournalEntryPage#_preUpdateDescendantDocuments`}
+     * and {@link JournalEntryPage._onUpdateDescendantDocuments | `JournalEntryPage#_onUpdateDescendantDocuments`}
+     */
+    interface UpdateOptions extends Document.Database.UpdateOptions<JournalEntryPage.Database.Update> {}
+
+    /**
+     * Options for {@link JournalEntryPage._preDeleteDescendantDocuments | `JournalEntryPage#_preDeleteDescendantDocuments`}
+     * and {@link JournalEntryPage._onDeleteDescendantDocuments | `JournalEntryPage#_onDeleteDescendantDocuments`}
+     */
+    interface DeleteOptions extends Document.Database.DeleteOptions<JournalEntryPage.Database.Delete> {}
+
+    /**
+     * Create options for {@linkcode JournalEntryPage.createDialog}.
+     */
+    interface DialogCreateOptions extends InexactPartial<Create> {}
+  }
 
   /**
    * The flags that are available for this document in the form `{ [scope: string]: { [key: string]: unknown } }`.
    */
-  interface Flags extends Document.Internal.ConfiguredFlagsForName<Name> {}
+  interface Flags extends Document.ConfiguredFlagsForName<Name> {}
 
   namespace Flags {
     /**
      * The valid scopes for the flags on this document e.g. `"core"` or `"dnd5e"`.
      */
-    type Scope = Document.Internal.FlagKeyOf<Flags>;
+    type Scope = Document.FlagKeyOf<Flags>;
 
     /**
      * The valid keys for a certain scope for example if the scope is "core" then a valid key may be `"sheetLock"` or `"viewMode"`.
      */
-    type Key<Scope extends Flags.Scope> = Document.Internal.FlagKeyOf<Document.Internal.FlagGetKey<Flags, Scope>>;
+    type Key<Scope extends Flags.Scope> = Document.FlagKeyOf<Document.FlagGetKey<Flags, Scope>>;
 
     /**
      * Gets the type of a particular flag given a `Scope` and a `Key`.
      */
-    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.Internal.GetFlag<Flags, Scope, Key>;
+    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.GetFlag<Name, Scope, Key>;
   }
 
-  /* ***********************************************
-   *       CLIENT DOCUMENT TEMPLATE TYPES          *
-   *************************************************/
-
-  /** The interface {@linkcode JournalEntryPage.fromDropData} receives */
   interface DropData extends Document.Internal.DropData<Name> {}
+  interface DropDataOptions extends Document.DropDataOptions {}
 
-  /**
-   * @deprecated Foundry prior to v13 had a completely unused `options` parameter in the {@linkcode JournalEntryPage.fromDropData}
-   * signature that has since been removed. This type will be removed in v14.
-   */
-  type DropDataOptions = never;
+  interface DefaultNameContext extends Document.DefaultNameContext<Name, NonNullable<Parent>> {}
 
-  /**
-   * The interface for passing to {@linkcode JournalEntryPage.defaultName}
-   * @see {@linkcode Document.DefaultNameContext}
-   */
-  interface DefaultNameContext extends Document.DefaultNameContext<Name, Parent> {}
-
-  /**
-   * The interface for passing to {@linkcode JournalEntryPage.createDialog}'s first parameter
-   * @see {@linkcode Document.CreateDialogData}
-   */
   interface CreateDialogData extends Document.CreateDialogData<CreateData> {}
-
-  /**
-   * @deprecated This is for a deprecated signature, and will be removed in v15.
-   * The interface for passing to {@linkcode JournalEntryPage.createDialog}'s second parameter that still includes partial Dialog
-   * options, instead of being purely a {@linkcode Database.CreateDocumentsOperation | CreateDocumentsOperation}.
-   */
-  interface CreateDialogDeprecatedOptions
-    extends Database.CreateDocumentsOperation, Document._PartialDialogV1OptionsForCreateDialog {}
-
-  /**
-   * The interface for passing to {@linkcode JournalEntryPage.createDialog}'s third parameter
-   * @see {@linkcode Document.CreateDialogOptions}
-   */
   interface CreateDialogOptions extends Document.CreateDialogOptions<Name> {}
 
-  /**
-   * The return type for {@linkcode JournalEntryPage.createDialog}.
-   * @see {@linkcode Document.CreateDialogReturn}
-   */
-  type CreateDialogReturn<Config extends JournalEntryPage.CreateDialogOptions | undefined> =
-    Document.CreateDialogReturn<JournalEntryPage.Stored, Config>;
-
-  /**
-   * The return type for {@linkcode JournalEntryPage.deleteDialog | JournalEntryPage#deleteDialog}.
-   * @see {@linkcode Document.DeleteDialogReturn}
-   */
-  type DeleteDialogReturn<Config extends DialogV2.ConfirmConfig | undefined> = Document.DeleteDialogReturn<
-    JournalEntryPage.Stored,
-    Config
-  >;
-
-  /* ***********************************************
-   *      JOURNAL-ENTRY-PAGE-SPECIFIC TYPES        *
-   *************************************************/
-
-  /**
-   * Properties that always exist on `Heading`s no matter where in the process of generation they are.
-   * {@linkcode JournalEntryPage._makeHeadingNode} returns, and {@linkcode JournalEntryPage._flattenTOC} accepts,
-   * interfaces lacking the `order` property
-   * @internal
-   */
-  interface _Heading {
+  interface JournalEntryPageHeading {
     /** The heading level, 1-6. */
     level: number;
 
@@ -987,90 +563,63 @@ declare namespace JournalEntryPage {
     /** The generated slug for this heading. */
     slug: string;
 
-    /**
-     * The currently rendered element for this heading, if it exists.
-     * @remarks Whether this exists or not depends on the `includeElement` option passed to {@linkcode JournalEntryPage.buildTOC}.
-     * It defaults to `true`, but is passed explicit `false`  when generating {@linkcode JournalEntryPage.toc | JournalEntryPage#toc}/
-     * {@linkcode JournalEntryPage._toc | #_toc}. Both {@linkcode foundry.appv1.sheets.JournalPageSheet.toc | JournalPageSheet#toc}
-     * and {@linkcode foundry.applications.sheets.journal.JournalEntryPageSheet.toc | JournalEntryPageSheet#toc} will have it defined by default.
-     */
+    /** The currently rendered element for this heading, if it exists. */
     element?: HTMLHeadingElement;
 
     /** Any child headings of this one. */
     children: string[];
-  }
 
-  interface IntermediaryHeading extends _Heading {}
-
-  interface Heading extends _Heading {
     /** The linear ordering of the heading in the table of contents. */
     order: number;
   }
 
-  /** A Table of Contents record. */
-  interface TOC extends Record<string, Heading> {}
+  interface CreateDocumentLinkOptions extends ClientDocument.CreateDocumentLinkOptions {
+    /**
+     * @remarks If the `eventData` passed with these options has an `anchor.slug`, the default is `eventData.anchor.name`,
+     * otherwise uses `super`'s default of `this.name`
+     */
+    label?: string | null | undefined;
+  }
 
   /**
    * Slightly editorializing the description with the addition of parentheses to make this scan
-   * for both {@linkcode JournalEntryPage.buildTOC} and {@linkcode JournalEntryPage._makeHeadingNode}.   *
+   * for both {@linkcode JournalEntryPage.buildTOC} and {@linkcode JournalEntryPage._makeHeadingNode}
+   *
    * @internal
    */
-  interface _IncludeElement {
+  type _IncludeElement = NullishProps<{
     /**
      * Include reference(s) to the heading DOM element(s) in the returned ToC.
      * @defaultValue `true`
-     * @remarks See {@linkcode JournalEntryPage.Heading.element} remarks.
      */
     includeElement: boolean;
-  }
+  }>;
 
-  interface BuildTOCOptions extends InexactPartial<_IncludeElement> {}
+  interface BuildTOCOptions extends _IncludeElement {}
 
-  interface MakeHeadingNodeOptions extends InexactPartial<_IncludeElement> {}
+  interface MakeHeadingNodeOptions extends _IncludeElement {}
 
-  /**
-   * Configuration for embedding behavior. This can include enrichment options to override
-   * those passed as part of the root enrichment process.
-   *
-   * @privateRemarks The above is the description for the first param of
-   * {@linkcode JournalEntryPage._embedTextPage | JournalEntryPage#_embedTextPage}. This should arguably
-   * just be merged into `DocumentHTMLEmbedConfig` like `alt` was for the config 'extension' `#_embedImagePage` does, but
-   * that feels too messy; since typing people's `@Embed[]` enrichers is out of scope for this project, this is probably fine.
-   */
   interface EmbedTextPageConfig extends TextEditor.EnrichmentOptions, TextEditor.DocumentHTMLEmbedConfig {}
 
-  /**
-   * @deprecated There is no difference between the options for
-   * {@linkcode JournalEntryPage._createDocumentLink | JournalEntryPage#_createDocumentLink} and its super in `ClientDocument`.
-   * Use {@linkcode ClientDocument.CreateDocumentLinkOptions} instead. This alias will be removed in v15.
-   */
-  type CreateDocumentLinkOptions = ClientDocument.CreateDocumentLinkOptions;
+  /** @internal */
+  type _EmbedImagePageConfig = NullishProps<{
+    /**
+     * Alt text for the image, otherwise the caption will be used.
+     * @remarks If both `alt` and `label` are omitted, the returned Element's `alt` will fall back to using `this.image.caption || this.name`
+     */
+    alt: string;
+  }>;
 
-  /**
-   * @deprecated This type is no longer required, the single property it added (`alt`) has been folded
-   * into {@linkcode TextEditor.DocumentHTMLEmbedConfig}; Use that interface instead. This alias will be removed in v15.
-   */
-  type EmbedImagePageConfig = TextEditor.DocumentHTMLEmbedConfig;
-
-  /**
-   * @deprecated This type has been renamed to be less unwieldy; Use {@linkcode JournalEntryPage.Heading} instead.
-   * This alias will be removed in v15.
-   */
-  type JournalEntryPageHeading = Heading;
+  interface EmbedImagePageConfig extends _EmbedImagePageConfig, TextEditor.DocumentHTMLEmbedConfig {}
 
   /**
    * The arguments to construct the document.
    *
-   * @deprecated Writing the signature directly has helped reduce circularities and therefore is
-   * now recommended. This type will be removed in v14.
+   * @deprecated - Writing the signature directly has helped reduce circularities and therefore is
+   * now recommended.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   type ConstructorArgs = Document.ConstructorParameters<CreateData, Parent>;
-
-  /**
-   * @deprecated Replaced with {@linkcode JournalEntryPage.ConfiguredSubType} (will be removed in v14).
-   */
-  type ConfiguredSubTypes = ConfiguredSubType;
 }
 
 /**
@@ -1085,19 +634,19 @@ declare class JournalEntryPage<
    * @param data    - Initial data from which to construct the `JournalEntryPage`
    * @param context - Construction context options
    */
-  constructor(data: JournalEntryPage.CreateData<SubType>, context?: JournalEntryPage.ConstructionContext);
+  constructor(data: JournalEntryPage.CreateData, context?: JournalEntryPage.ConstructionContext);
 
   /**
    * The cached table of contents for this JournalEntryPage.
    */
-  protected _toc: JournalEntryPage.TOC;
+  protected _toc: Record<string, JournalEntryPage.JournalEntryPageHeading>;
 
   /**
    * The table of contents for this JournalEntryPage.
    */
-  get toc(): JournalEntryPage.TOC;
+  get toc(): Record<string, JournalEntryPage.JournalEntryPageHeading>;
 
-  override get permission(): CONST.DOCUMENT_OWNERSHIP_LEVELS;
+  override get permission(): CONST.DOCUMENT_OWNERSHIP_LEVELS | null;
 
   /**
    * Return a reference to the Note instance for this Journal Entry Page in the current Scene, if any.
@@ -1108,7 +657,6 @@ declare class JournalEntryPage<
   /**
    * Convert a heading into slug suitable for use as an identifier.
    * @param heading - The heading element or some text content.
-   * @remarks Truncates long returns to the first 64 characters.
    */
   static slugifyHeading(heading: HTMLHeadingElement | string): string;
 
@@ -1117,13 +665,18 @@ declare class JournalEntryPage<
    * @param html    - The HTML content to generate a ToC outline for.
    * @param options - Additional options to configure ToC generation.
    */
-  static buildTOC(html: HTMLElement | HTMLElement[], options?: JournalEntryPage.BuildTOCOptions): JournalEntryPage.TOC;
+  static buildTOC(
+    html: HTMLElement[],
+    options?: JournalEntryPage.BuildTOCOptions,
+  ): Record<string, JournalEntryPage.JournalEntryPageHeading>;
 
   /**
    * Flatten the tree structure into a single object with each node's slug as the key.
    * @param nodes - The root ToC nodes.
    */
-  protected static _flattenTOC(nodes: JournalEntryPage.IntermediaryHeading[]): JournalEntryPage.TOC;
+  protected static _flattenTOC(
+    nodes: JournalEntryPage.JournalEntryPageHeading[],
+  ): Record<string, JournalEntryPage.JournalEntryPageHeading>;
 
   /**
    * Construct a table of contents node from a heading element.
@@ -1133,27 +686,20 @@ declare class JournalEntryPage<
   protected static _makeHeadingNode(
     heading: HTMLHeadingElement,
     options?: JournalEntryPage.MakeHeadingNodeOptions,
-  ): JournalEntryPage.IntermediaryHeading;
+  ): JournalEntryPage.JournalEntryPageHeading;
+
+  /** @remarks Uses `eventData`, unlike {@link ClientDocument._createDocumentLink | `ClientDocument#_createDocumentLink`} */
+  override _createDocumentLink(eventData: AnyObject, options?: JournalEntryPage.CreateDocumentLinkOptions): string;
 
   /**
-   * @remarks This override uses `eventData`, unlike
-   * {@linkcode ClientDocumentMixin.AnyMixed._createDocumentLink | ClientDocument#_createDocumentLink}.
-   */
-  override _createDocumentLink(eventData: AnyObject, options?: ClientDocument.CreateDocumentLinkOptions): string;
-
-  /**
-   * @remarks Returns `this.parent.sheet.render()`, without the possibility of `null` that the `ClientDocument` method has.
+   * @remarks
+   * As `super`, but return the parent's sheet's `#render`:
+   * - AppV1: returns that sheet
+   * - AppV2: returns a Promise of that sheet
    */
   override _onClickDocumentLink(event: MouseEvent): ClientDocument.OnClickDocumentLinkReturn;
 
-  // For type simplicity the following real override(s) are commented out.
-  // These methods historically have been the source of a large amount of computation from tsc.
-
-  // protected override _onUpdate(
-  //   changed: JournalEntryPage.UpdateData,
-  //   options: JournalEntryPage.Database.OnUpdateOptions,
-  //   userId: string,
-  // ): void;ns: JournalEntryPage.Database.OnDeleteOptions, userId: string): void;
+  // _onUpdate is overridden but with no signature changes from the template in BaseJournalEntryPage
 
   protected override _buildEmbedHTML(
     config: TextEditor.DocumentHTMLEmbedConfig,
@@ -1163,17 +709,18 @@ declare class JournalEntryPage<
     content: HTMLElement | HTMLCollection,
     config: TextEditor.DocumentHTMLEmbedConfig,
     options?: TextEditor.EnrichmentOptions,
-  ): Promise<HTMLDocumentEmbedElement | null>;
+  ): Promise<HTMLElement | null>;
 
   /**
    * Embed text page content.
-   * @param config  - Configuration for embedding behavior. This can include enrichment options to
-   *                  override those passed as part of the root enrichment process.
-   * @param options - The original enrichment options to propagate to the embedded text page's enrichment.
+   * @param config        - Configuration for embedding behavior. This can include
+   *                        enrichment options to override those passed as part of
+   *                        the root enrichment process.
+   * @param options       - The original enrichment options to propagate to the embedded text page's
+   *                        enrichment.
    * @returns
    *
-   * @example
-   * Embed the content of the Journal Entry Page as a figure.
+   * @example Embed the content of the Journal Entry Page as a figure.
    * ```
    * @Embed[.yDbDF1ThSfeinh3Y classes="small right"]{Special caption}
    * ```
@@ -1195,8 +742,7 @@ declare class JournalEntryPage<
    * </figure>
    * ```
    *
-   * @example
-   * Embed the content of the Journal Entry Page into the main content flow.
+   * @example Embed the content of the Journal Entry Page into the main content flow.
    * ```
    * @Embed[.yDbDF1ThSfeinh3Y inline]
    * ```
@@ -1207,8 +753,6 @@ declare class JournalEntryPage<
    *   <p>The contents of the page</p>
    * </section>
    * ```
-   *
-   * @privateRemarks `config` is required to destructuring assignment and lack of parameter default.
    */
   protected _embedTextPage(
     config: JournalEntryPage.EmbedTextPageConfig,
@@ -1221,8 +765,7 @@ declare class JournalEntryPage<
    * @param options           - The original enrichment options for cases where the Document embed content
    *                            also contains text that must be enriched.
    *
-   * @example
-   * Create an embedded image from a sibling journal entry page.
+   * @example Create an embedded image from a sibling journal entry page.
    * ```
    * @Embed[.QnH8yGIHy4pmFBHR classes="small right"]{Special caption}
    * ```
@@ -1247,7 +790,7 @@ declare class JournalEntryPage<
    * @remarks Core's implementation always returns a {@linkcode HTMLImageElement}, and does not use `options`
    */
   protected _embedImagePage(
-    config?: TextEditor.DocumentHTMLEmbedConfig,
+    config?: JournalEntryPage.EmbedImagePageConfig,
     options?: TextEditor.EnrichmentOptions,
   ): Promise<HTMLElement | HTMLCollection | null>;
 
@@ -1265,56 +808,32 @@ declare class JournalEntryPage<
 
   // Descendant Document operations have been left out because JournalEntryPage does not have any descendant documents.
 
-  // `context` must contain a `parent`, so is required.
+  /** @remarks `context` must contain a `pack` or `parent`. */
   static override defaultName(context: JournalEntryPage.DefaultNameContext): string;
 
-  // `createOptions` must contain a  `parent`, so is required.
-  static override createDialog<Options extends JournalEntryPage.CreateDialogOptions | undefined = undefined>(
+  /** @remarks `createOptions` must contain a `pack` or `parent`. */
+  static override createDialog(
     data: JournalEntryPage.CreateDialogData | undefined,
-    createOptions: JournalEntryPage.Database.CreateDocumentsOperation,
-    options?: Options,
-  ): Promise<JournalEntryPage.CreateDialogReturn<Options>>;
+    createOptions: JournalEntryPage.Database.DialogCreateOptions,
+    options?: JournalEntryPage.CreateDialogOptions,
+  ): Promise<JournalEntryPage.Stored | null | undefined>;
 
-  /**
-   * @deprecated "The `ClientDocument.createDialog` signature has changed. It now accepts database operation options in its second
-   * parameter, and options for {@linkcode DialogV2.prompt} in its third parameter." (since v13, until v15)
-   *
-   * @see {@linkcode JournalEntryPage.CreateDialogDeprecatedOptions}
-   */
-  static override createDialog<Options extends JournalEntryPage.CreateDialogOptions | undefined = undefined>(
-    data: JournalEntryPage.CreateDialogData | undefined,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    createOptions: JournalEntryPage.CreateDialogDeprecatedOptions,
-    options?: Options,
-  ): Promise<JournalEntryPage.CreateDialogReturn<Options>>;
+  override deleteDialog(
+    options?: InexactPartial<foundry.applications.api.DialogV2.ConfirmConfig>,
+    operation?: Document.Database.DeleteOperationForName<"JournalEntryPage">,
+  ): Promise<this | false | null | undefined>;
 
-  override deleteDialog<Options extends DialogV2.ConfirmConfig | undefined = undefined>(
-    options?: Options,
-    operation?: JournalEntryPage.Database.DeleteOneDocumentOperation,
-  ): Promise<JournalEntryPage.DeleteDialogReturn<Options>>;
-
-  /**
-   * @deprecated "`options` is now an object containing entries supported by {@linkcode DialogV2.confirm | DialogV2.confirm}."
-   * (since v13, until v15)
-   *
-   * @see {@linkcode Document.DeleteDialogDeprecatedConfig}
-   */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  override deleteDialog<Options extends Document.DeleteDialogDeprecatedConfig | undefined = undefined>(
-    options?: Options,
-    operation?: JournalEntryPage.Database.DeleteOneDocumentOperation,
-  ): Promise<JournalEntryPage.DeleteDialogReturn<Options>>;
-
-  static override fromDropData(data: JournalEntryPage.DropData): Promise<JournalEntryPage.Implementation | undefined>;
+  static override fromDropData(
+    data: JournalEntryPage.DropData,
+    options?: JournalEntryPage.DropDataOptions,
+  ): Promise<JournalEntryPage.Implementation | undefined>;
 
   static override fromImport(
     source: JournalEntryPage.Source,
-    context?: Document.FromImportContext<JournalEntryPage.Parent>,
+    context?: Document.FromImportContext<JournalEntryPage.Parent> | null,
   ): Promise<JournalEntryPage.Implementation>;
 
   // Embedded document operations have been left out because JournalEntryPage does not have any embedded documents.
-
-  #JournalEntryPage: true;
 }
 
 export default JournalEntryPage;

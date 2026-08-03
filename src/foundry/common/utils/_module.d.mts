@@ -2,6 +2,7 @@ import type { AnyFunction } from "#utils";
 // In Foundry itself this file contains re-exports of these other modules.
 // Therefore it has a runtime effect and uses `.mjs` instead of `.d.mts`.
 // While `.mts` could work, to avoid `import-x/no-unresolved` from erroring `.mjs` is used.
+/* eslint-disable import-x/extensions */
 
 export * from "./geometry.mjs";
 export * from "./helpers.mjs";
@@ -16,6 +17,5 @@ export { default as Semaphore } from "./semaphore.mjs";
 export { default as BitMask } from "./bitmask.mjs";
 export { default as WordTree } from "./word-tree.mjs";
 export { default as StringTree } from "./string-tree.mjs";
-export { default as StringNode } from "./string-node.mjs";
 
 export const AsyncFunction: AnyFunction;

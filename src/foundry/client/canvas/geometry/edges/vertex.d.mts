@@ -86,7 +86,6 @@ declare class PolygonVertex {
    * @defaultValue {@linkcode CONST.WALL_SENSE_TYPES.NONE}
    * @remarks Actually initialized to `0` literal, but is meant as a `WALL_SENSE_TYPES`
    */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
   restriction: CONST.WALL_SENSE_TYPES;
 
   /**
@@ -175,7 +174,7 @@ declare namespace PolygonVertex {
   interface AnyConstructor extends Identity<typeof AnyPolygonVertex> {}
 
   /** @internal */
-  interface _ConstructorOptions {
+  type _ConstructorOptions = InexactPartial<{
     /** A known distance from a polygon origin to this vertex. */
     distance: number;
 
@@ -187,9 +186,9 @@ declare namespace PolygonVertex {
      * @defaultValue `false`
      */
     round: boolean;
-  }
+  }>;
 
-  interface ConstructorOptions extends InexactPartial<_ConstructorOptions> {}
+  interface ConstructorOptions extends _ConstructorOptions {}
 }
 
 export default PolygonVertex;

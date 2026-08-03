@@ -5,7 +5,7 @@ import { EditorState, Plugin, Transaction } from "prosemirror-state";
 import ProseMirrorMenu = foundry.prosemirror.ProseMirrorMenu;
 import ProseMirrorDropDown = foundry.prosemirror.ProseMirrorDropDown;
 import type { Attrs, Node, NodeType } from "prosemirror-model";
-import type ProseMirrorKeyMaps from "../../../../src/foundry/common/prosemirror/keymaps.d.mts";
+import type ProseMirrorKeyMaps from "#common/prosemirror/keymaps.mjs";
 
 declare const schema: foundry.prosemirror.Schema;
 declare const view: EditorView;
@@ -79,8 +79,7 @@ const toggleBlockWrapCommand = (node: NodeType, attrs?: Attrs) => {
   const t = new Transaction(pmNode);
   return (state: EditorState, dispatch: ProseMirrorKeyMaps.DispatchFunction, view: EditorView) => {
     dispatch(t);
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    return !!state.selection && !!view.dragging && node.isInline && (attrs?.["foo"] as boolean);
+    return state.selection && view.dragging && node.isInline && attrs?.foo;
   };
 };
 

@@ -1,90 +1,56 @@
 import type { Identity } from "#utils";
 import type Document from "#common/abstract/document.d.mts";
-import type { WorldCollection } from "#client/documents/abstract/_module.d.mts";
-import type { Application } from "#client/appv1/api/_module.d.mts";
-import type { DocumentSheetV2 } from "#client/applications/api/_module.d.mts";
-import type { DocumentSheetConfig } from "#client/applications/apps/_module.d.mts";
 
 /**
  * The singleton collection of Combat documents which exist within the active World.
  * This Collection is accessible within the Game object as game.combats.
  *
- * @see {@linkcode foundry.documents.Combat}: The Combat document
- * @see {@linkcode foundry.applications.sidebar.tabs.CombatTracker}: The CombatTracker sidebar directory
+ * @see {@linkcode Combat} The Combat document
+ * @see {@linkcode CombatTracker} The CombatTracker sidebar directory
  */
-declare class CombatEncounters extends WorldCollection<"Combat"> {
-  static override documentName: "Combat";
+declare class CombatEncounters extends foundry.documents.abstract.WorldCollection<"Combat", "CombatEncounters"> {
+  static documentName: "Combat";
 
-  /** @privateRemarks Fake type override */
-  static override get instance(): CombatEncounters.Implementation;
-
-  /** Provide the settings object which configures the Combat document */
-  static get settings(): Combat.SettingData;
+  /**
+   * Provide the settings object which configures the Combat document
+   */
+  static get settings(): foundry.helpers.ClientSettings.SettingInitializedType<"core", Combat.CONFIG_SETTING>;
 
   override get directory(): typeof ui.combat;
 
   /**
    * Get an Array of Combat instances which apply to the current canvas scene
    */
-  get combats(): Combat.Stored[];
+  get combats(): ReturnType<this["filter"]>;
 
   /**
    * The currently active Combat instance
    */
-  get active(): Combat.Stored | undefined;
+  get active(): ReturnType<this["find"]>;
 
   /**
    * The currently viewed Combat encounter
    */
   get viewed(): Combat.Stored | null;
 
-  /** @deprecated Removed without replacement in v13. This warning will be removed in v14. */
-  protected _onDeleteToken(...args: never): never;
-
-  // Fake override for the purpose of typing `options`.
-  static override registerSheet(
-    scope: string,
-    sheetClass: Application.AnyConstructor | DocumentSheetV2.AnyConstructor,
-    options?: DocumentSheetConfig.RegisterSheetOptions<Combat.ImplementationClass>,
-  ): void;
-
-  // Fake override for the purpose of typing `options`.
-  static override unregisterSheet(
-    scope: string,
-    sheetClass: Application.AnyConstructor | DocumentSheetV2.AnyConstructor,
-    options?: DocumentSheetConfig.UnregisterSheetOptions<Combat.ImplementationClass>,
-  ): void;
+  /**
+   * When a Token is deleted, remove it as a combatant from any combat encounters which included the Token
+   * @param sceneId - The Scene id within which a Token is being deleted
+   * @param tokenId - The Token id being deleted
+   */
+  protected _onDeleteToken(sceneId: string, tokenId: string): Promise<void>;
 }
 
 declare namespace CombatEncounters {
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode CombatEncounters.Implementation} instead. This will be removed in v15.
-   */
-  type Any = Internal.Any;
+  interface Any extends AnyCombatEncounters {}
+  interface AnyConstructor extends Identity<typeof AnyCombatEncounters> {}
 
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode CombatEncounters.ImplementationClass} instead. This will be removed in v15.
-   */ type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyCombatEncounters {}
-    interface AnyConstructor extends Identity<typeof AnyCombatEncounters> {}
-  }
-
-  interface ImplementationClass extends Document.Internal.ConfiguredCollectionClass<"Combat"> {}
-  interface Implementation extends Document.Internal.ConfiguredCollection<"Combat"> {}
-
-  /** @deprecated Replaced by {@linkcode CombatEncounters.ImplementationClass}. Will be removed in v15. */
-  type ConfiguredClass = ImplementationClass;
-
-  /** @deprecated Replaced by {@linkcode CombatEncounters.Implementation}. Will be removed in v15. */
-  type Configured = Implementation;
+  interface ConfiguredClass extends Document.ConfiguredCollectionClass<"Combat"> {}
+  interface Configured extends Document.ConfiguredCollection<"Combat"> {}
 }
-
-export default CombatEncounters;
 
 declare abstract class AnyCombatEncounters extends CombatEncounters {
   constructor(...args: never);
 }
+
+export default CombatEncounters;

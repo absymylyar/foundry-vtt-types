@@ -1,8 +1,12 @@
 import type { NodeSpec } from "prosemirror-model";
 
-export declare const dl: NodeSpec;
+export declare const details: NodeSpec;
 
-export declare const dl_group: NodeSpec;
+export declare const summary: NodeSpec;
+
+export declare const summaryBlock: NodeSpec;
+
+export declare const dl: NodeSpec;
 
 export declare const dt: NodeSpec;
 

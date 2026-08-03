@@ -3,21 +3,13 @@ import type { InterfaceToObject } from "fvtt-types/utils";
 import BaseDrawing = foundry.documents.BaseDrawing;
 import Document = foundry.abstract.Document;
 
-class TestBaseDrawing extends BaseDrawing {
-  get compendium() {
-    return this.inCompendium
-      ? (game.packs!.get(this.pack!) as foundry.documents.collections.CompendiumCollection.ForDocument<"Drawing">)
-      : null;
-  }
-}
+class TestBaseDrawing extends foundry.documents.BaseDrawing {}
 
-// @ts-expect-error validateJoint requires the shape be visible
-new TestBaseDrawing();
-
-// Arguably this line should error but validation hasn't been written for that yet.
-new TestBaseDrawing({});
-
-new TestBaseDrawing({
+let myDrawing;
+// Drawing has no hard required fields for construction
+myDrawing = new TestBaseDrawing();
+myDrawing = new TestBaseDrawing({});
+myDrawing = new TestBaseDrawing({
   _id: "XXXXXSomeIDXXXXX",
   author: "YYYYYSomeIDYYYYY",
   shape: {
@@ -55,7 +47,7 @@ new TestBaseDrawing({
   },
 });
 
-new TestBaseDrawing({
+myDrawing = new TestBaseDrawing({
   _id: null,
   author: null,
   shape: {
@@ -87,9 +79,9 @@ new TestBaseDrawing({
   locked: null,
   flags: null,
 });
-new TestBaseDrawing({ shape: null });
+myDrawing = new TestBaseDrawing({ shape: null });
 
-new TestBaseDrawing({
+myDrawing = new TestBaseDrawing({
   _id: undefined,
   author: undefined,
   shape: {
@@ -121,13 +113,12 @@ new TestBaseDrawing({
   locked: undefined,
   flags: undefined,
 });
+myDrawing = new TestBaseDrawing({ shape: undefined });
 
-const myDrawing = new TestBaseDrawing({ shape: undefined });
-
-expectTypeOf(myDrawing).toEqualTypeOf<TestBaseDrawing>();
+expectTypeOf(myDrawing).toEqualTypeOf<BaseDrawing>();
 
 expectTypeOf(myDrawing._id).toEqualTypeOf<string | null>();
-expectTypeOf(myDrawing.author).toEqualTypeOf<User.Stored | null>();
+expectTypeOf(myDrawing.author).toEqualTypeOf<User.Implementation>();
 
 // ShapeData schema tests are in `tests/foundry/common/data/data.test-d.ts`
 expectTypeOf(myDrawing.shape).toEqualTypeOf<foundry.data.ShapeData>();
@@ -141,18 +132,20 @@ expectTypeOf(myDrawing.bezierFactor).toBeNumber();
 expectTypeOf(myDrawing.fillType).toEqualTypeOf<CONST.DRAWING_FILL_TYPES>();
 expectTypeOf(myDrawing.fillAlpha).toBeNumber();
 expectTypeOf(myDrawing.strokeAlpha).toBeNumber();
-expectTypeOf(myDrawing.texture).toEqualTypeOf<string | null>();
+expectTypeOf(myDrawing.texture).toEqualTypeOf<string | null | undefined>();
 expectTypeOf(myDrawing.text).toEqualTypeOf<string | undefined>();
 expectTypeOf(myDrawing.textAlpha).toBeNumber();
 expectTypeOf(myDrawing.hidden).toBeBoolean();
 expectTypeOf(myDrawing.locked).toBeBoolean();
 expectTypeOf(myDrawing.flags).toEqualTypeOf<InterfaceToObject<Document.CoreFlags>>();
-expectTypeOf(myDrawing.fillColor).toEqualTypeOf<Color>();
-expectTypeOf(myDrawing.strokeWidth).toEqualTypeOf<number>();
-expectTypeOf(myDrawing.strokeColor).toEqualTypeOf<Color>();
-expectTypeOf(myDrawing.fontFamily).toEqualTypeOf<string>();
-expectTypeOf(myDrawing.fontSize).toEqualTypeOf<number>();
-expectTypeOf(myDrawing.textColor).toEqualTypeOf<Color>();
+
+// The following fields can't really be `undefined` because they have `initial`s, see https://github.com/League-of-Foundry-Developers/foundry-vtt-types/issues/3055
+expectTypeOf(myDrawing.fillColor).toEqualTypeOf<Color | undefined>();
+expectTypeOf(myDrawing.strokeWidth).toEqualTypeOf<number | undefined>();
+expectTypeOf(myDrawing.strokeColor).toEqualTypeOf<Color | undefined>();
+expectTypeOf(myDrawing.fontFamily).toEqualTypeOf<string | undefined>();
+expectTypeOf(myDrawing.fontSize).toEqualTypeOf<number | undefined>();
+expectTypeOf(myDrawing.textColor).toEqualTypeOf<Color | undefined>();
 
 // non-schema:
 // eslint-disable-next-line @typescript-eslint/no-deprecated

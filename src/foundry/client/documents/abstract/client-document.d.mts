@@ -1,22 +1,21 @@
 import type {
-  AnyObject,
-  Coalesce,
-  FixedInstanceType,
-  Identity,
-  InexactPartial,
-  MaybePromise,
   Mixin,
+  FixedInstanceType,
+  Coalesce,
+  AnyObject,
+  Identity,
+  MaybePromise,
+  NullishProps,
   NullishCoalesce,
+  InexactPartial,
 } from "#utils";
-import type { Document, EmbeddedCollection } from "#common/abstract/_module.mjs";
-import type { Application } from "#client/appv1/api/_module.d.mts";
-import type { ApplicationV2, DocumentSheetV2 } from "#client/applications/api/_module.d.mts";
-import type { TextEditor } from "#client/applications/ux/_module.d.mts";
-import type { CompendiumCollection } from "#client/documents/collections/_module.d.mts";
-import type { HTMLDocumentEmbedElement } from "#client/applications/elements/_module.d.mts";
+import type Document from "#common/abstract/document.d.mts";
+import type { Application, FormApplication } from "#client/appv1/api/_module.d.mts";
+import type ApplicationV2 from "#client/applications/api/application.d.mts";
+import type TextEditor from "#client/applications/ux/text-editor.mjs";
 
 declare class InternalClientDocument<DocumentName extends Document.Type> {
-  /** @privateRemarks All mixin classes should accept anything for its constructor. */
+  /** @privateRemarks All mixin classses should accept anything for its constructor. */
   constructor(...args: any[]);
 
   /**
@@ -33,28 +32,34 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
    * @remarks Created during construction via `defineProperty`, with options `{value: null, writable: true, enumerable: false}`
    * @internal
    */
-  protected _sheet: Application.Any | DocumentSheetV2.Any | null;
+  protected readonly _sheet: FixedInstanceType<Document.SheetClassFor<DocumentName>> | null;
 
   static name: "ClientDocumentMixin";
 
-  // Actually an override of Document
+  /**
+   * @see {@link foundry.abstract.Document._initialize | `abstract.Document#_initialize`}
+   * @remarks ClientDocument override calls `super`, then if `game._documentsReady`, calls {@link InternalClientDocument._safePrepareData | `this._safePrepareData`}
+   */
+  // options: not null (parameter default only)
   protected _initialize(options?: Document.InitializeOptions): void;
 
   /**
    * Return a reference to the parent Collection instance which contains this Document.
    */
-  get collection(): ClientDocument.CollectionForName<DocumentName>;
+  get collection(): Collection<this> | null;
 
   /**
-   * A reference to the Compendium Collection which contains this Document, if any, otherwise `null`.
-   * @remarks Actually overrides {@linkcode Document.compendium | Document#compendium}.
+   * A reference to the Compendium Collection which contains this Document, if any, otherwise undefined.
    */
-  get compendium(): CompendiumCollection.ForDocument<DocumentName> | null;
+  get compendium(): DocumentName extends foundry.documents.collections.CompendiumCollection.DocumentName
+    ? foundry.documents.collections.CompendiumCollection<DocumentName>
+    : null;
 
   /**
-   * Is this document in a compendium? A stricter check than {@linkcode Document.inCompendium | Document#inCompendium}.
+   * Is this document in a compendium? A stricter check than {@link Document.inCompendium | `Document#inCompendium`}.
    */
-  get inCompendium(): Document.InCompendium<DocumentName>;
+  // Note(LukeAbby): See https://github.com/microsoft/TypeScript/issues/61967
+  // get inCompendium(): boolean;
 
   /**
    * A boolean indicator for whether the current game User has ownership rights for this Document.
@@ -79,7 +84,7 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
 
   /**
    * Return the permission level that the current game User has over this Document.
-   * See the {@linkcode CONST.DOCUMENT_OWNERSHIP_LEVELS} object for an enumeration of these levels.
+   * See the CONST.DOCUMENT_OWNERSHIP_LEVELS object for an enumeration of these levels.
    *
    * @example
    * ```typescript
@@ -88,12 +93,12 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
    * actor.permission; // 2
    * ```
    */
-  get permission(): CONST.DOCUMENT_OWNERSHIP_LEVELS;
+  get permission(): CONST.DOCUMENT_OWNERSHIP_LEVELS | null;
 
   /**
-   * Lazily obtain an Application instance used to configure this Document, or null if no sheet is available.
+   * Lazily obtain a FormApplication instance used to configure this Document, or null if no sheet is available.
    */
-  get sheet(): Application.Any | DocumentSheetV2.Any | null;
+  get sheet(): FormApplication.Any | ApplicationV2.Any | null;
 
   /**
    * A boolean indicator for whether or not the current game User has at least limited visibility for this Document.
@@ -102,12 +107,9 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
   get visible(): boolean;
 
   /**
-   * Obtain the Application class constructor which should be used to configure this Document.
-   * @remarks Nothing in this method's body prevents returning whatever is put into `CONFIG[doc]["sheetClasses"][type].cls`,
-   * but {@linkcode InternalClientDocument.sheet | #sheet} will return `null` if the found class does not extent either `Application` (v1)
-   * or `DocumentSheetV2`, so that's the constraint used here
+   * Obtain the FormApplication class constructor which should be used to configure this Document.
    */
-  protected _getSheetClass(): Application.AnyConstructor | DocumentSheetV2.AnyConstructor | undefined;
+  protected _getSheetClass(): FormApplication.AnyConstructor | ApplicationV2.AnyConstructor | null;
 
   /**
    * Safely prepare data for a Document, catching any errors.
@@ -115,35 +117,15 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
   protected _safePrepareData(): void;
 
   /**
-   * Prepare data for the Document. This method provides an opportunity for Document classes to define special data
-   * preparation logic to compute values that don't need to be stored in the database, such as a "bloodied" hp value
-   * or the total carrying weight of items. The work done by this method should be idempotent per initialization.
-   * There are situations in which prepareData may be called more than once.
-   *
-   * By default, foundry calls the following methods in order whenever the document is created or updated.
-   * 1. {@linkcode foundry.abstract.DataModel.reset | reset} (Inherited from DataModel)
-   * 2. {@linkcode _initialize} (Inherited from DataModel)
-   * 3. {@linkcode prepareData}
-   * 4. {@linkcode foundry.abstract.TypeDataModel.prepareBaseData | TypeDataModel#prepareBaseData}
-   * 5. {@linkcode prepareBaseData}
-   * 6. {@linkcode prepareEmbeddedDocuments}
-   * 7. {@linkcode foundry.abstract.TypeDataModel.prepareDerivedData | TypeDataModel#prepareBaseData}
-   * 8. {@linkcode prepareDerivedData}
-   *
-   * Do NOT invoke database operations like {@linkcode Document.update | update} or {@linkcode Document.setFlag | setFlag} within data prep, as that can cause an
-   * infinite loop by re-triggering the data initialization process.
-   *
-   * If possible you should extend {@linkcode prepareBaseData} and {@linkcode prepareDerivedData} instead of this function
-   * directly, but some systems with more complicated calculations may want to override this function to add extra
-   * steps, such as to calculate certain item values after actor data prep.
+   * Prepare data for the Document. This method is called automatically by the DataModel#_initialize workflow.
+   * This method provides an opportunity for Document classes to define special data preparation logic.
+   * The work done by this method should be idempotent. There are situations in which prepareData may be called more
+   * than once.
    */
   prepareData(): void;
 
   /**
    * Prepare data related to this Document itself, before any embedded Documents or derived data is computed.
-   *
-   * If possible when modifying the `system` object you should use {@linkcode foundry.abstract.TypeDataModel.prepareBaseData | TypeDataModel#prepareBaseData} on
-   * your data models instead of this method directly on the document.
    */
   prepareBaseData(): void;
 
@@ -160,9 +142,11 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
 
   /**
    * Render all Application instances which are connected to this document by calling their respective
-   * @see {@linkcode ApplicationV2.render | foundry.applications.api.ApplicationV2#render}
-   * @param force   - Force rendering (default: `false`)
-   * @param context - Optional context (default: `{}`)
+   * @see {@link foundry.applications.api.ApplicationV2.render | `foundry.applications.api.ApplicationV2#render`}
+   * @param force   - Force rendering
+   *                  (default: `false`)
+   * @param context - Optional context
+   *                  (default: `{}`)
    */
   render(force?: boolean, context?: Application.RenderOptions | ApplicationV2.RenderOptions): void;
 
@@ -185,42 +169,29 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
    * @param eventData - The parsed object of data provided by the drop transfer event.
    * @param options   - Additional options to configure link generation.
    * @remarks Core's implementation doesn't use `eventData` here, but when it's passed in it's the return from
-   * {@linkcode TextEditor.getDragEventData | TextEditor.getDragEventData(someDragEvent)}.
+   * {@link TextEditor.getDragEventData | `TextEditor.getDragEventData(someDragEvent)`}
    */
+  // options: not null (destructured)
   _createDocumentLink(eventData?: AnyObject | null, options?: ClientDocument.CreateDocumentLinkOptions): string;
 
   /**
    * Handle clicking on a content link for this document.
    * @param event - The triggering click event.
    * @remarks
-   * In `ClientDocument`, returns `this.sheet?.render(true) ?? null`:
+   * In `ClientDocument`, returns `this.sheet.render(true)`:
    * - AppV1: returns that sheet
    * - AppV2: returns a Promise of that sheet
    *
-   * However it unfortunately has to be typed as `MaybePromise<unknown>` due to the {@linkcode Macro._onClickDocumentLink | Macro} override,
+   * However it unfortunately has to be typed as `MaybePromise<unknown>` due to the {@link Macro._onClickDocumentLink | `Macro`} override,
    * where `##executeScript` could return whatever a user-provided macro wants.
    */
   _onClickDocumentLink(event: MouseEvent): MaybePromise<unknown>;
 
-  // These lifecycle methods have the same `never`-using signatures as `Document` because it is similarly unsound to call
-  // `ClientDocument._(pre|on)(Create|Update|Delete)`; They are provided here primarily for linking to.
+  // _preCreate, _preUpdate, and _preDelete are all overridden with no signature changes,
+  // just to call `this.system._preX` if `super` doesn't return `false`
 
-  // Note(LukeAbby): These methods are currently commented out due to causing a circularity in Lancer.
-  // Specifically: `Type 'DocumentInstanceConfig' recursively references itself as a base type.`.
-  // These methods have now been responsible for their _second_ circularity. Therefore they should
-  // not be uncommented until impact tests are created and run. They also may be a suspicious area
-  // for circularities.
-  // protected _preCreate(data: never, options: never, user: User.Stored): Promise<boolean | void>;
-
-  // protected _onCreate(data: never, options: never, userId: string): MaybePromise<void>;
-
-  // protected _preUpdate(changed: never, options: never, user: User.Stored): Promise<boolean | void>;
-
-  // protected _onUpdate(changed: never, options: never, userId: string): MaybePromise<void>;
-
-  // protected _preDelete(options: never, user: User.Stored): Promise<boolean | void>;
-
-  // protected _onDelete(options: never, userId: string): MaybePromise<void>;
+  //  _onCreate, _onUpdate, and _onDelete are all overridden but with no signature changes.
+  // For type simplicity they are left off. These methods historically have been the source of a large amount of computation from tsc.
 
   /**
    * Orchestrate dispatching descendant document events to parent documents when embedded children are modified.
@@ -247,23 +218,6 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
    * @param data       - The source data for new documents that are being created
    * @param options    - Options which modified the creation operation
    * @param userId     - The ID of the User who triggered the operation
-   *
-   * @remarks
-   * To make it possible for narrowing one parameter to jointly narrow other parameters
-   * this method must be overridden like so:
-   *
-   * ```ts
-   * class SwadeCards extends Cards {
-   *   protected override _preCreateDescendantDocuments(...args: Cards.PreCreateDescendantDocumentsArgs) {
-   *     super._preCreateDescendantDocuments(...args);
-   *
-   *     const [parent, collection, data, options, userId] = args;
-   *     if (collection === "cards") {
-   *         options; // Will be narrowed.
-   *     }
-   *   }
-   * }
-   * ```
    */
   protected _preCreateDescendantDocuments(
     parent: never,
@@ -281,23 +235,6 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
    * @param data       - The source data for new documents that were created
    * @param options    - Options which modified the creation operation
    * @param userId     - The ID of the User who triggered the operation
-   *
-   * @remarks
-   * To make it possible for narrowing one parameter to jointly narrow other parameters
-   * this method must be overridden like so:
-   *
-   * ```ts
-   * class GurpsCards extends Cards {
-   *   protected override _onCreateDescendantDocuments(...args: Cards.OnCreateDescendantDocumentsArgs) {
-   *     super._onCreateDescendantDocuments(...args);
-   *
-   *     const [parent, collection, documents, data, options, userId] = args;
-   *     if (collection === "cards") {
-   *         options; // Will be narrowed.
-   *     }
-   *   }
-   * }
-   * ```
    */
   protected _onCreateDescendantDocuments(
     parent: never,
@@ -315,23 +252,6 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
    * @param changes - The array of differential Document updates to be applied
    * @param options - Options which modified the update operation
    * @param userId - The ID of the User who triggered the operation
-   *
-   * @remarks
-   * To make it possible for narrowing one parameter to jointly narrow other parameters
-   * this method must be overridden like so:
-   *
-   * ```ts
-   * class LancerCards extends Cards {
-   *   protected override _preUpdateDescendantDocuments(...args: Cards.OnUpdateDescendantDocuments) {
-   *     super._preUpdateDescendantDocuments(...args);
-   *
-   *     const [parent, collection, changes, options, userId] = args;
-   *     if (collection === "cards") {
-   *         options; // Will be narrowed.
-   *     }
-   *   }
-   * }
-   * ```
    */
   protected _preUpdateDescendantDocuments(
     parent: never,
@@ -349,23 +269,6 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
    * @param changes - The array of differential Document updates which were applied
    * @param options - Options which modified the update operation
    * @param userId - The ID of the User who triggered the operation
-   *
-   * @remarks
-   * To make it possible for narrowing one parameter to jointly narrow other parameters
-   * this method must be overridden like so:
-   *
-   * ```ts
-   * class Ptr2eCards extends Cards {
-   *   protected override _onUpdateDescendantDocuments(...args: Cards.OnUpdateDescendantDocumentsArgs) {
-   *     super._onUpdateDescendantDocuments(...args);
-   *
-   *     const [parent, collection, documents, changes, options, userId] = args;
-   *     if (collection === "cards") {
-   *         options; // Will be narrowed.
-   *     }
-   *   }
-   * }
-   * ```
    */
   protected _onUpdateDescendantDocuments(
     parent: never,
@@ -383,23 +286,6 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
    * @param ids - The array of document IDs which were deleted
    * @param options - Options which modified the deletion operation
    * @param userId - The ID of the User who triggered the operation
-   *
-   * @remarks
-   * To make it possible for narrowing one parameter to jointly narrow other parameters
-   * this method must be overridden like so:
-   *
-   * ```ts
-   * class KultCards extends Cards {
-   *   protected override _preDeleteDescendantDocuments(...args: Cards.PreDeleteDescendantDocumentsArgs) {
-   *     super._preDeleteDescendantDocuments(...args);
-   *
-   *     const [parent, collection, ids, options, userId] = args;
-   *     if (collection === "cards") {
-   *         options; // Will be narrowed.
-   *     }
-   *   }
-   * }
-   * ```
    */
   protected _preDeleteDescendantDocuments(
     parent: never,
@@ -417,23 +303,6 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
    * @param ids - The array of document IDs which were deleted
    * @param options - Options which modified the deletion operation
    * @param userId - The ID of the User who triggered the operation
-   *
-   * @remarks
-   * To make it possible for narrowing one parameter to jointly narrow other parameters
-   * this method must be overridden like so:
-   *
-   * ```ts
-   * class BladesCards extends Cards {
-   *   protected override _onDeleteDescendantDocuments(...args: Cards.OnUpdateDescendantDocuments) {
-   *     super._onDeleteDescendantDocuments(...args);
-   *
-   *     const [parent, collection, documents, ids, options, userId] = args;
-   *     if (collection === "cards") {
-   *         options; // Will be narrowed.
-   *     }
-   *   }
-   * }
-   * ```
    */
   protected _onDeleteDescendantDocuments(
     parent: never,
@@ -453,9 +322,6 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
   /**
    * Gets the default new name for a Document
    * @param context - The context for which to create the Document name.
-   *
-   * @privateRemarks Specific document overrides for non-{@link CONST.PRIMARY_DOCUMENT_TYPES | primary} documents should make `context`
-   * required, as they require a passed `parent`
    */
   static defaultName(context: never): string;
 
@@ -466,40 +332,31 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
    * @param createOptions - Document creation options            (default: `{}`)
    * @param options       - Options forwarded to DialogV2.prompt (default: `{}`)
    * @returns A Promise which resolves to the created Document, or null if the dialog was closed.
-   *
-   * @remarks
-   * @throws If the passed {@linkcode Document.CreateDialogOptions.types} whitelist does not contain any valid,
-   * non-{@linkcode CONST.BASE_DOCUMENT_TYPE} types.
-   *
-   * @privateRemarks `| undefined` is included in the return types of the specific document overrides due to {@linkcode Document.create}
-   * possibly being `undefined` if creation is cancelled by preCreate methods or hooks.
-   *
-   * Specific document overrides for non-{@link CONST.PRIMARY_DOCUMENT_TYPES | primary} documents should make `createOptions` required, as
-   * they require a passed `parent`
-   *
-   * This returns `Promise<unknown>` here because as of 13.350 there's a bug ({@link https://github.com/foundryvtt/foundryvtt/issues/13545})
-   * in {@linkcode Folder.createDialog}.
+   * @throws If the document has
+   * @privateRemarks `| undefined` is included in the return types of the specific document overrides due to {@link Document.create | `Document.create`}
+   * possibly being `undefined` if creation is cancelled by preCreate methods or hooks
    */
   static createDialog(data: never, createOptions: never, options?: never): Promise<unknown>;
 
   /**
    * Present a Dialog form to confirm deletion of this Document.
-   * @param options   - Additional options passed to {@linkcode DialogV2.confirm} (default: `{}`)
-   * @param operation - Document deletion options. (default: `{}`)
+   * @param options   - Additional options passed to `DialogV2.confirm`
+   *                    (default: `{}`)
+   * @param operation - Document deletion options.
+   *                    (default: `{}`)
    * @returns A Promise that resolves to the deleted Document
-   *
-   * @remarks The only part of the {@linkcode DialogV2.ConfirmConfig} that one should be cautious passing is `"yes.callback"`, which
-   * actually does the delete.
-   *
-   * `"yes"` is in the computed return type because if deletion is cancelled by hook or {@linkcode Document._preDelete | Document#_preDelete},
-   * the `yes` callback returns undefined, and when button callbacks return undefined, the button's action is returned.
    */
-  deleteDialog(options: never, operation: never): Promise<Document.DeleteDialogReturn<Document.Any, undefined>>;
+  // options: not null (parameter default only)
+  deleteDialog(
+    options?: InexactPartial<foundry.applications.api.DialogV2.ConfirmConfig>,
+    operation?: never,
+  ): Promise<this | false | null | undefined>;
 
   /**
    * Export document data to a JSON file which can be saved by the client and later imported into a different session.
-   * @param options - Additional options passed to the {@linkcode ClientDocumentMixin.AnyMixed.toCompendium | ClientDocument#toCompendium} method.
+   * @param options - Additional options passed to the {@link ClientDocument.toCompendium | `ClientDocument#toCompendium`} method
    */
+  // options: not null (destructured where forwarded)
   exportToJSON(options?: ClientDocument.ToCompendiumOptions): void;
 
   /**
@@ -514,11 +371,14 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
    * 2. A UUID
    *
    * @param data    - The data object extracted from a DataTransfer event
+   * @param options - Additional options which affect drop data behavior
    * @returns The resolved Document
    * @throws If a Document could not be retrieved from the provided data.
+   * @remarks Core's implementation in `ClientDocument` does not use `options` at all, no call passes any `options`
+   * anywhere in Foundry, and the JSDoc types it as simply `object`, so it cannot be typed more exactly than this.
    */
-  // data is `never` here because specific documents must override to be accurate
-  static fromDropData(data: never): Promise<unknown>;
+  // options: not null (parameter default only)
+  static fromDropData(data: never, options?: Document.DropDataOptions): Promise<unknown>;
 
   /**
    * Create the Document from the given source with migration applied to it.
@@ -537,6 +397,7 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
    * @param context - The model construction context passed to {@linkcode Document.fromSource}.
    *                  (default: `context.strict=true`) Strict validation is enabled by default.
    */
+  // context: allowed to be null because spreading a variable with the value `null` into an object is allowed
   static fromImport(source: never, context?: never): Promise<unknown>;
 
   /**
@@ -555,12 +416,13 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
    * Transform the Document data to be stored in a Compendium pack.
    * Remove any features of the data which are world-specific.
    * @param pack    - A specific pack being exported to
-   * @param options - Additional options which modify how the document is converted (default: `{}`)
+   * @param options - Additional options which modify how the document is converted
+   *                  (default: `{}`)
    * @returns A data object of cleaned data suitable for compendium import
-   * @remarks Core makes no use of `pack`, neither here in `ClientDocument` nor in any override.
    */
+  // options: not null (destructured)
   toCompendium<Options extends ClientDocument.ToCompendiumOptions | undefined = undefined>(
-    pack?: CompendiumCollection.Any,
+    pack?: foundry.documents.collections.CompendiumCollection<foundry.documents.collections.CompendiumCollection.DocumentName> | null,
     options?: Options,
   ): ClientDocument.ToCompendiumReturnType<DocumentName, Options>;
 
@@ -568,6 +430,7 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
    * Create a content link for this Document.
    * @param options - Additional options to configure how the link is constructed.
    */
+  // options: not null (parameter default only)
   toAnchor(options?: TextEditor.EnrichmentAnchorOptions): HTMLAnchorElement;
 
   /**
@@ -575,9 +438,8 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
    * @param config  - Configuration for embedding behavior.
    * @param options - The original enrichment options for cases where the Document embed content also contains text that must be enriched.
    * @returns A representation of the Document as HTML content, or null if such a representation could not be generated.
-   * @privateRemarks Core never returns `null`, but includes it in the return type on their end, and the return is checked for falseyness
-   * where core calls it, so we have included it as well to allow for apparently valid subclassing.
    */
+  // options: not null (parameter default only)
   toEmbed(
     config: TextEditor.DocumentHTMLEmbedConfig,
     options?: TextEditor.EnrichmentOptions,
@@ -605,33 +467,24 @@ declare class InternalClientDocument<DocumentName extends Document.Type> {
    * @param content - The embedded content.
    * @param config  - Configuration for embedding behavior.
    * @param options - The original enrichment options for cases where the Document embed content also contains text that must be enriched.
-   * @privateRemarks Core uses neither `config` nor `options`, and in at least one case (`#_createFigureEmbed`, below) doesn't pass them along.
-   *
-   * Core never returns `null`, but includes it in the return type on their end, and the return is checked for falseyness where core calls
-   * it, so we have included it as well to allow for apparently valid subclassing.
    */
   protected _createInlineEmbed(
     content: HTMLElement | HTMLCollection,
-    config?: TextEditor.DocumentHTMLEmbedConfig,
+    config: TextEditor.DocumentHTMLEmbedConfig,
     options?: TextEditor.EnrichmentOptions,
-  ): Promise<HTMLDocumentEmbedElement | null>;
+  ): Promise<HTMLElement | null>;
 
   /**
    * A method that can be overridden by subclasses to customize the generation of the embed figure.
    * @param content - The embedded content.
    * @param config  - Configuration for embedding behavior.
    * @param options - The original enrichment options for cases where the Document embed content also contains text that must be enriched.
-   * @privateRemarks Core doesn't use `options`, and only a subset of `DocumentHTMLEmbedConfig` keys, but in the latter case it gets
-   * forwarded from {@linkcode ClientDocumentMixin.AnyMixed.toEmbed | #toEmbed} so the full type with no omissions is correct.
-   *
-   * Core never returns `null`, but includes it in the return type on their end, and the return is checked for falseyness where core calls
-   * it, so we have included it as well to allow for apparently valid subclassing.
    */
   protected _createFigureEmbed(
     content: HTMLElement | HTMLCollection,
     config: TextEditor.DocumentHTMLEmbedConfig,
     options?: TextEditor.EnrichmentOptions,
-  ): Promise<HTMLDocumentEmbedElement | null>;
+  ): Promise<HTMLElement | null>;
 }
 
 type _ClientDocumentType = InternalClientDocument<Document.Type> & Document.AnyConstructor;
@@ -644,17 +497,11 @@ declare const _ClientDocument: _ClientDocumentType;
 // FIXME(LukeAbby): Unlike most mixins, `ClientDocumentMixin` actually requires a specific constructor, the same as `Document`.
 // This means that `BaseClass extends Document.Internal.Constructor` is actually too permissive.
 // However this easily leads to circularities.
-declare function ClientDocumentMixin<BaseClass extends ClientDocumentMixin.BaseClass>(
+declare function ClientDocumentMixin<BaseClass extends Document.Internal.Constructor>(
   Base: BaseClass,
 ): ClientDocumentMixin.Mix<BaseClass>;
 
 declare namespace ClientDocumentMixin {
-  interface AnyMixedConstructor extends ReturnType<typeof foundry.documents.abstract.ClientDocumentMixin<BaseClass>> {}
-  interface AnyMixed extends FixedInstanceType<AnyMixedConstructor> {}
-
-  // Note: This used to be `Internal.Constructor` for circularity-dodging reasons, it was changed to provide better Stored typing.
-  type BaseClass = Document.AnyConstructor;
-
   type Mix<BaseClass extends Document.Internal.Constructor> = Mixin<
     typeof InternalClientDocument<Document.NameFor<BaseClass>>,
     BaseClass
@@ -676,21 +523,7 @@ declare global {
       updateData?: AnyObject;
     }
 
-    /**
-     * Encodes the special casing for which Documents can be in which Collections.
-     *
-     * As of 13.351, {@linkcode TokenDocument.Schema.delta | ActorDeltaField}s containing {@linkcode ActorDelta}s are the only use of
-     * {@linkcode foundry.data.fields.EmbeddedDocumentField | EmbeddedDocumentField},
-     * which is the special case where a document can be its own parent.
-     */
-    type CollectionForName<Name extends Document.Type> =
-      | (Name extends "ActorDelta" ? ActorDelta.Stored : never)
-      | (Name extends Exclude<Document.EmbeddedType, "ActorDelta">
-          ? EmbeddedCollection<Document.StoredForName<Name>, Document.Embedded.ParentForName<Name>>
-          : never)
-      | (Name extends Document.WorldType ? Document.WorldCollectionForName<Name> : never)
-      | null;
-
+    // TODO: This may be better defined elsewhere
     type LifeCycleEventName = "preCreate" | "onCreate" | "preUpdate" | "onUpdate" | "preDelete" | "onDelete";
 
     // Note(LukeAbby): If the property could be omitted it is. This is the safest option because in indeterminate cases access would be unsafe.
@@ -698,14 +531,13 @@ declare global {
 
     /** @internal */
     type _OmitProperty<
-      // TODO: probably remove null from Omit
       Omit extends boolean | null | undefined,
       Default extends boolean,
       ToOmit extends string,
     > = Omit extends true | (Default extends true ? undefined : never) ? ToOmit : never;
 
     /** @internal */
-    interface _ToCompendiumOptions {
+    type _ToCompendiumOptions = NullishProps<{
       /**
        * Clear the flags object
        * @defaultValue `false`
@@ -748,12 +580,12 @@ declare global {
        * @defaultValue `false`
        */
       keepId: boolean;
-    }
+    }>;
 
-    interface ToCompendiumOptions extends InexactPartial<_ToCompendiumOptions> {}
+    interface ToCompendiumOptions extends _ToCompendiumOptions {}
 
     /** @internal */
-    interface _CreateDocumentLinkOptions {
+    type _CreateDocumentLinkOptions = NullishProps<{
       /**
        * A document to generate a link relative to.
        * @remarks Ignored if falsey
@@ -765,12 +597,12 @@ declare global {
        * @defaultValue `this.name`
        */
       label: string;
-    }
+    }>;
 
-    interface CreateDocumentLinkOptions extends InexactPartial<_CreateDocumentLinkOptions> {}
+    interface CreateDocumentLinkOptions extends _CreateDocumentLinkOptions {}
 
-    /** The return type of {@linkcode ClientDocument._onClickDocumentLink | ClientDocument#_onClickDocumentLink} if not overridden */
-    type OnClickDocumentLinkReturn = Application.Any | Promise<DocumentSheetV2.Any>;
+    /** The return type of {@link ClientDocument._onClickDocumentLink | `ClientDocument#_onClickDocumentLink`} if not overridden */
+    type OnClickDocumentLinkReturn = FormApplication.Any | Promise<ApplicationV2.Any>;
 
     type ToCompendiumReturnType<
       DocumentName extends Document.Type,
@@ -778,7 +610,6 @@ declare global {
       // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     > = _ToCompendiumReturnType<DocumentName, Coalesce<Options, {}>>;
 
-    // TODO: `ownership` and the `_stats` sources are recursively removed from descendent document sources, not just the top level
     type _ToCompendiumReturnType<DocumentName extends Document.Type, Options extends ToCompendiumOptions> = _ClearFog<
       Options["clearState"],
       _ClearStats<
@@ -816,18 +647,12 @@ declare global {
       : SourceData;
 
     /** @internal */
-    interface _OnSheetChangeOptions {
+    type _OnSheetChangeOptions = NullishProps<{
       /** Whether the sheet was originally open and needs to be re-opened. */
       sheetOpen: boolean;
-    }
+    }>;
 
-    interface OnSheetChangeOptions extends InexactPartial<_OnSheetChangeOptions> {}
-
-    /**
-     * @deprecated This has been replaced by {@linkcode CompendiumCollection.ForDocument}, which you should use instead, and add `| null` if
-     * needed for your use case. This will be removed in v14.
-     */
-    type CompendiumForName<Name extends Document.Type> = CompendiumCollection.ForDocument<Name> | null;
+    interface OnSheetChangeOptions extends _OnSheetChangeOptions {}
   }
 }
 

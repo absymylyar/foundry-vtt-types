@@ -16,8 +16,7 @@ expectTypeOf(enrichedContent).toBeString();
 
 declare const mount: HTMLElement;
 
-TextEditor.implementation.create({ engine: "prosemirror", target: mount });
-TextEditor.implementation.create({ engine: "custom-engine" });
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+TextEditor.implementation.create({ engine: "tinymce", target: mount });
 
-const customEngine = await TextEditor.implementation.create({ engine: "custom-engine" });
-expectTypeOf(customEngine).toEqualTypeOf<TextEditor.CustomEngine>();
+TextEditor.implementation.create({ engine: "prosemirror", target: mount });

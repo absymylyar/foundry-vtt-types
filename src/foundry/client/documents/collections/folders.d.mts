@@ -1,89 +1,49 @@
 import type { Identity } from "#utils";
+import type { DatabaseAction, DatabaseOperationMap } from "#common/abstract/_types.d.mts";
 import type Document from "#common/abstract/document.d.mts";
-import type { DocumentCollection, WorldCollection } from "#client/documents/abstract/_module.d.mts";
-import type { Application } from "#client/appv1/api/_module.d.mts";
-import type { DocumentSheetV2 } from "#client/applications/api/_module.d.mts";
-import type { DocumentSheetConfig } from "#client/applications/apps/_module.d.mts";
 
 /**
  * The singleton collection of Folder documents which exist within the active World.
- * This Collection is accessible within the Game object as {@linkcode foundry.Game.folders | game.folders}.
+ * This Collection is accessible within the Game object as game.fog.
  *
- * @see {@link foundry.documents.Folder}: The Folder document
+ * @see {@linkcode Folder} The Folder document
  */
-declare class Folders extends WorldCollection<"Folder"> {
-  static override documentName: "Folder";
-
-  /** @privateRemarks Fake type override */
-  static override get instance(): Folders.Implementation;
+declare class Folders extends foundry.documents.abstract.WorldCollection<"Folder", "Folders"> {
+  static documentName: "Folder";
 
   /**
    * Track which Folders are currently expanded in the UI
    * @internal
    */
-  _expanded: Record<string, boolean>;
+  protected _expanded: Partial<Record<string, boolean>>;
 
-  override _onModifyContents<Action extends Document.Database.OperationAction>(
-    action: Action,
+  _onModifyContents<A extends DatabaseAction>(
+    action: A,
     documents: Folder.Stored[],
-    result: Collection.OnModifyContentsResult<"Folder", Action>,
-    operation: Collection.OnModifyContentsOperation<"Folder", Action>,
-    user: User.Stored,
+    result: readonly foundry.documents.BaseFolder.UpdateData[] | readonly string[],
+    operation: DatabaseOperationMap[A],
+    user: User.Implementation,
   ): void;
 
-  /** @remarks This is a no-op in {@linkcode Folders}, Foundry logs "The Folders collection is not directly rendered" as a warning.  */
-  override render(force?: boolean, context?: DocumentCollection.RenderOptions): void;
-
-  /** @deprecated Foundry made this method truly private in v13. This warning will be removed in v14. */
+  /** @deprecated Foundry made this method truly private in v13 (this warning will be removed in v14) */
   protected _refreshJournalEntrySheets(): never;
 
-  // Fake override for the purpose of typing `options`.
-  static override registerSheet(
-    scope: string,
-    sheetClass: Application.AnyConstructor | DocumentSheetV2.AnyConstructor,
-    options?: DocumentSheetConfig.RegisterSheetOptions<Folder.ImplementationClass>,
+  render(
+    force?: boolean,
+    context?: foundry.appv1.api.Application.Options | foundry.applications.api.ApplicationV2.RenderOptions,
   ): void;
-
-  // Fake override for the purpose of typing `options`.
-  static override unregisterSheet(
-    scope: string,
-    sheetClass: Application.AnyConstructor | DocumentSheetV2.AnyConstructor,
-    options?: DocumentSheetConfig.UnregisterSheetOptions<Folder.ImplementationClass>,
-  ): void;
-
-  #Folders: true;
 }
 
 declare namespace Folders {
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode Folders.Implementation} instead. This will be removed in v15.
-   */
-  type Any = Internal.Any;
+  interface Any extends AnyFolders {}
+  interface AnyConstructor extends Identity<typeof AnyFolders> {}
 
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode Folders.ImplementationClass} instead. This will be removed in v15.
-   */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyFolders {}
-    interface AnyConstructor extends Identity<typeof AnyFolders> {}
-  }
-
-  interface ImplementationClass extends Document.Internal.ConfiguredCollectionClass<"Folder"> {}
-  interface Implementation extends Document.Internal.ConfiguredCollection<"Folder"> {}
-
-  /** @deprecated Replaced by {@linkcode Folders.ImplementationClass}. Will be removed in v15. */
-  type ConfiguredClass = ImplementationClass;
-
-  /** @deprecated Replaced by {@linkcode Folders.Implementation}. Will be removed in v15. */
-  type Configured = Implementation;
+  interface ConfiguredClass extends Document.ConfiguredCollectionClass<"Folder"> {}
+  interface Configured extends Document.ConfiguredCollection<"Folder"> {}
 }
-
-export default Folders;
 
 declare abstract class AnyFolders extends Folders {
   constructor(...args: never);
 }
+
+export default Folders;

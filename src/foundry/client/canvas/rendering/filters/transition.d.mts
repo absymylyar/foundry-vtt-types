@@ -95,7 +95,7 @@ declare namespace TextureTransitionFilter {
   }
 
   /** @internal */
-  interface _AnimateOptions {
+  type _AnimateOptions = InexactPartial<{
     /**
      * The transition type
      * @defaultValue `this.TYPES.FADE`
@@ -118,9 +118,9 @@ declare namespace TextureTransitionFilter {
      * The easing function of the animation
      */
     easing: CanvasAnimation.EasingFunction;
-  }
+  }>;
 
-  interface AnimateOptions extends InexactPartial<_AnimateOptions> {}
+  interface AnimateOptions extends _AnimateOptions {}
 }
 
 export default TextureTransitionFilter;

@@ -8,24 +8,20 @@ declare function functionWithoutParameters(): void;
 declare function functionWithParameters(a: number, b: string, c?: boolean): void;
 declare function functionWithReturnTypeOtherThanVoid(): number;
 
-// applyDataOperators
-
-// TODO: applyDataOperators tests once it is more than a passthrough
-
 // benchmark
 
 expectTypeOf(utils.benchmark(functionWithoutParameters, 42)).toEqualTypeOf<Promise<void>>();
 
-// @ts-expect-error the function takes no arguments
+// @ts-expect-error - the function takes no arguments
 utils.benchmark(functionWithoutParameters, 42, "unknown argument");
 
 expectTypeOf(utils.benchmark(functionWithParameters, 42, 1, "", false)).toEqualTypeOf<Promise<void>>();
 expectTypeOf(utils.benchmark(functionWithParameters, 42, 1, "")).toEqualTypeOf<Promise<void>>();
 
-// @ts-expect-error the function takes a number and a string
+// @ts-expect-error - the function takes a number and a string
 utils.benchmark(functionWithParameters, 42, 1);
 
-// @ts-expect-error the function takes doesn't take three arguments
+// @ts-expect-error - the function takes doesn't take three arguments
 utils.benchmark(functionWithParameters, 42, 1, "", "unknown argument");
 
 expectTypeOf(utils.benchmark(functionWithReturnTypeOtherThanVoid, 42)).toEqualTypeOf<Promise<void>>();
@@ -34,17 +30,10 @@ expectTypeOf(utils.benchmark(functionWithReturnTypeOtherThanVoid, 42)).toEqualTy
 expectTypeOf(utils.threadLock(42)).toEqualTypeOf<Promise<void>>();
 
 // debounce
-
-const debounceWithoutParameters = utils.debounce(functionWithoutParameters, 500);
-expectTypeOf(debounceWithoutParameters).toExtend<(() => void) & { cancel: () => void }>();
-expectTypeOf(debounceWithoutParameters.cancel).toEqualTypeOf<() => void>();
-
-const debounceWithParameters = utils.debounce(functionWithParameters, 500);
-expectTypeOf(debounceWithParameters).toExtend<((a: number, b: string, c?: boolean) => void) & { cancel: () => void }>();
-expectTypeOf(debounceWithParameters.cancel).toEqualTypeOf<() => void>();
+expectTypeOf(utils.debounce(functionWithoutParameters, 500)).toEqualTypeOf<() => void>();
+expectTypeOf(utils.debounce(functionWithParameters, 500)).toEqualTypeOf<(a: number, b: string, c?: boolean) => void>();
 
 // throttle
-
 expectTypeOf(utils.throttle(functionWithoutParameters, 500)).toEqualTypeOf<() => void>();
 expectTypeOf(utils.throttle(functionWithParameters, 500)).toEqualTypeOf<(a: number, b: string, c?: boolean) => void>();
 expectTypeOf(utils.throttle(() => {}, 1)).toBeFunction();
@@ -124,19 +113,14 @@ const complexObject = {
   ],
 };
 
-const str = "abc";
-const num = 1;
-const bigint = 1n;
-const bool = true;
-
-expectTypeOf(utils.deepClone(str)).toEqualTypeOf<string>();
+expectTypeOf(utils.deepClone("abc" as string)).toEqualTypeOf<string>();
 expectTypeOf(utils.deepClone("abc" as const)).toEqualTypeOf<"abc">();
-expectTypeOf(utils.deepClone(num)).toEqualTypeOf<number>();
+expectTypeOf(utils.deepClone(1 as number)).toEqualTypeOf<number>();
 expectTypeOf(utils.deepClone(1 as const)).toEqualTypeOf<1>();
-expectTypeOf(utils.deepClone(bigint)).toEqualTypeOf<bigint>();
+expectTypeOf(utils.deepClone(1n as bigint)).toEqualTypeOf<bigint>();
 expectTypeOf(utils.deepClone(1n as const)).toEqualTypeOf<1n>();
 expectTypeOf(utils.deepClone(true as const)).toEqualTypeOf<true>();
-expectTypeOf(utils.deepClone(bool)).toEqualTypeOf<boolean>();
+expectTypeOf(utils.deepClone(true as boolean)).toEqualTypeOf<boolean>();
 expectTypeOf(utils.deepClone(Symbol("customSymbol"))).toEqualTypeOf<symbol>();
 expectTypeOf(utils.deepClone(undefined)).toEqualTypeOf<undefined>();
 expectTypeOf(utils.deepClone(null)).toEqualTypeOf<null>();
@@ -146,13 +130,9 @@ expectTypeOf(utils.deepClone({ a: "foo", b: 42 })).toEqualTypeOf<{ a: string; b:
 expectTypeOf(utils.deepClone(new Date())).toEqualTypeOf<Date>();
 expectTypeOf(utils.deepClone(complexObject)).toEqualTypeOf<typeof complexObject>();
 
-expectTypeOf(utils.deepClone(str, { strict: false })).toEqualTypeOf<string>();
-expectTypeOf(utils.deepClone(str, { strict: true })).toEqualTypeOf<string>();
-expectTypeOf(utils.deepClone(str, { strict: undefined })).toEqualTypeOf<string>();
-
-expectTypeOf(utils.deepClone(str, { prune: false })).toEqualTypeOf<string>();
-expectTypeOf(utils.deepClone(str, { prune: true })).toEqualTypeOf<string>();
-expectTypeOf(utils.deepClone(str, { prune: undefined })).toEqualTypeOf<string>();
+expectTypeOf(utils.deepClone("abc" as string, { strict: false })).toEqualTypeOf<string>();
+expectTypeOf(utils.deepClone("abc" as string, { strict: true })).toEqualTypeOf<string>();
+expectTypeOf(utils.deepClone("abc" as string, { strict: undefined })).toEqualTypeOf<string>();
 
 // diffObject
 
@@ -166,7 +146,6 @@ expectTypeOf(
     {
       deletionKeys: true,
       inner: true,
-      bidirectional: true,
       _d: 0, // should never really be passed
     },
   ),
@@ -178,18 +157,32 @@ expectTypeOf(
     {
       deletionKeys: undefined,
       inner: undefined,
-      bidirectional: undefined,
       _d: undefined,
     },
   ),
 ).toEqualTypeOf<object>();
 
-// equals
+// applySpecialKeys
 
-expectTypeOf(utils.equals("foo", "foo")).toBeBoolean();
-expectTypeOf(utils.equals("foo", "bar")).toBeBoolean();
-expectTypeOf(utils.equals(7, {})).toBeBoolean();
-expectTypeOf(utils.equals(foundry.documents.Actor, foundry.documents.Card)).toBeBoolean();
+const hasSpecialKeys = {
+  foo: 7,
+  "-=foo": null,
+  type: "character",
+  "==type": "npc",
+  system: { bar: 21 },
+  "==system": { baz: 42 },
+  fizz: true,
+} as const;
+// @ts-expect-error Return type not written yet, currently just a passthrough
+expectTypeOf(utils.applySpecialKeys(hasSpecialKeys)).toEqualTypeOf<{
+  type: string;
+  system: { baz: number };
+  fizz: boolean;
+}>();
+
+// objectsEqual
+
+expectTypeOf(utils.objectsEqual({ a: 1 }, { a: 1 })).toEqualTypeOf<boolean>();
 
 // duplicate
 
@@ -338,6 +331,11 @@ expectTypeOf(utils.duplicate(complexObject)).toEqualTypeOf<
   >
 >();
 
+// isDeletionKey
+
+const deletionKey = "-=foo";
+expectTypeOf(utils.isDeletionKey(deletionKey)).toBeBoolean();
+
 // isSubclass
 
 declare class ClassWithNoConstructorParameters {}
@@ -365,18 +363,11 @@ expectTypeOf(utils.encodeURL("")).toEqualTypeOf<string>();
 
 expectTypeOf(utils.expandObject({})).toEqualTypeOf<object>();
 
-// expandObjectInPlace
-
-expectTypeOf(utils.expandObjectInPlace({})).toEqualTypeOf<object>();
-expectTypeOf(utils.expandObjectInPlace({}, {})).toEqualTypeOf<object>();
-expectTypeOf(utils.expandObjectInPlace({}, { shallow: true })).toEqualTypeOf<object>();
-expectTypeOf(utils.expandObjectInPlace({}, { shallow: undefined })).toEqualTypeOf<object>();
-
 // filterObject
 
 expectTypeOf(utils.filterObject({}, {})).toEqualTypeOf<object>();
 expectTypeOf(utils.filterObject({}, {}, {})).toEqualTypeOf<object>();
-expectTypeOf(utils.filterObject({}, {}, { templateValues: true })).toEqualTypeOf<object>();
+expectTypeOf(utils.filterObject({}, {}, { deletionKeys: true, templateValues: true })).toEqualTypeOf<object>();
 expectTypeOf(
   utils.filterObject({}, {}, { deletionKeys: undefined, templateValues: undefined }),
 ).toEqualTypeOf<object>();
@@ -396,18 +387,6 @@ expectTypeOf(utils.getRoute("", {})).toEqualTypeOf<string>();
 expectTypeOf(utils.getRoute("", { prefix: "foo/" })).toEqualTypeOf<string>();
 expectTypeOf(utils.getRoute("", { prefix: undefined })).toEqualTypeOf<string>();
 expectTypeOf(utils.getRoute("", { prefix: null })).toEqualTypeOf<string>();
-
-// isElementInstanceOf
-
-const div = new HTMLDivElement();
-
-expectTypeOf(utils.isElementInstanceOf(div, "div")).toBeBoolean();
-expectTypeOf(utils.isElementInstanceOf(div, HTMLElement)).toBeBoolean();
-
-// isPlainObject
-
-expectTypeOf(utils.isPlainObject({})).toBeBoolean();
-expectTypeOf(utils.isPlainObject(foundry.documents.Actor)).toBeBoolean();
 
 // getType
 
@@ -444,8 +423,7 @@ expectTypeOf(utils.setProperty({}, "baz", 4)).toEqualTypeOf<boolean>();
 
 // deleteProperty
 
-// @ts-expect-error TODO(LukeAbby): `deleteProperty` only allows deleting keys that exist.
-utils.deleteProperty({}, "fizz");
+expectTypeOf(utils.deleteProperty({}, "fizz")).toBeBoolean();
 
 // invertObject
 
@@ -455,45 +433,10 @@ expectTypeOf(utils.invertObject({ a: 1, b: "foo" } as const)).toEqualTypeOf<{
 }>();
 
 // isNewerVersion
-
 expectTypeOf(utils.isNewerVersion(4, "2.3")).toEqualTypeOf<boolean>();
-expectTypeOf(utils.isNewerVersion(4, "2.3", {})).toEqualTypeOf<boolean>();
-expectTypeOf(utils.isNewerVersion(4, "2.3", { majorOnly: true })).toEqualTypeOf<boolean>();
-expectTypeOf(utils.isNewerVersion(4, "2.3", { majorOnly: undefined })).toEqualTypeOf<boolean>();
 
 // isEmpty
-
 expectTypeOf(utils.isEmpty(4)).toEqualTypeOf<boolean>();
-
-// objectEntries
-
-expectTypeOf(utils.objectEntries({})).toEqualTypeOf<Generator<[string, unknown], void, unknown>>();
-
-// iterateEntries
-
-for (const entry of utils.iterateEntries({ x: 7, y: 9 })) {
-  expectTypeOf(entry).toEqualTypeOf<[string, unknown]>;
-}
-
-// objectKeys
-
-expectTypeOf(utils.objectKeys({})).toEqualTypeOf<Generator<string, void, unknown>>();
-
-// iterateKeys
-
-for (const key of utils.iterateKeys({ x: 1, y: 2, 7: 8 })) {
-  expectTypeOf(key).toBeString();
-}
-
-// objectValues
-
-expectTypeOf(utils.objectValues({})).toEqualTypeOf<Generator<unknown, void, unknown>>();
-
-// iterateValues
-
-for (const value of utils.iterateValues({ foo: "bar", fizz: "buzz" })) {
-  expectTypeOf(value).toBeUnknown();
-}
 
 // mergeObject: assertType is used here because of https://github.com/SamVerschueren/tsd/issues/67
 
@@ -532,12 +475,9 @@ assertType<{ k1: number; k2: string }>(utils.mergeObject({ k1: "" }, { k1: 2, k2
 assertType<{ k1: number }>(utils.mergeObject({ k1: "" }, { k1: 2, k2: "" }, { insertKeys: false }));
 assertType<{ k1: number; k2: string }>(utils.mergeObject({ k1: "" }, { k1: 2, k2: "" }, { insertKeys: true }));
 
-// @ts-expect-error TODO(LukeAbby): `mergeObject` has not yet been fully implemented.
 assertType<never>(utils.mergeObject({ k1: "" }, { k1: 2, k2: "" }, { enforceTypes: true }));
 assertType<{ k1: number; k2: string }>(utils.mergeObject({ k1: "" }, { k1: 2, k2: "" }, { enforceTypes: false }));
-// @ts-expect-error TODO(LukeAbby): `mergeObject` has not yet been fully implemented.
 assertType<never>(utils.mergeObject({ k1: "" }, { k1: 2, k2: "" }, { enforceTypes: true, insertKeys: false }));
-// @ts-expect-error TODO(LukeAbby): `mergeObject` has not yet been fully implemented.
 assertType<never>(utils.mergeObject({ k1: "" }, { k1: 2, k2: "" }, { enforceTypes: true, insertKeys: true }));
 
 assertType<{ k1: string; k2: string }>(utils.mergeObject({ k1: "" }, { k1: 2, k2: "" }, { overwrite: false }));
@@ -568,7 +508,6 @@ expectTypeOf(
     { k1: { i2: "bar", i3: 2 }, k3: 3 },
     { recursive: false },
   ).k1,
-  // @ts-expect-error TODO(LukeAbby): `mergeObject` has not yet been fully implemented.
 ).toEqualTypeOf<{ i2: string; i3: number }>();
 assertType<{
   k1: { i1: string; i2: string; i3: { j1: string; j2: number; j3: string } };
@@ -608,12 +547,9 @@ assertType<{ a: number[] }>(utils.mergeObject({ a: ["foo"] }, { a: [0] }, { inse
 assertType<{ a: number[] }>(utils.mergeObject({ a: ["foo"] }, { a: [0] }, { insertKeys: false }));
 assertType<{ a: number[] }>(utils.mergeObject({ a: ["foo"] }, { a: [0] }, { insertValues: false }));
 assertType<{ a: number[] }>(utils.mergeObject({ a: ["foo"] }, { a: [0] }, { enforceTypes: true }));
-// @ts-expect-error TODO(LukeAbby): `mergeObject` has not yet been fully implemented.
 assertType<never>(utils.mergeObject({ a: ["foo"] }, { a: { b: "foo" } }, { enforceTypes: true }));
 assertType<{ a: { b: string } }>(utils.mergeObject({ a: ["foo"] }, { a: { b: "foo" } }, { enforceTypes: false }));
-// @ts-expect-error TODO(LukeAbby): `mergeObject` has not yet been fully implemented.
 assertType<never>(utils.mergeObject({ a: { b: "foo" } }, { a: ["foo"] }, { enforceTypes: true }));
-// @ts-expect-error TODO(LukeAbby): `mergeObject` has not yet been fully implemented.
 assertType<{ a: string[] }>(utils.mergeObject({ a: { b: "foo" } }, { a: ["foo"] }, { enforceTypes: false }));
 
 // performDeletions
@@ -682,10 +618,10 @@ assertType<never>(
   utils.mergeObject({ a: { a: 1 }, c: 1 }, { b: { a: 2 }, c: 1 }, { enforceTypes: true }),
 );
 
-// @ts-expect-error A number isn't a valid object to merge.
+// @ts-expect-error - A number isn't a valid object to merge.
 utils.mergeObject(1, 2);
 
-// @ts-expect-error A string isn't a valid object to merge.
+// @ts-expect-error - A string isn't a valid object to merge.
 utils.mergeObject("foo", "bar");
 
 // parseS3URL
@@ -714,33 +650,13 @@ expectTypeOf(utils.formatFileSize(4, { base: 6 })).toEqualTypeOf<string>();
 
 // parseUuid
 
-declare const someActor: Actor.Stored;
+declare const someActor: Actor.Implementation;
 expectTypeOf(utils.parseUuid("Compendium.Actor.AAAAASomeIDAAAAA")).toEqualTypeOf<utils.ResolvedUUID>();
 expectTypeOf(utils.parseUuid("Compendium.Actor.AAAAASomeIDAAAAA", {})).toEqualTypeOf<utils.ResolvedUUID>();
 expectTypeOf(
   utils.parseUuid("Compendium.Actor.AAAAASomeIDAAAAA", { relative: undefined }),
 ).toEqualTypeOf<utils.ResolvedUUID>();
 expectTypeOf(utils.parseUuid(".Item.IIIIISomeIDIIIII", { relative: someActor })).toEqualTypeOf<utils.ResolvedUUID>();
-
-// buildRelativeUUID
-
-declare const someItem: Item.Stored;
-expectTypeOf(utils.buildRelativeUuid(someItem, someActor)).toBeString();
-expectTypeOf(utils.buildRelativeUuid("Item.SomeID", someActor)).toBeString();
-expectTypeOf(utils.buildRelativeUuid("Item.PONMLKJIHGFEDCBA", "Actor.ABCDEFGHIJKLMNOP")).toBeString();
-expectTypeOf(utils.buildRelativeUuid(someItem, "Actor.ABCDEFGHIJKLMNOP")).toBeString();
-
-// buildUuid
-
-expectTypeOf(foundry.utils.buildUuid({ id: "foo" })).toEqualTypeOf<string | null>();
-expectTypeOf(foundry.utils.buildUuid({ id: "foo", documentName: "Item" })).toEqualTypeOf<string | null>();
-expectTypeOf(foundry.utils.buildUuid({ id: "foo", documentName: "Item", parent: null })).toEqualTypeOf<string | null>();
-expectTypeOf(foundry.utils.buildUuid({ id: "foo", documentName: "Item", parent: someActor })).toEqualTypeOf<
-  string | null
->();
-expectTypeOf(foundry.utils.buildUuid({ id: "foo", documentName: "Item", pack: "world.a" })).toEqualTypeOf<
-  string | null
->();
 
 // escapeHTML
 
@@ -751,34 +667,3 @@ expectTypeOf(utils.escapeHTML(`foo < some string > some 'other string' & some "t
 expectTypeOf(
   utils.unescapeHTML(`foo &lt; some string &gt; some &#x27;other string&#x27; &amp; some &quot;third string&quot;`),
 ).toBeString();
-
-// Deprecated:
-
-// applySpecialKeys
-
-const hasSpecialKeys = {
-  foo: 7,
-  "-=foo": null,
-  type: "character",
-  "==type": "npc",
-  system: { bar: 21 },
-  "==system": { baz: 42 },
-  fizz: true,
-} as const;
-// @ts-expect-error Return type not written yet, currently just a passthrough
-// eslint-disable-next-line @typescript-eslint/no-deprecated
-expectTypeOf(utils.applySpecialKeys(hasSpecialKeys)).toEqualTypeOf<{
-  type: string;
-  system: { baz: number };
-  fizz: boolean;
-}>();
-
-// isDeletionKey - not formally @deprecated, but presumably will be removed in v16
-
-const deletionKey = "-=foo";
-expectTypeOf(utils.isDeletionKey(deletionKey)).toBeBoolean();
-
-// objectsEqual
-
-// eslint-disable-next-line @typescript-eslint/no-deprecated
-expectTypeOf(utils.objectsEqual({ a: 1 }, { a: 1 })).toEqualTypeOf<boolean>();

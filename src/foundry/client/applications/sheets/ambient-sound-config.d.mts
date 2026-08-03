@@ -49,8 +49,7 @@ declare namespace AmbientSoundConfig {
   interface AnyConstructor extends Identity<typeof AnyAmbientSoundConfig> {}
 
   interface RenderContext
-    extends
-      HandlebarsApplicationMixin.RenderContext,
+    extends HandlebarsApplicationMixin.RenderContext,
       DocumentSheetV2.RenderContext<AmbientSoundDocument.Implementation> {
     sound: AmbientSoundDocument.Implementation;
     source: foundry.documents.BaseAmbientSound.Source;
@@ -61,8 +60,7 @@ declare namespace AmbientSoundConfig {
   }
 
   interface Configuration
-    extends
-      HandlebarsApplicationMixin.Configuration,
+    extends HandlebarsApplicationMixin.Configuration,
       DocumentSheetV2.Configuration<AmbientSoundDocument.Implementation> {}
 
   interface RenderOptions extends HandlebarsApplicationMixin.RenderOptions, DocumentSheetV2.RenderOptions {}

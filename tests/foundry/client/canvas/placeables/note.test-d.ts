@@ -5,7 +5,6 @@ import Note = foundry.canvas.placeables.Note;
 import PlaceableObject = foundry.canvas.placeables.PlaceableObject;
 import PreciseText = foundry.canvas.containers.PreciseText;
 
-expectTypeOf(Note.implementation).toEqualTypeOf<Note.ImplementationClass>();
 expectTypeOf(Note.embeddedName).toEqualTypeOf<"Note">();
 expectTypeOf(Note.RENDER_FLAGS.redraw.propagate).toEqualTypeOf<
   | Array<
@@ -21,7 +20,6 @@ expectTypeOf(Note.RENDER_FLAGS.redraw.propagate).toEqualTypeOf<
 >();
 
 declare const doc: NoteDocument.Stored;
-declare const scene: Scene.Stored;
 const note = new CONFIG.Note.objectClass(doc);
 
 expectTypeOf(note.controlIcon).toEqualTypeOf<ControlIcon | null>();
@@ -46,7 +44,7 @@ expectTypeOf(note.clear()).toEqualTypeOf<Note.Implementation>();
 expectTypeOf(note["_applyRenderFlags"]()).toBeVoid();
 expectTypeOf(note["_applyRenderFlags"]({})).toBeVoid();
 // all falsey values have no effect
-expectTypeOf(note["_applyRenderFlags"]({ refreshElevation: false, refreshPosition: undefined })).toBeVoid();
+expectTypeOf(note["_applyRenderFlags"]({ refreshElevation: null, refreshPosition: undefined })).toBeVoid();
 expectTypeOf(
   note["_applyRenderFlags"]({
     redraw: true,
@@ -66,27 +64,19 @@ expectTypeOf(note["_refreshPosition"]()).toBeVoid();
 expectTypeOf(note["_refreshElevation"]()).toBeVoid();
 
 expectTypeOf(
-  note["_onCreate"](
-    doc.toObject(),
-    { action: "create", parent: scene, modifiedTime: 7, render: true, renderSheet: false },
-    "XXXXXSomeIDXXXXX",
-  ),
+  note["_onCreate"](doc.toObject(), { modifiedTime: 7, render: true, renderSheet: false }, "XXXXXSomeIDXXXXX"),
 ).toBeVoid();
 
 expectTypeOf(
   note["_onUpdate"](
     // partial source data
     { elevation: 20, entryId: "YYYYYSomeIDYYYYY", fontSize: 60, flags: { core: { sheetLock: true } } },
-    { action: "update", parent: scene, modifiedTime: 7, render: true, diff: true, recursive: true },
+    { modifiedTime: 7, render: true, diff: true, recursive: true },
     "XXXXXSomeIDXXXXX",
   ),
 ).toBeVoid();
 
-expectTypeOf(
-  note["_onDelete"]({ action: "delete", parent: scene, modifiedTime: 7, render: true }, "XXXXXSomeIDXXXXX"),
-).toBeVoid();
-
-// TODO: _onUpdate test after document test helpers are done
+expectTypeOf(note["_onDelete"]({ modifiedTime: 7, render: true }, "XXXXXSomeIDXXXXX")).toBeVoid();
 
 declare const someUser: User.Implementation;
 declare const pointerEvent: foundry.canvas.Canvas.Event.Pointer;

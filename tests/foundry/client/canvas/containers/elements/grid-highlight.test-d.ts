@@ -1,25 +1,13 @@
-import { describe, expectTypeOf, test } from "vitest";
+import { expectTypeOf } from "vitest";
+import { GridHighlight } from "#client/canvas/containers/_module.mjs";
 
-import GridHighlight = foundry.canvas.containers.GridHighlight;
+expectTypeOf(new GridHighlight("")).toEqualTypeOf<GridHighlight>();
 
-declare const smoothGeometry: PIXI.smooth.SmoothGraphicsGeometry;
+const grid = new GridHighlight("someName");
 
-describe("GridHighlight tests", () => {
-  test("Construction", () => {
-    // @ts-expect-error must pass a name
-    new GridHighlight();
-    new GridHighlight("someName");
-    new GridHighlight("someName", smoothGeometry);
-  });
-
-  const grid = new GridHighlight("someName", smoothGeometry);
-
-  test("Miscellaneous", () => {
-    expectTypeOf(grid.name).toEqualTypeOf<string>();
-    expectTypeOf(grid.positions).toEqualTypeOf<Set<GridHighlight.PositionString>>();
-    expectTypeOf(grid.highlight(100, 100)).toEqualTypeOf<boolean>();
-    expectTypeOf(grid.clear()).toEqualTypeOf<GridHighlight>();
-    expectTypeOf(grid.destroy()).toEqualTypeOf<void>();
-    expectTypeOf(grid.destroy({ children: true, texture: true, baseTexture: true })).toEqualTypeOf<void>();
-  });
-});
+expectTypeOf(grid.name).toEqualTypeOf<string>();
+expectTypeOf(grid.positions).toEqualTypeOf<Set<GridHighlight.PositionString>>();
+expectTypeOf(grid.highlight(100, 100)).toEqualTypeOf<boolean>();
+expectTypeOf(grid.clear()).toEqualTypeOf<GridHighlight>();
+expectTypeOf(grid.destroy()).toEqualTypeOf<void>();
+expectTypeOf(grid.destroy({ children: true, texture: true, baseTexture: true })).toEqualTypeOf<void>();

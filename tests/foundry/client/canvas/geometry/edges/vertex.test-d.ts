@@ -3,7 +3,7 @@ import { expectTypeOf } from "vitest";
 import Edge = foundry.canvas.geometry.edges.Edge;
 import PolygonVertex = foundry.canvas.geometry.edges.PolygonVertex;
 import Canvas = foundry.canvas.Canvas;
-import utils = foundry.utils;
+import type { LineIntersection } from "#common/utils/geometry.mjs";
 
 expectTypeOf(PolygonVertex.getKey(17, 245)).toBeNumber();
 declare const p: Canvas.Point;
@@ -26,14 +26,13 @@ expectTypeOf(vertex.isLimitingCW).toEqualTypeOf<boolean | undefined>();
 expectTypeOf(vertex.isBlockingCCW).toEqualTypeOf<boolean | undefined>();
 expectTypeOf(vertex.isBlockingCW).toEqualTypeOf<boolean | undefined>();
 expectTypeOf(vertex.isInternal).toEqualTypeOf<boolean>();
-// eslint-disable-next-line @typescript-eslint/no-deprecated
 expectTypeOf(vertex.restriction).toEqualTypeOf<CONST.WALL_SENSE_TYPES>();
 expectTypeOf(vertex["_visited"]).toEqualTypeOf<boolean>();
 expectTypeOf(vertex["_distance"]).toEqualTypeOf<number | undefined>();
 expectTypeOf(vertex["_d2"]).toEqualTypeOf<number | undefined>();
 expectTypeOf(vertex["_index"]).toEqualTypeOf<number | undefined>();
 expectTypeOf(vertex["_angle"]).toEqualTypeOf<number | undefined>();
-expectTypeOf(vertex["_intersectionCoordinates"]).toEqualTypeOf<utils.LineIntersection | undefined>();
+expectTypeOf(vertex["_intersectionCoordinates"]).toEqualTypeOf<LineIntersection | undefined>();
 expectTypeOf(vertex.isLimited).toEqualTypeOf<boolean>();
 
 declare const edge: Edge;

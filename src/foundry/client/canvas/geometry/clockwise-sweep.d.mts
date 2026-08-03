@@ -215,7 +215,7 @@ declare namespace ClockwiseSweepPolygon {
    * CSP-added properties of the config that are not guaranteed to exist by {@linkcode ClockwiseSweepPolygon.initialize | ClockwiseSweepPolygon#initialize}
    * @internal
    */
-  interface _InexactConfig {
+  type _InexactConfig = InexactPartial<{
     /**
      * Deactivate/Activate specific edge types behaviors.
      */
@@ -232,16 +232,17 @@ declare namespace ClockwiseSweepPolygon {
      * polygon configuration behaviors." (since v13, until v15)
      */
     includeDarkness: boolean;
-  }
+  }>;
 
-  interface Config extends PointSourcePolygon.Config, InexactPartial<_Config>, InexactPartial<_InexactConfig> {}
+  interface Config extends PointSourcePolygon.Config, InexactPartial<_Config>, _InexactConfig {}
 
-  interface StoredConfig extends PointSourcePolygon.StoredConfig, _Config, InexactPartial<_InexactConfig> {}
+  interface StoredConfig extends PointSourcePolygon.StoredConfig, _Config, _InexactConfig {}
 
   interface TestCollisionConfig extends PointSourcePolygon._TestCollisionConfig, Omit<Config, "type"> {}
 
   interface TestCollisionOptions<Mode extends PointSourcePolygon.CollisionModes | undefined = undefined>
-    extends InexactPartial<PointSourcePolygon._TestCollisionOptions<Mode>>, TestCollisionConfig {}
+    extends PointSourcePolygon._TestCollisionOptions<Mode>,
+      TestCollisionConfig {}
 
   /**
    * @remarks See {@linkcode Config.edgeTypes}

@@ -10,13 +10,7 @@ import TypeDataModel = foundry.abstract.TypeDataModel;
 type DataSchema = foundry.data.fields.DataSchema;
 
 // This exists to make the class non-abstract.
-class TestBaseActor extends foundry.documents.BaseActor {
-  get compendium() {
-    return this.inCompendium
-      ? (game.packs!.get(this.pack!) as foundry.documents.collections.CompendiumCollection.ForDocument<"Actor">)
-      : null;
-  }
-}
+declare class TestBaseActor extends foundry.documents.BaseActor {}
 
 // @ts-expect-error name and type are required
 new TestBaseActor();
@@ -26,12 +20,12 @@ new TestBaseActor({});
 
 const baseActor = new TestBaseActor({ name: "foo", type: "character" });
 expectTypeOf(baseActor.name).toEqualTypeOf<string>();
-expectTypeOf(baseActor.effects).toEqualTypeOf<EmbeddedCollection<ActiveEffect.Stored, Actor.Implementation>>();
-expectTypeOf(baseActor.effects.get("")).toEqualTypeOf<ActiveEffect.Stored | undefined>();
+expectTypeOf(baseActor.effects).toEqualTypeOf<EmbeddedCollection<ActiveEffect.Implementation, Actor.Implementation>>();
+expectTypeOf(baseActor.effects.get("")).toEqualTypeOf<ActiveEffect.Implementation | undefined>();
 expectTypeOf(baseActor.effects.get("")!.name).toEqualTypeOf<string>();
-expectTypeOf(baseActor.items).toEqualTypeOf<EmbeddedCollection<Item.Stored, Actor.Implementation>>();
-expectTypeOf(baseActor.items.get("")).toEqualTypeOf<Item.Stored | undefined>();
-expectTypeOf(baseActor.items.get("")!.img).toEqualTypeOf<string | null>();
+expectTypeOf(baseActor.items).toEqualTypeOf<EmbeddedCollection<Item.Implementation, Actor.Implementation>>();
+expectTypeOf(baseActor.items.get("")).toEqualTypeOf<Item.Implementation | undefined>();
+expectTypeOf(baseActor.items.get("")!.img).toEqualTypeOf<string | null | undefined>();
 expectTypeOf(baseActor._source.effects[0]!.duration.seconds).toEqualTypeOf<number | null | undefined>();
 
 /**
@@ -121,15 +115,15 @@ class BoilerplateActorBase<
     const requiredInteger = { required: true, nullable: false, integer: true };
     const schema: DataSchema = {};
 
-    schema["health"] = new fields.SchemaField({
+    schema.health = new fields.SchemaField({
       value: new fields.NumberField({ ...requiredInteger, initial: 10, min: 0 }),
       max: new fields.NumberField({ ...requiredInteger, initial: 10 }),
     });
-    schema["power"] = new fields.SchemaField({
+    schema.power = new fields.SchemaField({
       value: new fields.NumberField({ ...requiredInteger, initial: 5, min: 0 }),
       max: new fields.NumberField({ ...requiredInteger, initial: 5 }),
     });
-    schema["biography"] = new fields.HTMLField();
+    schema.biography = new fields.HTMLField();
 
     return schema as BoilerplateActorBase.Schema;
   }
@@ -197,14 +191,14 @@ class BoilerplateCharacter extends BoilerplateActorBase<
     const requiredInteger = { required: true, nullable: false, integer: true };
     const schema = super.defineSchema();
 
-    schema["attributes"] = new fields.SchemaField({
+    schema.attributes = new fields.SchemaField({
       level: new fields.SchemaField({
         value: new fields.NumberField({ ...requiredInteger, initial: 1 }),
       }),
     });
 
     // Iterate over ability names and create a new SchemaField for each.
-    schema["abilities"] = new fields.SchemaField(
+    schema.abilities = new fields.SchemaField(
       Object.keys(CONFIG.BOILERPLATE.abilities).reduce((obj: DataSchema, ability) => {
         obj[ability] = new fields.SchemaField({
           value: new fields.NumberField({ ...requiredInteger, initial: 10, min: 0 }),
@@ -227,7 +221,7 @@ class BoilerplateCharacter extends BoilerplateActorBase<
 
     expectTypeOf(this.extra.deep.check.propA).toEqualTypeOf<string>();
     expectTypeOf(this.extra.deep.check.deepDerivedProp).toEqualTypeOf<number | undefined>();
-    expectTypeOf(this.extra.deep.derived.prop).toEqualTypeOf<string | undefined>();
+    expectTypeOf(this.extra.deep.derived?.prop).toEqualTypeOf<string | undefined>();
 
     expectTypeOf(this.derivedString).toEqualTypeOf<string | undefined>();
   }
@@ -241,7 +235,7 @@ class BoilerplateCharacter extends BoilerplateActorBase<
       data[k] = foundry.utils.deepClone(v);
     }
 
-    data["lvl"] = this.attributes.level.value;
+    data.lvl = this.attributes.level.value;
 
     return data;
   }

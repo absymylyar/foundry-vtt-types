@@ -1,6 +1,8 @@
-import type { MaybeArray, OverlapsWith } from "#utils";
-import type { DataModel, Document } from "#common/abstract/_module.d.mts";
-import type { SchemaField } from "#common/data/fields.d.mts";
+import type { AnyMutableObject } from "#utils";
+import type DataModel from "../abstract/data.d.mts";
+import type Document from "../abstract/document.mts";
+import type { DataField, SchemaField } from "../data/fields.d.mts";
+import type { LogCompatibilityWarningOptions } from "../utils/logging.d.mts";
 
 /**
  * The Combat Document.
@@ -22,11 +24,11 @@ declare abstract class BaseCombat<out SubType extends BaseCombat.SubType = BaseC
    * order to use documents on both the client (i.e. where all your code runs) and behind the scenes
    * on the server to manage document validation and storage.
    *
-   * You should use {@linkcode Combat.implementation | new Combat.implementation(...)} instead which will give you
+   * You should use {@link Combat.implementation | `new Combat.implementation(...)`} instead which will give you
    * a system specific implementation of `Combat`.
    */
   // Note(LukeAbby): Optional as there are currently no required properties on `CreateData`.
-  constructor(data?: BaseCombat.CreateData, context?: BaseCombat.ConstructionContext);
+  constructor(data?: Combat.CreateData, context?: Combat.ConstructionContext);
 
   /**
    * @defaultValue
@@ -60,7 +62,6 @@ declare abstract class BaseCombat<out SubType extends BaseCombat.SubType = BaseC
    * @param user - The user attempting to change the round
    * @returns Is the user allowed to change the round?
    * @remarks Foundry's implementation always returns `true`
-   * @privateRemarks Called by the permission check methods, so a temporary `User` is possible
    */
   protected _canChangeRound(user: User.Implementation): boolean;
 
@@ -69,14 +70,13 @@ declare abstract class BaseCombat<out SubType extends BaseCombat.SubType = BaseC
    * @param user - The user attempting to change the turn
    * @returns Is the user allowed to change the turn?
    * @remarks Foundry's implementation always returns `true`
-   * @privateRemarks Called by the permission check methods, so a temporary `User` is possible
    */
   protected _canChangeTurn(user: User.Implementation): boolean;
 
   protected override _preUpdate(
-    changed: BaseCombat.UpdateData,
-    options: BaseCombat.Database.PreUpdateOptions,
-    user: User.Stored,
+    changed: Combat.UpdateData,
+    options: Combat.Database.PreUpdateOptions,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   /*
@@ -89,196 +89,248 @@ declare abstract class BaseCombat<out SubType extends BaseCombat.SubType = BaseC
    * separate like this helps against circularities.
    */
 
-  type: SubType;
-
   /* Document overrides */
+
+  // Same as Document for now
+  protected static override _initializationOrder(): Generator<[string, DataField.Any], void, undefined>;
+
+  override readonly parentCollection: Combat.ParentCollectionName | null;
+
+  override readonly pack: string | null;
 
   static override get implementation(): Combat.ImplementationClass;
 
   static override get baseDocument(): typeof BaseCombat;
 
-  static override get collectionName(): BaseCombat.ParentCollectionName;
+  static override get collectionName(): Combat.ParentCollectionName;
 
-  static override get documentName(): BaseCombat.Name;
+  static override get documentName(): Combat.Name;
 
   static override get TYPES(): BaseCombat.SubType[];
 
   static override get hasTypeData(): true;
 
-  static override readonly hierarchy: BaseCombat.Hierarchy;
+  static override get hierarchy(): Combat.Hierarchy;
 
-  override system: BaseCombat.SystemOfType<SubType>;
+  override system: Combat.SystemOfType<SubType>;
 
   override parent: BaseCombat.Parent;
 
-  override " fvtt_types_internal_document_parent": BaseCombat.Parent;
-
-  static override canUserCreate(user: User.Implementation): boolean;
-
-  override getUserLevel(user?: User.Implementation): CONST.DOCUMENT_OWNERSHIP_LEVELS;
-
-  override testUserPermission(
-    user: User.Implementation,
-    permission: Document.ActionPermission,
-    options?: Document.TestUserPermissionOptions,
-  ): boolean;
-
-  override canUserModify<Action extends Document.Database.OperationAction>(
-    user: User.Implementation,
-    action: Action,
-    data?: Document.CanUserModifyData<"Combat", Action>,
-  ): boolean;
-
-  static override createDocuments(
-    data: BaseCombat.CreateInput[],
-    operation?: BaseCombat.Database.CreateDocumentsOperation,
-  ): Promise<Combat.Stored[]>;
+  static override createDocuments<Temporary extends boolean | undefined = undefined>(
+    data: Array<Combat.Implementation | Combat.CreateData> | undefined,
+    operation?: Document.Database.CreateOperation<Combat.Database.Create<Temporary>>,
+  ): Promise<Array<Document.TemporaryIf<Combat.Implementation, Temporary>>>;
 
   static override updateDocuments(
-    updates: BaseCombat.UpdateInput[],
-    operation?: BaseCombat.Database.UpdateManyDocumentsOperation,
-  ): Promise<Combat.Stored[]>;
+    updates: Combat.UpdateData[] | undefined,
+    operation?: Document.Database.UpdateDocumentsOperation<Combat.Database.Update>,
+  ): Promise<Combat.Implementation[]>;
 
   static override deleteDocuments(
-    ids: readonly string[],
-    operation?: BaseCombat.Database.DeleteManyDocumentsOperation,
-  ): Promise<Combat.Stored[]>;
+    ids: readonly string[] | undefined,
+    operation?: Document.Database.DeleteDocumentsOperation<Combat.Database.Delete>,
+  ): Promise<Combat.Implementation[]>;
 
-  static override create<Data extends MaybeArray<BaseCombat.CreateInput>>(
-    data: Data,
-    operation?: BaseCombat.Database.CreateDocumentsOperation,
-  ): Promise<BaseCombat.CreateReturn<Data>>;
+  static override create<Temporary extends boolean | undefined = undefined>(
+    data: Combat.CreateData | Combat.CreateData[],
+    operation?: Combat.Database.CreateOperation<Temporary>,
+  ): Promise<Document.TemporaryIf<Combat.Implementation, Temporary> | undefined>;
 
   override update(
-    data: BaseCombat.UpdateInput,
-    operation?: BaseCombat.Database.UpdateOneDocumentOperation,
+    data: Combat.UpdateData | undefined,
+    operation?: Combat.Database.UpdateOperation,
   ): Promise<this | undefined>;
 
-  override delete(operation?: BaseCombat.Database.DeleteOneDocumentOperation): Promise<this | undefined>;
+  override delete(operation?: Combat.Database.DeleteOperation): Promise<this | undefined>;
 
-  // `Combat`s cannot exist in compendia, so this never returns an index entry.
-  static override get(documentId: string, operation?: BaseCombat.Database.GetDocumentsOperation): Combat.Stored | null;
+  static override get(documentId: string, options?: Combat.Database.GetOptions): Combat.Implementation | null;
 
-  static override getCollectionName<Name extends string>(
-    name: OverlapsWith<Name, BaseCombat.Embedded.CollectionName>,
-  ): BaseCombat.Embedded.GetCollectionNameReturn<Name>;
+  static override getCollectionName<CollectionName extends Combat.Embedded.Name>(
+    name: CollectionName,
+  ): Combat.Embedded.CollectionNameOf<CollectionName> | null;
 
-  override getEmbeddedCollection<EmbeddedName extends BaseCombat.Embedded.CollectionName>(
+  override getEmbeddedCollection<EmbeddedName extends Combat.Embedded.CollectionName>(
     embeddedName: EmbeddedName,
-  ): BaseCombat.Embedded.CollectionFor<EmbeddedName>;
+  ): Combat.Embedded.CollectionFor<EmbeddedName>;
 
-  override getEmbeddedDocument<
-    EmbeddedName extends BaseCombat.Embedded.CollectionName,
-    Options extends Document.GetEmbeddedDocumentOptions | undefined = undefined,
-  >(embeddedName: EmbeddedName, id: string, options?: Options): BaseCombat.Embedded.GetReturn<EmbeddedName, Options>;
-
-  override createEmbeddedDocuments<EmbeddedName extends BaseCombat.Embedded.Name>(
+  override getEmbeddedDocument<EmbeddedName extends Combat.Embedded.CollectionName>(
     embeddedName: EmbeddedName,
-    data: Document.CreateDataForName<EmbeddedName>[],
-    operation?: Document.Database.CreateDocumentsOperationForName<EmbeddedName>,
+    id: string,
+    options: Document.GetEmbeddedDocumentOptions,
+  ): Combat.Embedded.DocumentFor<EmbeddedName> | undefined;
+
+  override createEmbeddedDocuments<EmbeddedName extends Combat.Embedded.Name>(
+    embeddedName: EmbeddedName,
+    data: Document.CreateDataForName<EmbeddedName>[] | undefined,
+    // TODO(LukeAbby): The correct signature would be:
+    // operation?: Document.Database.CreateOperation<Document.Database.CreateForName<EmbeddedName>>,
+    // However this causes a number of errors.
+    operation?: object,
+  ): Promise<Array<Document.StoredForName<EmbeddedName>> | undefined>;
+
+  override updateEmbeddedDocuments<EmbeddedName extends Combat.Embedded.Name>(
+    embeddedName: EmbeddedName,
+    updates: Document.UpdateDataForName<EmbeddedName>[] | undefined,
+    operation?: Document.Database.UpdateOperationForName<EmbeddedName>,
+  ): Promise<Array<Document.StoredForName<EmbeddedName>> | undefined>;
+
+  override deleteEmbeddedDocuments<EmbeddedName extends Combat.Embedded.Name>(
+    embeddedName: EmbeddedName,
+    ids: Array<string>,
+    operation?: Document.Database.DeleteOperationForName<EmbeddedName>,
   ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
 
-  override updateEmbeddedDocuments<EmbeddedName extends BaseCombat.Embedded.Name>(
-    embeddedName: EmbeddedName,
-    updates: Document.UpdateDataForName<EmbeddedName>[],
-    operation?: Document.Database.UpdateManyDocumentsOperationForName<EmbeddedName>,
-  ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
+  // Same as Document for now
+  override traverseEmbeddedDocuments(
+    _parentPath?: string,
+  ): Generator<[string, Document.AnyChild<this>], void, undefined>;
 
-  override deleteEmbeddedDocuments<EmbeddedName extends BaseCombat.Embedded.Name>(
-    embeddedName: EmbeddedName,
-    ids: string[],
-    operation?: Document.Database.DeleteManyDocumentsOperationForName<EmbeddedName>,
-  ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
-
-  override getFlag<Scope extends BaseCombat.Flags.Scope, Key extends BaseCombat.Flags.Key<Scope>>(
+  override getFlag<Scope extends Combat.Flags.Scope, Key extends Combat.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): BaseCombat.Flags.Get<Scope, Key>;
+  ): Document.GetFlag<Combat.Name, Scope, Key>;
 
   override setFlag<
-    Scope extends BaseCombat.Flags.Scope,
-    Key extends BaseCombat.Flags.Key<Scope>,
-    Value extends BaseCombat.Flags.Get<Scope, Key>,
-  >(scope: Scope, key: Key, value: Value): Promise<this | undefined>;
+    Scope extends Combat.Flags.Scope,
+    Key extends Combat.Flags.Key<Scope>,
+    Value extends Document.GetFlag<Combat.Name, Scope, Key>,
+  >(scope: Scope, key: Key, value: Value): Promise<this>;
 
-  override unsetFlag<Scope extends BaseCombat.Flags.Scope, Key extends BaseCombat.Flags.Key<Scope>>(
+  override unsetFlag<Scope extends Combat.Flags.Scope, Key extends Combat.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): Promise<this | undefined>;
+  ): Promise<this>;
 
   protected override _preCreate(
-    data: BaseCombat.CreateData,
-    options: BaseCombat.Database.PreCreateOptions,
-    user: User.Stored,
+    data: Combat.CreateData,
+    options: Combat.Database.PreCreateOptions,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected override _onCreate(
-    data: BaseCombat.CreateData,
-    options: BaseCombat.Database.OnCreateOptions,
+    data: Combat.CreateData,
+    options: Combat.Database.OnCreateOperation,
     userId: string,
   ): void;
 
   protected static override _preCreateOperation(
     documents: Combat.Implementation[],
-    operation: BaseCombat.Database.PreCreateOperation,
-    user: User.Stored,
+    operation: Document.Database.PreCreateOperationStatic<Combat.Database.Create>,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected static override _onCreateOperation(
-    documents: Combat.Stored[],
-    operation: BaseCombat.Database.OnCreateOperation,
-    user: User.Stored,
+    documents: Combat.Implementation[],
+    operation: Combat.Database.Create,
+    user: User.Implementation,
   ): Promise<void>;
 
   protected override _onUpdate(
-    changed: BaseCombat.UpdateData,
-    options: BaseCombat.Database.OnUpdateOptions,
+    changed: Combat.UpdateData,
+    options: Combat.Database.OnUpdateOperation,
     userId: string,
   ): void;
 
   protected static override _preUpdateOperation(
-    documents: Combat.Stored[],
-    operation: BaseCombat.Database.PreUpdateOperation,
-    user: User.Stored,
+    documents: Combat.Implementation[],
+    operation: Combat.Database.Update,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected static override _onUpdateOperation(
-    documents: Combat.Stored[],
-    operation: BaseCombat.Database.OnUpdateOperation,
-    user: User.Stored,
+    documents: Combat.Implementation[],
+    operation: Combat.Database.Update,
+    user: User.Implementation,
   ): Promise<void>;
 
   protected override _preDelete(
-    options: BaseCombat.Database.PreDeleteOptions,
-    user: User.Stored,
+    options: Combat.Database.PreDeleteOptions,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
-  protected override _onDelete(options: BaseCombat.Database.OnDeleteOptions, userId: string): void;
+  protected override _onDelete(options: Combat.Database.OnDeleteOperation, userId: string): void;
 
   protected static override _preDeleteOperation(
-    documents: Combat.Stored[],
-    operation: BaseCombat.Database.PreDeleteOperation,
-    user: User.Stored,
+    documents: Combat.Implementation[],
+    operation: Combat.Database.Delete,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected static override _onDeleteOperation(
-    documents: Combat.Stored[],
-    operation: BaseCombat.Database.OnDeleteOperation,
-    user: User.Stored,
+    documents: Combat.Implementation[],
+    operation: Combat.Database.Delete,
+    user: User.Implementation,
+  ): Promise<void>;
+
+  // These data field things have been ticketed but will probably go into backlog hell for a while.
+  // We'll end up copy and pasting without modification for now I think. It makes it a tiny bit easier to update though.
+
+  // options: not null (parameter default only in _addDataFieldShim)
+  protected static override _addDataFieldShims(
+    data: AnyMutableObject,
+    shims: Record<string, string>,
+    options?: Document.DataFieldShimOptions,
+  ): void;
+
+  // options: not null (parameter default only)
+  protected static override _addDataFieldShim(
+    data: AnyMutableObject,
+    oldKey: string,
+    newKey: string,
+    options?: Document.DataFieldShimOptions,
+  ): void;
+
+  protected static override _addDataFieldMigration(
+    data: AnyMutableObject,
+    oldKey: string,
+    newKey: string,
+    apply?: ((data: AnyMutableObject) => unknown) | null,
+  ): boolean;
+
+  // options: not null (destructured where forwarded)
+  protected static override _logDataFieldMigration(
+    oldKey: string,
+    newKey: string,
+    options?: LogCompatibilityWarningOptions,
+  ): void;
+
+  /**
+   * @deprecated since v12, will be removed in v14
+   * @remarks "The `Document._onCreateDocuments` static method is deprecated in favor of {@link Document._onCreateOperation | `Document._onCreateOperation`}"
+   */
+  protected static override _onCreateDocuments(
+    documents: Combat.Implementation[],
+    context: Document.ModificationContext<Combat.Parent>,
+  ): Promise<void>;
+
+  /**
+   * @deprecated since v12, will be removed in v14
+   * @remarks "The `Document._onUpdateDocuments` static method is deprecated in favor of {@link Document._onUpdateOperation | `Document._onUpdateOperation`}"
+   */
+  protected static override _onUpdateDocuments(
+    documents: Combat.Implementation[],
+    context: Document.ModificationContext<Combat.Parent>,
+  ): Promise<void>;
+
+  /**
+   * @deprecated since v12, will be removed in v14
+   * @remarks "The `Document._onDeleteDocuments` static method is deprecated in favor of {@link Document._onDeleteOperation | `Document._onDeleteOperation`}"
+   */
+  protected static override _onDeleteDocuments(
+    documents: Combat.Implementation[],
+    context: Document.ModificationContext<Combat.Parent>,
   ): Promise<void>;
 
   /* DataModel overrides */
 
-  static override _schema: SchemaField<BaseCombat.Schema>;
+  protected static override _schema: SchemaField<Combat.Schema>;
 
-  static override get schema(): SchemaField<BaseCombat.Schema>;
+  static override get schema(): SchemaField<Combat.Schema>;
 
-  static override validateJoint(data: BaseCombat.Source): void;
+  static override validateJoint(data: Combat.Source): void;
 
-  static override fromSource(
-    source: BaseCombat.CreateData,
-    context?: DataModel.FromSourceOptions,
-  ): Combat.Implementation;
+  // options: not null (parameter default only, destructured in super)
+  static override fromSource(source: Combat.CreateData, context?: DataModel.FromSourceOptions): Combat.Implementation;
 
   static override fromJSON(json: string): Combat.Implementation;
 
@@ -288,37 +340,32 @@ declare abstract class BaseCombat<out SubType extends BaseCombat.SubType = BaseC
 export default BaseCombat;
 
 declare namespace BaseCombat {
-  // All types really live in the full document and are mirrored here for convenience
   export import Name = Combat.Name;
   export import ConstructionContext = Combat.ConstructionContext;
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
   export import ConstructorArgs = Combat.ConstructorArgs;
   export import Hierarchy = Combat.Hierarchy;
   export import Metadata = Combat.Metadata;
   export import SubType = Combat.SubType;
-  export import ConfiguredSubType = Combat.ConfiguredSubType;
+  export import ConfiguredSubTypes = Combat.ConfiguredSubTypes;
   export import Known = Combat.Known;
   export import OfType = Combat.OfType;
   export import SystemOfType = Combat.SystemOfType;
   export import Parent = Combat.Parent;
   export import Descendant = Combat.Descendant;
   export import DescendantClass = Combat.DescendantClass;
+  export import Pack = Combat.Pack;
   export import Embedded = Combat.Embedded;
   export import ParentCollectionName = Combat.ParentCollectionName;
   export import CollectionClass = Combat.CollectionClass;
   export import Collection = Combat.Collection;
   export import Invalid = Combat.Invalid;
+  export import Stored = Combat.Stored;
   export import Source = Combat.Source;
   export import CreateData = Combat.CreateData;
-  export import CreateInput = Combat.CreateInput;
-  export import CreateReturn = Combat.CreateReturn;
   export import InitializedData = Combat.InitializedData;
   export import UpdateData = Combat.UpdateData;
-  export import UpdateInput = Combat.UpdateInput;
   export import Schema = Combat.Schema;
-  export import Database = Combat.Database;
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  export import TemporaryIf = Combat.TemporaryIf;
+  export import DatabaseOperation = Combat.Database;
   export import Flags = Combat.Flags;
 
   namespace Internal {

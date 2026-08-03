@@ -1,7 +1,7 @@
 import { expectTypeOf } from "vitest";
-import ImageNode from "../../../../../src/foundry/common/prosemirror/schema/image-node.mts";
+import ImageNode from "#common/prosemirror/schema/image-node.mjs";
 import type { Attrs, AttributeSpec, Node, NodeSpec } from "prosemirror-model";
-import type SchemaDefinition from "../../../../../src/foundry/common/prosemirror/schema/schema-definition.d.mts";
+import type SchemaDefinition from "#common/prosemirror/schema/schema-definition.mjs";
 
 new ImageNode();
 

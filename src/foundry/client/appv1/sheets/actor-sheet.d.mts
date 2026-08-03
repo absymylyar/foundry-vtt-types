@@ -54,7 +54,7 @@ declare class ActorSheet<Options extends ActorSheet.Options = ActorSheet.Options
 
   override close(options?: FormApplication.CloseOptions): Promise<void>;
 
-  override getData(options?: Partial<Options>): MaybePromise<GetDataReturnType<ActorSheet.Data>>;
+  override getData(options?: Partial<Options>): MaybePromise<GetDataReturnType<ActorSheet.ActorSheetData>>;
 
   protected override _getHeaderButtons(): Application.HeaderButton[];
 
@@ -129,7 +129,7 @@ declare class ActorSheet<Options extends ActorSheet.Options = ActorSheet.Options
    * Handle a drop event for an existing embedded Item to sort that Item relative to its siblings
    */
   protected _onSortItem(
-    event: Event,
+    event: DragEvent,
     itemData: Item.Implementation["_source"],
   ): undefined | Promise<Item.Implementation[]>;
 
@@ -179,19 +179,12 @@ declare namespace ActorSheet {
     token?: TokenDocument.Implementation | null;
   }
 
-  interface Data<Options extends ActorSheet.Options = ActorSheet.Options> extends DocumentSheet.Data<
-    Options,
-    Actor.Implementation
-  > {
+  interface ActorSheetData<Options extends ActorSheet.Options = ActorSheet.Options>
+    extends DocumentSheet.DocumentSheetData<Options, Actor.Implementation> {
     actor: ActorSheet["actor"];
     items: this["data"]["items"];
     effects: this["data"]["effects"];
   }
-
-  /**
-   * @deprecated Replaced with {@linkcode ActorSheet.Data}.
-   */
-  type ActorSheetData = Data;
 }
 
 declare abstract class AnyActorSheet extends ActorSheet<ActorSheet.Options> {

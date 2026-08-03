@@ -1,7 +1,5 @@
 import { expectTypeOf } from "vitest";
-
-import BatchRenderer = foundry.canvas.rendering.batching.BatchRenderer;
-import BatchShaderGenerator = foundry.canvas.rendering.batching.BatchShaderGenerator;
+import { BatchRenderer, BatchShaderGenerator } from "#client/canvas/rendering/batching/_module.mjs";
 
 expectTypeOf(BatchRenderer.shaderGeneratorClass).toEqualTypeOf<typeof BatchShaderGenerator>();
 expectTypeOf(BatchRenderer.hasPlugin("bob")).toEqualTypeOf<boolean>;

@@ -1,15 +1,11 @@
-import type { ConfiguredCards } from "#configuration";
-import type { Identity, InexactPartial, MaybeArray, Merge } from "#utils";
-import type { fields } from "#common/data/_module.d.mts";
-import type { DatabaseBackend, Document, EmbeddedCollection } from "#common/abstract/_module.d.mts";
-import type { BaseCard, BaseCards, BaseFolder } from "#client/documents/_module.d.mts";
-import type { DialogV2 } from "#client/applications/api/_module.d.mts";
+import type { ConfiguredCards } from "fvtt-types/configuration";
+import type { InexactPartial, Merge, NullishProps } from "#utils";
+import type Document from "#common/abstract/document.d.mts";
+import type { DataSchema } from "#common/data/fields.d.mts";
+import type BaseCards from "#common/documents/cards.d.mts";
+import type { documents } from "#client/client.d.mts";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type ClientDatabaseBackend from "#client/data/client-backend.d.mts";
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type ClientDocumentMixin from "#client/documents/abstract/client-document.d.mts";
+import fields = foundry.data.fields;
 
 declare namespace Cards {
   /**
@@ -28,15 +24,14 @@ declare namespace Cards {
   type Hierarchy = Readonly<Document.HierarchyOf<Schema>>;
 
   /**
-   * The implementation of the `Cards` document instance configured through
-   * {@linkcode CONFIG.Cards.documentClass} in Foundry and {@linkcode DocumentClassConfig} or
-   * {@linkcode ConfiguredCards | fvtt-types/configuration/ConfiguredCards} in fvtt-types.
+   * The implementation of the `Cards` document instance configured through `CONFIG.Cards.documentClass` in Foundry and
+   * {@linkcode DocumentClassConfig} or {@link ConfiguredCards | `fvtt-types/configuration/ConfiguredCards`} in fvtt-types.
    */
   type Implementation = Document.ImplementationFor<Name>;
 
   /**
-   * The implementation of the `Cards` document configured through
-   * {@linkcode CONFIG.Cards.documentClass} in Foundry and {@linkcode DocumentClassConfig} in fvtt-types.
+   * The implementation of the `Cards` document configured through `CONFIG.Cards.documentClass` in Foundry and
+   * {@linkcode DocumentClassConfig} in fvtt-types.
    */
   type ImplementationClass = Document.ImplementationClassFor<Name>;
 
@@ -44,22 +39,23 @@ declare namespace Cards {
    * A document's metadata is special information about the document ranging anywhere from its name,
    * whether it's indexed, or to the permissions a user has over it.
    */
-  interface Metadata extends Merge<
-    Document.Metadata.Default,
-    Readonly<{
-      name: "Cards";
-      collection: "cards";
-      indexed: true;
-      compendiumIndexFields: ["_id", "name", "description", "img", "type", "sort", "folder"];
-      embedded: Metadata.Embedded;
-      hasTypeData: true;
-      label: "DOCUMENT.Cards";
-      labelPlural: "DOCUMENT.CardsPlural";
-      permissions: Metadata.Permissions;
-      coreTypes: ["deck", "hand", "pile"];
-      schemaVersion: "13.341";
-    }>
-  > {}
+  interface Metadata
+    extends Merge<
+      Document.Metadata.Default,
+      Readonly<{
+        name: "Cards";
+        collection: "cards";
+        indexed: true;
+        compendiumIndexFields: ["_id", "name", "description", "img", "type", "sort", "folder"];
+        embedded: Metadata.Embedded;
+        hasTypeData: true;
+        label: string;
+        labelPlural: string;
+        permissions: Metadata.Permissions;
+        coreTypes: ["deck", "hand", "pile"];
+        schemaVersion: string;
+      }>
+    > {}
 
   namespace Metadata {
     /**
@@ -88,64 +84,44 @@ declare namespace Cards {
   type SubType = foundry.Game.Model.TypeNames<"Cards">;
 
   /**
-   * `ConfiguredSubType` represents the subtypes a user explicitly registered. This excludes
+   * `ConfiguredSubTypes` represents the subtypes a user explicitly registered. This excludes
    * subtypes like the Foundry builtin subtype `"base"` and the catch-all subtype for arbitrary
    * module subtypes `${string}.${string}`.
    *
    * @see {@link SubType} for more information.
    */
-  type ConfiguredSubType = Document.ConfiguredSubTypeOf<"Cards">;
+  type ConfiguredSubTypes = Document.ConfiguredSubTypesOf<"Cards">;
 
   /**
    * `Known` represents the types of `Cards` that a user explicitly registered.
    *
-   * @see {@link ConfiguredSubType} for more information.
+   * @see {@link ConfiguredSubTypes} for more information.
    */
-  type Known = Cards.OfType<Cards.ConfiguredSubType>;
+  type Known = Cards.OfType<Cards.ConfiguredSubTypes>;
 
   /**
    * `OfType` returns an instance of `Cards` with the corresponding type. This works with both the
    * builtin `Cards` class or a custom subclass if that is set up in
-   * {@linkcode ConfiguredCards | fvtt-types/configuration/ConfiguredCards}.
+   * {@link ConfiguredCards | `fvtt-types/configuration/ConfiguredCards`}.
    */
-  type OfType<Type extends SubType> = Document.Internal.DiscriminateSystem<Name, _OfType, Type, ConfiguredSubType>;
-
-  /** @internal */
-  interface _OfType extends Identity<{
-    [Type in SubType]: Type extends unknown
-      ? ConfiguredCards<Type> extends { document: infer Document }
-        ? Document
-        : // eslint-disable-next-line @typescript-eslint/no-restricted-types
-          Cards<Type>
-      : never;
-  }> {}
+  // eslint-disable-next-line @typescript-eslint/no-restricted-types
+  type OfType<Type extends SubType> = Document.Internal.OfType<ConfiguredCards<Type>, () => Cards<Type>>;
 
   /**
    * `SystemOfType` returns the system property for a specific `Cards` subtype.
    */
-  type SystemOfType<Type extends SubType> = Document.Internal.SystemOfType<Name, _SystemMap, Type, ConfiguredSubType>;
+  type SystemOfType<Type extends SubType> = Document.Internal.SystemOfType<_SystemMap, Type>;
 
   /**
    * @internal
    */
-  interface _ModelMap extends Document.Internal.ModelMap<Name> {}
-
-  /**
-   * @internal
-   */
-  interface _SystemMap extends Document.Internal.SystemMap<Name> {}
+  interface _SystemMap extends Document.Internal.SystemMap<"Cards"> {}
 
   /**
    * A document's parent is something that can contain it.
    * For example an `Item` can be contained by an `Actor` which makes `Actor` one of its possible parents.
    */
   type Parent = null;
-
-  /**
-   * A document's direct descendants are documents that are contained directly within its schema.
-   * This is a union of all such instances, or never if the document doesn't have any descendants.
-   */
-  type DirectDescendantName = "Card";
 
   /**
    * A document's direct descendants are documents that are contained directly within its schema.
@@ -173,14 +149,21 @@ declare namespace Cards {
   type DescendantClass = DirectDescendantClass;
 
   /**
+   * Types of `CompendiumCollection` this document might be contained in.
+   * Note that `this.pack` will always return a string; this is the type for `game.packs.get(this.pack)`
+   *
+   * Will be `never` if cannot be contained in a `CompendiumCollection`.
+   */
+  // Note: Takes any document in the heritage chain (i.e. itself or any parent, transitive or not) that can be contained in a compendium.
+  type Pack = foundry.documents.collections.CompendiumCollection.ForDocument<"Cards">;
+
+  /**
    * An embedded document is a document contained in another.
    * For example an `Item` can be contained by an `Actor` which means `Item` can be embedded in `Actor`.
    *
    * If this is `never` it is because there are no embeddable documents (or there's a bug!).
-   *
-   * @privateRemarks This is always the same as `DirectDescendant` and is provided as a convenient alias for users. It is not deprecated.
    */
-  type Embedded = DirectDescendant;
+  type Embedded = Document.ImplementationFor<Embedded.Name>;
 
   namespace Embedded {
     /**
@@ -192,10 +175,12 @@ declare namespace Cards {
     type Name = keyof Metadata.Embedded;
 
     /**
-     * A valid name to refer to a collection embedded in this document.
-     * @remarks Functionally identical to `keyof `{@linkcode Metadata.Embedded}` | ValueOf<Metadata.Embedded>`
+     * Gets the collection name for an embedded document.
      */
-    type CollectionName = Document.Embedded.CollectionName<Metadata.Embedded>;
+    type CollectionNameOf<CollectionName extends Embedded.CollectionName> = Document.Embedded.CollectionNameFor<
+      Metadata.Embedded,
+      CollectionName
+    >;
 
     /**
      * Gets the collection document for an embedded document.
@@ -215,55 +200,35 @@ declare namespace Cards {
     >;
 
     /**
-     * The return type for {@linkcode Cards.getCollectionName | Cards#getCollectionName}. If the
-     * passed name is not a known valid embedded document type/collection name for `Cards`, returns `null`.
+     * A valid name to refer to a collection embedded in this document. For example an `Actor`
+     * has the key `"items"` which contains `Item` instance which would make both `"Item" | "Items"`
+     * valid keys (amongst others).
      */
-    type GetCollectionNameReturn<Name extends string> = Name extends CollectionName
-      ? Document.Embedded._CollectionNameForName<Metadata.Embedded, Name>
-      : null;
-
-    /**
-     * The return type for {@linkcode Cards.getEmbeddedDocument | Cards#getEmbeddedDocument}.
-     * See {@linkcode EmbeddedCollection.GetReturn}.
-     */
-    type GetReturn<
-      EmbeddedName extends CollectionName,
-      Options extends EmbeddedCollection.GetOptions | undefined,
-    > = EmbeddedCollection.GetReturn<DocumentFor<EmbeddedName>, Options>;
-
-    /**
-     * @deprecated This type has been made internal. If you are actively using it for some reason, please let us know.
-     * This type will be removed in v15.
-     */
-    type CollectionNameOf<Name extends Embedded.CollectionName> = Document.Embedded._CollectionNameForName<
-      Metadata.Embedded,
-      Name
-    >;
+    type CollectionName = Document.Embedded.CollectionName<Metadata.Embedded>;
   }
 
   /**
    * The name of the world or embedded collection this document can find itself in.
    * For example an `Item` is always going to be inside a collection with a key of `items`.
-   * This is a fixed string per document type and is primarily useful for the descendant Document operation methods, e.g
-   * {@linkcode ClientDocumentMixin.AnyMixed._preCreateDescendantDocuments | ClientDocument._preCreateDescendantDocuments}.
+   * This is a fixed string per document type and is primarily useful for {@link ClientDocumentMixin | `Descendant Document Events`}.
    */
   type ParentCollectionName = Metadata["collection"];
 
   /**
    * The world collection that contains `Cards`s. Will be `never` if none exists.
    */
-  type CollectionClass = foundry.documents.collections.CardStacks.ImplementationClass;
+  type CollectionClass = foundry.documents.collections.CardStacks.ConfiguredClass;
 
   /**
    * The world collection that contains `Cards`s. Will be `never` if none exists.
    */
-  type Collection = foundry.documents.collections.CardStacks.Implementation;
+  type Collection = foundry.documents.collections.CardStacks.Configured;
 
   /**
    * An instance of `Cards` that comes from the database but failed validation meaning that
    * its `system` and `_source` could theoretically be anything.
    */
-  type Invalid = Document.Internal.Invalid<Implementation>;
+  interface Invalid extends Document.Internal.Invalid<Implementation> {}
 
   /**
    * An instance of `Cards` that comes from the database.
@@ -271,77 +236,52 @@ declare namespace Cards {
   type Stored<SubType extends Cards.SubType = Cards.SubType> = Document.Internal.Stored<OfType<SubType>>;
 
   /**
-   * The data put in {@linkcode Cards._source | Cards#_source}. This data is what was
+   * The data put in {@link Cards._source | `Cards#_source`}. This data is what was
    * persisted to the database and therefore it must be valid JSON.
    *
-   * For example a {@linkcode fields.SetField | SetField} is persisted to the database as an array
+   * For example a {@link fields.SetField | `SetField`} is persisted to the database as an array
    * but initialized as a {@linkcode Set}.
    */
   interface Source extends fields.SchemaField.SourceData<Schema> {}
 
   /**
    * The data necessary to create a document. Used in places like {@linkcode Cards.create}
-   * and {@linkcode Cards | new Cards(...)}.
+   * and {@link Cards | `new Cards(...)`}.
    *
-   * For example a {@linkcode fields.SetField | SetField} can accept any {@linkcode Iterable}
+   * For example a {@link fields.SetField | `SetField`} can accept any {@linkcode Iterable}
    * with the right values. This means you can pass a `Set` instance, an array of values,
    * a generator, or any other iterable.
    */
-  interface CreateData<SubType extends Cards.SubType = Cards.SubType> extends fields.SchemaField.CreateData<Schema> {
-    type: SubType;
-  }
+  interface CreateData extends fields.SchemaField.CreateData<Schema> {}
 
   /**
-   * Used in the {@linkcode Cards.create} and {@linkcode Cards.createDocuments} signatures, and
-   * {@linkcode Cards.Database.CreateOperation} and its derivative interfaces.
-   */
-  type CreateInput = CreateData | Implementation;
-
-  /**
-   * The helper type for the return of {@linkcode Cards.create}, returning (a single | an array of) (temporary | stored)
-   * `Cards`s.
-   *
-   * `| undefined` is included in the non-array branch because if a `.create` call with non-array data is cancelled by the `preCreate`
-   * method or hook, `shift`ing the return of `.createDocuments` produces `undefined`
-   */
-  type CreateReturn<Data extends MaybeArray<CreateInput>> =
-    Data extends Array<CreateInput> ? Cards.Stored[] : Cards.Stored | undefined;
-
-  /**
-   * The data after a {@linkcode Document} has been initialized, for example
-   * {@linkcode Cards.name | Cards#name}.
+   * The data after a {@link foundry.abstract.Document | `Document`} has been initialized, for example
+   * {@link Cards.name | `Cards#name`}.
    *
    * This is data transformed from {@linkcode Cards.Source} and turned into more
-   * convenient runtime data structures. For example a {@linkcode fields.SetField | SetField} is
+   * convenient runtime data structures. For example a {@link fields.SetField | `SetField`} is
    * persisted to the database as an array of values but at runtime it is a `Set` instance.
    */
   interface InitializedData extends fields.SchemaField.InitializedData<Schema> {}
 
   /**
-   * The data used to update a document, for example {@linkcode Cards.update | Cards#update}.
-   * It is a distinct type from {@linkcode Cards.CreateData | DeepPartial<Cards.CreateData>} because
+   * The data used to update a document, for example {@link Cards.update | `Cards#update`}.
+   * It is a distinct type from {@link Cards.CreateData | `DeepPartial<Cards.CreateData>`} because
    * it has different rules for `null` and `undefined`.
    */
   interface UpdateData extends fields.SchemaField.UpdateData<Schema> {}
 
   /**
-   * Used in the {@linkcode Cards.update | Cards#update} and
-   * {@linkcode Cards.updateDocuments} signatures, and {@linkcode Cards.Database.UpdateOperation}
-   * and its derivative interfaces.
-   */
-  type UpdateInput = UpdateData | Implementation;
-
-  /**
-   * The schema for {@linkcode Cards}. This is the source of truth for how a `Cards` document
+   * The schema for {@linkcode Cards}. This is the source of truth for how an Cards document
    * must be structured.
    *
    * Foundry uses this schema to validate the structure of the {@linkcode Cards}. For example
-   * a {@linkcode fields.StringField | StringField} will enforce that the value is a string. More
-   * complex fields like {@linkcode fields.SetField | SetField} goes through various conversions
+   * a {@link fields.StringField | `StringField`} will enforce that the value is a string. More
+   * complex fields like {@link fields.SetField | `SetField`} goes through various conversions
    * starting as an array in the database, initialized as a set, and allows updates with any
    * iterable.
    */
-  interface Schema extends fields.DataSchema {
+  interface Schema extends DataSchema {
     /**
      * The _id which uniquely identifies this stack of Cards document
      * @defaultValue `null`
@@ -355,7 +295,8 @@ declare namespace Cards {
      * The type of this stack, in BaseCards.metadata.types
      * @defaultValue `BaseCards.TYPES[0]`
      */
-    type: fields.DocumentTypeField<typeof BaseCards>;
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    type: fields.DocumentTypeField<typeof BaseCards, {}, Cards.SubType, Cards.SubType, Cards.SubType>;
 
     /**
      * A text description of this stack
@@ -382,7 +323,7 @@ declare namespace Cards {
      * A collection of Card documents which currently belong to this stack
      * @defaultValue `[]`
      */
-    cards: fields.EmbeddedCollectionField<typeof BaseCard, Cards.Implementation>;
+    cards: fields.EmbeddedCollectionField<typeof documents.BaseCard, Cards.Implementation>;
 
     /**
      * The visible width of this stack
@@ -412,7 +353,7 @@ declare namespace Cards {
      * The _id of a Folder which contains this document
      * @defaultValue `null`
      */
-    folder: fields.ForeignDocumentField<typeof BaseFolder>;
+    folder: fields.ForeignDocumentField<typeof documents.BaseFolder>;
 
     /**
      * The sort order of this stack relative to others in its parent collection
@@ -440,603 +381,196 @@ declare namespace Cards {
   }
 
   namespace Database {
-    /* ***********************************************
-     *                GET OPERATIONS                 *
-     *************************************************/
+    /** Options passed along in Get operations for Cards Documents */
+    interface Get extends foundry.abstract.types.DatabaseGetOperation<Cards.Parent> {}
 
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.GetOperation | GetOperation} interface for
-     * `Cards` documents. Valid for passing to
-     * {@linkcode ClientDatabaseBackend._getDocuments | ClientDatabaseBackend#_getDocuments}.
-     *
-     * The {@linkcode GetDocumentsOperation} and {@linkcode BackendGetOperation} interfaces derive from this one.
-     */
-    interface GetOperation extends DatabaseBackend.GetOperation<Cards.Parent> {}
-
-    /**
-     * The interface for passing to {@linkcode Cards.get}.
-     * @see {@linkcode Document.Database.GetDocumentsOperation}
-     */
-    interface GetDocumentsOperation extends Document.Database.GetDocumentsOperation<GetOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.get | DatabaseBackend#get} for `Cards` documents.
-     * @see {@linkcode Document.Database.BackendGetOperation}
-     */
-    interface BackendGetOperation extends Document.Database.BackendGetOperation<GetOperation> {}
-
-    /* ***********************************************
-     *              CREATE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.CreateOperation | DatabaseCreateOperation}
-     * interface for `Cards` documents.
-     *
-     * See {@linkcode DatabaseBackend.CreateOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode Cards.create}. The new name for that
-     * interface is {@linkcode CreateDocumentsOperation}.
-     */
-    interface CreateOperation extends DatabaseBackend.CreateOperation<Cards.CreateInput, Cards.Parent> {}
-
-    /**
-     * The interface for passing to {@linkcode Cards.create} or {@linkcode Cards.createDocuments}.
-     * @see {@linkcode Document.Database.CreateDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface CreateDocumentsOperation extends Document.Database.CreateDocumentsOperation<CreateOperation> {}
-
-    /**
-     * @deprecated `Cards` documents are never embedded. This interface exists for consistency with other documents.
-     *
-     * The interface for passing to the {@linkcode Document.createEmbeddedDocuments | #createEmbeddedDocuments} method of any Documents that
-     * can contain `Cards` documents. (see {@linkcode Cards.Parent})
-     * @see {@linkcode Document.Database.CreateEmbeddedOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface CreateEmbeddedOperation extends Document.Database.CreateEmbeddedOperation<CreateOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.create | DatabaseBackend#create} for `Cards` documents.
-     * @see {@linkcode Document.Database.BackendCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendCreateOperation extends Document.Database.BackendCreateOperation<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Cards._preCreate | Cards#_preCreate} and
-     * {@link Hooks.PreCreateDocument | the `preCreateCards` hook}.
-     * @see {@linkcode Document.Database.PreCreateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreCreateOptions extends Document.Database.PreCreateOptions<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Cards._preCreateOperation}.
-     * @see {@linkcode Document.Database.PreCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreCreateOperation extends Document.Database.PreCreateOperation<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Cards._onCreate | Cards#_onCreate} and
-     * {@link Hooks.CreateDocument | the `createCards` hook}.
-     * @see {@linkcode Document.Database.OnCreateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnCreateOptions extends Document.Database.OnCreateOptions<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Cards._onCreateOperation} and `Cards`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnCreateOperation extends Document.Database.OnCreateOperation<CreateOperation> {}
-
-    /* ***********************************************
-     *              UPDATE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.UpdateOperation | DatabaseUpdateOperation}
-     * interface for `Cards` documents.
-     *
-     * See {@linkcode DatabaseBackend.UpdateOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode Cards.update | Cards#update}.
-     * The new name for that interface is {@linkcode UpdateOneDocumentOperation}.
-     */
-    interface UpdateOperation extends DatabaseBackend.UpdateOperation<Cards.UpdateInput, Cards.Parent> {}
-
-    /**
-     * The interface for passing to {@linkcode Cards.update | Cards#update}.
-     * @see {@linkcode Document.Database.UpdateOneDocumentOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateOneDocumentOperation extends Document.Database.UpdateOneDocumentOperation<UpdateOperation> {}
-
-    /**
-     * @deprecated `Cards` documents are never embedded. This interface exists for consistency with other documents.
-     *
-     * The interface for passing to the {@linkcode Document.updateEmbeddedDocuments | #updateEmbeddedDocuments} method of any Documents that
-     * can contain `Cards` documents (see {@linkcode Cards.Parent}). This interface is just an alias
-     * for {@linkcode UpdateOneDocumentOperation}, as the same keys are provided by the method in both cases.
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateEmbeddedOperation extends UpdateOneDocumentOperation {}
-
-    /**
-     * The interface for passing to {@linkcode Cards.updateDocuments}.
-     * @see {@linkcode Document.Database.UpdateManyDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateManyDocumentsOperation extends Document.Database.UpdateManyDocumentsOperation<UpdateOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.update | DatabaseBackend#update} for `Cards` documents.
-     * @see {@linkcode Document.Database.BackendUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendUpdateOperation extends Document.Database.BackendUpdateOperation<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Cards._preUpdate | Cards#_preUpdate} and
-     * {@link Hooks.PreUpdateDocument | the `preUpdateCards` hook}.
-     * @see {@linkcode Document.Database.PreUpdateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreUpdateOptions extends Document.Database.PreUpdateOptions<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Cards._preUpdateOperation}.
-     * @see {@linkcode Document.Database.PreUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreUpdateOperation extends Document.Database.PreUpdateOperation<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Cards._onUpdate | Cards#_onUpdate} and
-     * {@link Hooks.UpdateDocument | the `updateCards` hook}.
-     * @see {@linkcode Document.Database.OnUpdateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnUpdateOptions extends Document.Database.OnUpdateOptions<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Cards._onUpdateOperation} and `Cards`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnUpdateOperation extends Document.Database.OnUpdateOperation<UpdateOperation> {}
-
-    /* ***********************************************
-     *              DELETE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.DeleteOperation | DatabaseDeleteOperation}
-     * interface for `Cards` documents.
-     *
-     * See {@linkcode DatabaseBackend.DeleteOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode Cards.delete | Cards#delete}.
-     * The new name for that interface is {@linkcode DeleteOneDocumentOperation}.
-     */
-    interface DeleteOperation extends DatabaseBackend.DeleteOperation<Cards.Parent> {}
-
-    /**
-     * The interface for passing to {@linkcode Cards.delete | Cards#delete}.
-     * @see {@linkcode Document.Database.DeleteOneDocumentOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteOneDocumentOperation extends Document.Database.DeleteOneDocumentOperation<DeleteOperation> {}
-
-    /**
-     * @deprecated `Cards` documents are never embedded. This interface exists for consistency with other documents.
-     *
-     * The interface for passing to the {@linkcode Document.deleteEmbeddedDocuments | #deleteEmbeddedDocuments} method of any Documents that
-     * can contain `Cards` documents (see {@linkcode Cards.Parent}). This interface is just an alias
-     * for {@linkcode DeleteOneDocumentOperation}, as the same keys are provided by the method in both cases.
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteEmbeddedOperation extends DeleteOneDocumentOperation {}
-
-    /**
-     * The interface for passing to {@linkcode Cards.deleteDocuments}.
-     * @see {@linkcode Document.Database.DeleteManyDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteManyDocumentsOperation extends Document.Database.DeleteManyDocumentsOperation<DeleteOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.delete | DatabaseBackend#delete} for `Cards` documents.
-     * @see {@linkcode Document.Database.BackendDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendDeleteOperation extends Document.Database.BackendDeleteOperation<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Cards._preDelete | Cards#_preDelete} and
-     * {@link Hooks.PreDeleteDocument | the `preDeleteCards` hook}.
-     * @see {@linkcode Document.Database.PreDeleteOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreDeleteOptions extends Document.Database.PreDeleteOptions<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Cards._preDeleteOperation}.
-     * @see {@linkcode Document.Database.PreDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreDeleteOperation extends Document.Database.PreDeleteOperation<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Cards._onDelete | Cards#_onDelete} and
-     * {@link Hooks.DeleteDocument | the `deleteCards` hook}.
-     * @see {@linkcode Document.Database.OnDeleteOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnDeleteOptions extends Document.Database.OnDeleteOptions<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Cards._onDeleteOperation} and `Cards`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnDeleteOperation extends Document.Database.OnDeleteOperation<DeleteOperation> {}
-
-    namespace Internal {
-      interface OperationNameMap {
-        GetDocumentsOperation: Cards.Database.GetDocumentsOperation;
-        BackendGetOperation: Cards.Database.BackendGetOperation;
-        GetOperation: Cards.Database.GetOperation;
-
-        CreateDocumentsOperation: Cards.Database.CreateDocumentsOperation;
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        CreateEmbeddedOperation: Cards.Database.CreateEmbeddedOperation;
-        BackendCreateOperation: Cards.Database.BackendCreateOperation;
-        CreateOperation: Cards.Database.CreateOperation;
-        PreCreateOptions: Cards.Database.PreCreateOptions;
-        PreCreateOperation: Cards.Database.PreCreateOperation;
-        OnCreateOptions: Cards.Database.OnCreateOptions;
-        OnCreateOperation: Cards.Database.OnCreateOperation;
-
-        UpdateOneDocumentOperation: Cards.Database.UpdateOneDocumentOperation;
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        UpdateEmbeddedOperation: Cards.Database.UpdateEmbeddedOperation;
-        UpdateManyDocumentsOperation: Cards.Database.UpdateManyDocumentsOperation;
-        BackendUpdateOperation: Cards.Database.BackendUpdateOperation;
-        UpdateOperation: Cards.Database.UpdateOperation;
-        PreUpdateOptions: Cards.Database.PreUpdateOptions;
-        PreUpdateOperation: Cards.Database.PreUpdateOperation;
-        OnUpdateOptions: Cards.Database.OnUpdateOptions;
-        OnUpdateOperation: Cards.Database.OnUpdateOperation;
-
-        DeleteOneDocumentOperation: Cards.Database.DeleteOneDocumentOperation;
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        DeleteEmbeddedOperation: Cards.Database.DeleteEmbeddedOperation;
-        DeleteManyDocumentsOperation: Cards.Database.DeleteManyDocumentsOperation;
-        BackendDeleteOperation: Cards.Database.BackendDeleteOperation;
-        DeleteOperation: Cards.Database.DeleteOperation;
-        PreDeleteOptions: Cards.Database.PreDeleteOptions;
-        PreDeleteOperation: Cards.Database.PreDeleteOperation;
-        OnDeleteOptions: Cards.Database.OnDeleteOptions;
-        OnDeleteOperation: Cards.Database.OnDeleteOperation;
-      }
+    /** Options passed along in Create operations for Cards Documents */
+    interface Create<Temporary extends boolean | undefined = boolean | undefined>
+      extends foundry.abstract.types.DatabaseCreateOperation<Cards.CreateData, Cards.Parent, Temporary> {
+      animate?: boolean;
     }
-  }
 
-  /**
-   * If `Temporary` is true then {@linkcode Cards.Implementation}, otherwise {@linkcode Cards.Stored}.
-   * @deprecated `Document.create`/`Documents` can no longer return temporary documents as of v14. This type will be removed in v15.
-   */
-  type TemporaryIf<Temporary extends boolean | undefined> =
-    true extends Extract<Temporary, true> ? Cards.Implementation : Cards.Stored;
+    /** Options passed along in Delete operations for Cards Documents */
+    interface Delete extends foundry.abstract.types.DatabaseDeleteOperation<Cards.Parent> {
+      animate?: boolean;
+    }
+
+    /** Options passed along in Update operations for Cards Documents */
+    interface Update extends foundry.abstract.types.DatabaseUpdateOperation<Cards.UpdateData, Cards.Parent> {
+      animate?: boolean;
+    }
+
+    /** Operation for {@linkcode Cards.createDocuments} */
+    interface CreateDocumentsOperation<Temporary extends boolean | undefined>
+      extends Document.Database.CreateOperation<Cards.Database.Create<Temporary>> {}
+
+    /** Operation for {@linkcode Cards.updateDocuments} */
+    interface UpdateDocumentsOperation extends Document.Database.UpdateDocumentsOperation<Cards.Database.Update> {}
+
+    /** Operation for {@linkcode Cards.deleteDocuments} */
+    interface DeleteDocumentsOperation extends Document.Database.DeleteDocumentsOperation<Cards.Database.Delete> {}
+
+    /** Operation for {@linkcode Cards.create} */
+    interface CreateOperation<Temporary extends boolean | undefined>
+      extends Document.Database.CreateOperation<Cards.Database.Create<Temporary>> {}
+
+    /** Operation for {@link Cards.update | `Cards#update`} */
+    interface UpdateOperation extends Document.Database.UpdateOperation<Update> {}
+
+    interface DeleteOperation extends Document.Database.DeleteOperation<Delete> {}
+
+    /** Options for {@linkcode Cards.get} */
+    interface GetOptions extends Document.Database.GetOptions {}
+
+    /** Options for {@link Cards._preCreate | `Cards#_preCreate`} */
+    interface PreCreateOptions extends Document.Database.PreCreateOptions<Create> {}
+
+    /** Options for {@link Cards._onCreate | `Cards#_onCreate`} */
+    interface OnCreateOptions extends Document.Database.CreateOptions<Create> {}
+
+    /** Operation for {@linkcode Cards._preCreateOperation} */
+    interface PreCreateOperation extends Document.Database.PreCreateOperationStatic<Cards.Database.Create> {}
+
+    /** Operation for {@link Cards._onCreateOperation | `Cards#_onCreateOperation`} */
+    interface OnCreateOperation extends Cards.Database.Create {}
+
+    /** Options for {@link Cards._preUpdate | `Cards#_preUpdate`} */
+    interface PreUpdateOptions extends Document.Database.PreUpdateOptions<Update> {}
+
+    /** Options for {@link Cards._onUpdate | `Cards#_onUpdate`} */
+    interface OnUpdateOptions extends Document.Database.UpdateOptions<Update> {}
+
+    /** Operation for {@linkcode Cards._preUpdateOperation} */
+    interface PreUpdateOperation extends Cards.Database.Update {}
+
+    /** Operation for {@link Cards._onUpdateOperation | `Cards._preUpdateOperation`} */
+    interface OnUpdateOperation extends Cards.Database.Update {}
+
+    /** Options for {@link Cards._preDelete | `Cards#_preDelete`} */
+    interface PreDeleteOptions extends Document.Database.PreDeleteOperationInstance<Delete> {}
+
+    /** Options for {@link Cards._onDelete | `Cards#_onDelete`} */
+    interface OnDeleteOptions extends Document.Database.DeleteOptions<Delete> {}
+
+    /** Options for {@link Cards._preDeleteOperation | `Cards#_preDeleteOperation`} */
+    interface PreDeleteOperation extends Cards.Database.Delete {}
+
+    /** Options for {@link Cards._onDeleteOperation | `Cards#_onDeleteOperation`} */
+    interface OnDeleteOperation extends Cards.Database.Delete {}
+
+    /** Context for {@linkcode Cards._onDeleteOperation} */
+    interface OnDeleteDocumentsContext extends Document.ModificationContext<Cards.Parent> {}
+
+    /** Context for {@linkcode Cards._onCreateDocuments} */
+    interface OnCreateDocumentsContext extends Document.ModificationContext<Cards.Parent> {}
+
+    /** Context for {@linkcode Cards._onUpdateDocuments} */
+    interface OnUpdateDocumentsContext extends Document.ModificationContext<Cards.Parent> {}
+
+    /**
+     * Options for {@link Cards._preCreateDescendantDocuments | `Cards#_preCreateDescendantDocuments`}
+     * and {@link Cards._onCreateDescendantDocuments | `Cards#_onCreateDescendantDocuments`}
+     */
+    interface CreateOptions extends Document.Database.CreateOptions<Cards.Database.Create> {}
+
+    /**
+     * Options for {@link Cards._preUpdateDescendantDocuments | `Cards#_preUpdateDescendantDocuments`}
+     * and {@link Cards._onUpdateDescendantDocuments | `Cards#_onUpdateDescendantDocuments`}
+     */
+    interface UpdateOptions extends Document.Database.UpdateOptions<Cards.Database.Update> {}
+
+    /**
+     * Options for {@link Cards._preDeleteDescendantDocuments | `Cards#_preDeleteDescendantDocuments`}
+     * and {@link Cards._onDeleteDescendantDocuments | `Cards#_onDeleteDescendantDocuments`}
+     */
+    interface DeleteOptions extends Document.Database.DeleteOptions<Cards.Database.Delete> {}
+
+    /**
+     * Create options for {@linkcode Cards.createDialog}.
+     */
+    interface DialogCreateOptions extends InexactPartial<Create> {}
+  }
 
   /**
    * The flags that are available for this document in the form `{ [scope: string]: { [key: string]: unknown } }`.
    */
-  interface Flags extends Document.Internal.ConfiguredFlagsForName<Name> {}
+  interface Flags extends Document.ConfiguredFlagsForName<Name> {}
 
   namespace Flags {
     /**
      * The valid scopes for the flags on this document e.g. `"core"` or `"dnd5e"`.
      */
-    type Scope = Document.Internal.FlagKeyOf<Flags>;
+    type Scope = Document.FlagKeyOf<Flags>;
 
     /**
      * The valid keys for a certain scope for example if the scope is "core" then a valid key may be `"sheetLock"` or `"viewMode"`.
      */
-    type Key<Scope extends Flags.Scope> = Document.Internal.FlagKeyOf<Document.Internal.FlagGetKey<Flags, Scope>>;
+    type Key<Scope extends Flags.Scope> = Document.FlagKeyOf<Document.FlagGetKey<Flags, Scope>>;
 
     /**
      * Gets the type of a particular flag given a `Scope` and a `Key`.
      */
-    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.Internal.GetFlag<Flags, Scope, Key>;
+    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.GetFlag<Name, Scope, Key>;
   }
 
-  /* ***********************************************
-   *       CLIENT DOCUMENT TEMPLATE TYPES          *
-   *************************************************/
-
-  /** The interface {@linkcode Cards.fromDropData} receives */
-  interface DropData extends Document.Internal.DropData<Name> {}
-
-  /**
-   * @deprecated Foundry prior to v13 had a completely unused `options` parameter in the {@linkcode Cards.fromDropData}
-   * signature that has since been removed. This type will be removed in v14.
-   */
-  type DropDataOptions = never;
-
-  /**
-   * The interface for passing to {@linkcode Cards.defaultName}
-   * @see {@linkcode Document.DefaultNameContext}
-   */
-  interface DefaultNameContext extends Document.DefaultNameContext<Name, Parent> {}
-
-  /**
-   * The interface for passing to {@linkcode Cards.createDialog}'s first parameter
-   * @see {@linkcode Document.CreateDialogData}
-   */
-  interface CreateDialogData extends Document.CreateDialogData<CreateData> {}
-
-  /**
-   * @deprecated This is for a deprecated signature, and will be removed in v15.
-   * The interface for passing to {@linkcode Cards.createDialog}'s second parameter that still includes partial Dialog
-   * options, instead of being purely a {@linkcode Database.CreateDocumentsOperation | CreateDocumentsOperation}.
-   */
-  interface CreateDialogDeprecatedOptions
-    extends Database.CreateDocumentsOperation, Document._PartialDialogV1OptionsForCreateDialog {}
-
-  /**
-   * The interface for passing to {@linkcode Cards.createDialog}'s third parameter
-   * @see {@linkcode Document.CreateDialogOptions}
-   */
-  interface CreateDialogOptions extends Document.CreateDialogOptions<Name> {}
-
-  /**
-   * The return type for {@linkcode Cards.createDialog}.
-   * @see {@linkcode Document.CreateDialogReturn}
-   */
-  type CreateDialogReturn<Config extends Cards.CreateDialogOptions | undefined> = Document.CreateDialogReturn<
+  type PreCreateDescendantDocumentsArgs = Document.PreCreateDescendantDocumentsArgs<
     Cards.Stored,
-    Config
-  >;
-
-  /**
-   * The return type for {@linkcode Cards.deleteDialog | Cards#deleteDialog}.
-   * @see {@linkcode Document.DeleteDialogReturn}
-   */
-  type DeleteDialogReturn<Config extends DialogV2.ConfirmConfig | undefined> = Document.DeleteDialogReturn<
-    Cards.Stored,
-    Config
-  >;
-
-  type PreCreateDescendantDocumentsArgs = Document.Internal.PreCreateDescendantDocumentsArgs<
-    Cards.Stored,
-    Cards.DirectDescendantName,
+    Cards.DirectDescendant,
     Cards.Metadata.Embedded
   >;
 
-  type OnCreateDescendantDocumentsArgs = Document.Internal.OnCreateDescendantDocumentsArgs<
+  type OnCreateDescendantDocumentsArgs = Document.OnCreateDescendantDocumentsArgs<
     Cards.Stored,
-    Cards.DirectDescendantName,
+    Cards.DirectDescendant,
     Cards.Metadata.Embedded
   >;
 
-  type PreUpdateDescendantDocumentsArgs = Document.Internal.PreUpdateDescendantDocumentsArgs<
+  type PreUpdateDescendantDocumentsArgs = Document.PreUpdateDescendantDocumentsArgs<
     Cards.Stored,
-    Cards.DirectDescendantName,
+    Cards.DirectDescendant,
     Cards.Metadata.Embedded
   >;
 
-  type OnUpdateDescendantDocumentsArgs = Document.Internal.OnUpdateDescendantDocumentsArgs<
+  type OnUpdateDescendantDocumentsArgs = Document.OnUpdateDescendantDocumentsArgs<
     Cards.Stored,
-    Cards.DirectDescendantName,
+    Cards.DirectDescendant,
     Cards.Metadata.Embedded
   >;
 
-  type PreDeleteDescendantDocumentsArgs = Document.Internal.PreDeleteDescendantDocumentsArgs<
+  type PreDeleteDescendantDocumentsArgs = Document.PreDeleteDescendantDocumentsArgs<
     Cards.Stored,
-    Cards.DirectDescendantName,
+    Cards.DirectDescendant,
     Cards.Metadata.Embedded
   >;
 
-  type OnDeleteDescendantDocumentsArgs = Document.Internal.OnDeleteDescendantDocumentsArgs<
+  type OnDeleteDescendantDocumentsArgs = Document.OnDeleteDescendantDocumentsArgs<
     Cards.Stored,
-    Cards.DirectDescendantName,
+    Cards.DirectDescendant,
     Cards.Metadata.Embedded
   >;
-
-  /* ***********************************************
-   *             CARDS-SPECIFIC TYPES              *
-   *************************************************/
 
   /**
-   * @remarks Passing anything else errors downstream when a lookup table lacking the provided key causes `Cards##postChatNotification` to
-   * call {@linkcode foundry.helpers.Localization.format | game.i18n.format} with an `undefined` first argument.
+   * @remarks Passing anything else errors downstream when a lookup table lacking the provided key causes
+   * {@link Cards._postChatNotification | `Cards#_postChatNotification`} to call {@link Localization.format | `game.i18n.format`}
+   * with an `undefined` first argument
    */
   type DealAction = "deal" | "pass";
 
   /**
-   * @remarks Passing anything else errors downstream when a lookup table lacking the provided key causes `Cards##postChatNotification` to
-   * call {@linkcode foundry.helpers.Localization.format | game.i18n.format} with an `undefined` first argument.
+   * @remarks Passing anything else errors downstream when a lookup table lacking the provided key causes
+   * {@link Cards._postChatNotification | `Cards#_postChatNotification`} to call {@link Localization.format | `game.i18n.format`}
+   * with an `undefined` first argument
    */
   type PassAction = "pass" | "play" | "draw" | "discard";
 
   /** @internal */
-  interface _ChatNotificationOption {
+  type _ChatNotificationOption = NullishProps<{
     /**
      * Create a ChatMessage which notifies that this action has occurred
      * @defaultValue `true`
      */
     chatNotification: boolean;
-  }
+  }>;
 
   /**
    * Omitting one word from the different descriptions in various methods' JSDocs lets
@@ -1044,44 +578,39 @@ declare namespace Cards {
    *
    * @internal
    */
-  interface _UpdateDataOption {
+  type _UpdateDataOption = InexactPartial<{
     /**
      * Modifications to make to each Card as part of the [...] operation, for example the displayed face
      * @defaultValue `{}`
+     * @remarks Can't be `null` as it only has a parameter default
      */
     updateData: Card.UpdateData;
-  }
+  }>;
 
-  /** @internal */
-  interface _HowOption {
+  type _HowOption = InexactPartial<{
     /**
-     * How to draw, a value from {@linkcode CONST.CARD_DRAW_MODES}
-     * @defaultValue {@linkcode CONST.CARD_DRAW_MODES.FIRST}
-     * @remarks Passed to {@linkcode Cards._drawCards | Cards#_drawCards}.
+     * How to draw, a value from CONST.CARD_DRAW_MODES
+     * @defaultValue `CONST.CARD_DRAW_MODES.FIRST`
+     * @remarks Can't be `null` as it only has a parameter default
      */
     how: CONST.CARD_DRAW_MODES;
-  }
+  }>;
 
   /** @internal */
-  interface _DealOptions {
+  type _DealOptions = InexactPartial<{
     /**
      * The name of the action being performed, used as part of the dispatched Hook event
      * @defaultValue `"deal"`
-     * @remarks See {@linkcode Cards.DealAction}
+     * @remarks Can't be `null` as it only has a parameter default. See {@linkcode Cards.DealAction}
      */
     action: DealAction;
-  }
+  }>;
 
-  interface DealOptions
-    extends
-      InexactPartial<_DealOptions>,
-      InexactPartial<_HowOption>,
-      InexactPartial<_UpdateDataOption>,
-      InexactPartial<_ChatNotificationOption> {}
+  interface DealOptions extends _DealOptions, _HowOption, _UpdateDataOption, _ChatNotificationOption {}
 
   /**
    * Additional context which describes the operation
-   * @remarks This is the context provided to the {@linkcode Hooks.StaticCallbacks.dealCards | dealCards} hook.
+   * @remarks This is the context provided to the {@link Hooks.StaticCallbacks.dealCards | `dealCards`} hook
    */
   interface DealContext {
     /**
@@ -1092,7 +621,7 @@ declare namespace Cards {
 
     /**
      * An array of Card creation operations to be performed in each destination Cards document
-     * @remarks Outer array: one element per `to` provided to this {@linkcode Cards.deal | Cards#deal} call
+     * @remarks Outer array: one element per `to` provided to this {@link Cards.deal | `Cards#deal`} call
      */
     toCreate: Card.CreateData[][];
 
@@ -1110,20 +639,20 @@ declare namespace Cards {
   }
 
   /** @internal */
-  interface _PassOptions {
+  type _PassOptions = InexactPartial<{
     /**
      * The name of the action being performed, used as part of the dispatched Hook event
      * @defaultValue `"pass"`
+     * @remarks Can't be `null` as it only has a parameter default. See {@linkcode PassAction}
      */
     action: PassAction;
-  }
+  }>;
 
-  interface PassOptions
-    extends InexactPartial<_PassOptions>, InexactPartial<_UpdateDataOption>, InexactPartial<_ChatNotificationOption> {}
+  interface PassOptions extends _PassOptions, _UpdateDataOption, _ChatNotificationOption {}
 
   /**
    * Additional context which describes the operation
-   * @remarks This is the context provided to the {@linkcode Hooks.StaticCallbacks.passCards | passCards} hook.
+   * @remarks This is the context provided to the {@link Hooks.StaticCallbacks.passCards | `passCards`} hook
    */
   interface PassContext extends Pick<DealContext, "fromUpdate" | "fromDelete"> {
     /**
@@ -1144,44 +673,28 @@ declare namespace Cards {
     toUpdate: Card.UpdateData[];
   }
 
+  interface DropData extends Document.Internal.DropData<Name> {}
+  interface DropDataOptions extends Document.DropDataOptions {}
+
+  interface DefaultNameContext extends Document.DefaultNameContext<Name, Parent> {}
+
+  interface CreateDialogData extends Document.CreateDialogData<CreateData> {}
+  interface CreateDialogOptions extends Document.CreateDialogOptions<Name> {}
+
   /**
-   * @remarks {@linkcode Cards.draw | Cards#draw} spreads this into an object, minus `how`, with the `action` preset to `"draw"`,
-   * which wouldn't make sense to change, then passes that to {@linkcode Cards.pass | Cards#pass}
+   * @remarks {@link Cards.draw | `Cards#draw`} spreads this into an object, minus `how`, with the `action` preset to `"draw"`,
+   * which wouldn't make sense to change, then passes that to {@link Cards.pass | `Cards#pass`}
    * @privateRemarks `action` omitted as it's already provided.
    */
-  interface DrawOptions extends InexactPartial<_HowOption>, Omit<PassOptions, "action"> {
-    /**
-     * @deprecated While passing `action` is technically valid, it's unclear why this would ever be done.
-     * If you need to do this call {@linkcode Cards.pass | Cards#pass} directly instead.
-     */
-    action?: never;
-  }
+  interface DrawOptions extends _HowOption, Omit<PassOptions, "action"> {}
 
-  interface ShuffleOptions extends InexactPartial<_UpdateDataOption>, InexactPartial<_ChatNotificationOption> {}
+  interface ShuffleOptions extends _UpdateDataOption, _ChatNotificationOption {}
 
-  interface RecallOptions extends InexactPartial<_UpdateDataOption>, InexactPartial<_ChatNotificationOption> {}
-
-  type DealDialogReturn<ConcreteCards extends Cards.Implementation> = DialogV2.PromptReturn<{
-    ok: { callback: (e: Event, button: HTMLElement) => Promise<ConcreteCards> };
-  }>;
-
-  type DrawDialogReturn = DialogV2.PromptReturn<{
-    ok: { callback: (e: Event, button: HTMLElement) => Promise<Card.Stored[]> };
-  }>;
-
-  /** {@linkcode Cards.passDialog | Cards#passDialog} actually calls {@linkcode Cards.deal | #deal}, not {@linkcode Cards.pass | #pass}. */
-  type PassDialogReturn<ConcreteCards extends Cards.Implementation> = DealDialogReturn<ConcreteCards>;
-
-  /** @privateRemarks This equivalence is structural, it doesn't represent any shared code paths, the returns are just equivalent. */
-  type PlayDialogReturn = DrawDialogReturn;
-
-  type ResetDialogReturn<ConcreteCards extends Cards.Implementation> = DialogV2.ConfirmReturn<{
-    yes: { callback: () => Promise<ConcreteCards> };
-  }>;
+  interface RecallOptions extends _UpdateDataOption, _ChatNotificationOption {}
 
   /**
    * Additional context which describes the operation.
-   * @remarks This is the context provided to the {@linkcode Hooks.StaticCallbacks.returnCards | returnCards} hook
+   * @remarks This is the context provided to the {@link Hooks.StaticCallbacks.returnCards | `returnCards`} hook
    */
   interface ReturnContext extends Pick<DealContext, "fromDelete"> {
     /**
@@ -1193,16 +706,11 @@ declare namespace Cards {
   /**
    * The arguments to construct the document.
    *
-   * @deprecated Writing the signature directly has helped reduce circularities and therefore is
-   * now recommended. This type will be removed in v14.
+   * @deprecated - Writing the signature directly has helped reduce circularities and therefore is
+   * now recommended.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   type ConstructorArgs = Document.ConstructorParameters<CreateData, Parent>;
-
-  /**
-   * @deprecated Replaced with {@linkcode Cards.ConfiguredSubType} (will be removed in v14).
-   */
-  type ConfiguredSubTypes = ConfiguredSubType;
 }
 
 /**
@@ -1218,7 +726,7 @@ declare class Cards<out SubType extends Cards.SubType = Cards.SubType> extends B
    * @param data    - Initial data from which to construct the `Cards`
    * @param context - Construction context options
    */
-  constructor(data: Cards.CreateData<SubType>, context?: Cards.ConstructionContext);
+  constructor(data: Cards.CreateData, context?: Cards.ConstructionContext);
 
   /**
    * Provide a thumbnail image path used to represent this document.
@@ -1228,17 +736,15 @@ declare class Cards<out SubType extends Cards.SubType = Cards.SubType> extends B
   /**
    * The Card documents within this stack which are able to be drawn.
    */
-  get availableCards(): Card.Stored[];
+  get availableCards(): Card.Implementation[];
 
   /**
    * The Card documents which belong to this stack but have already been drawn.
    */
-  get drawnCards(): Card.Stored[];
+  get drawnCards(): Card.Implementation[];
 
   /**
    * Returns the localized Label for the type of Card Stack this is
-   * @remarks This has a hardcoded `switch` statement that throws for values that aren't in the core-provided `type`s
-   * (`"deck"`, `"hand"`, `"pile"`). Anyone adding a new type as a system or module must override this.
    */
   get typeLabel(): string;
 
@@ -1248,12 +754,12 @@ declare class Cards<out SubType extends Cards.SubType = Cards.SubType> extends B
   get canClone(): boolean;
 
   /**
-   * @remarks `Cards` override sets `context.keepEmbeddedIds` to `false` if it's `=== undefined`
+   * @remarks Sets `context.keepEmbeddedIds` to `false` if it's `=== undefined`
    */
-  static override createDocuments(
-    data: Cards.CreateInput[],
-    operation?: Cards.Database.CreateDocumentsOperation,
-  ): Promise<Cards.Stored[]>;
+  static override createDocuments<Temporary extends boolean | undefined = undefined>(
+    data: Array<Cards.Implementation | Cards.CreateData> | undefined,
+    operation?: Document.Database.CreateOperation<Cards.Database.Create<Temporary>>,
+  ): Promise<Array<Document.TemporaryIf<Cards.Implementation, Temporary>>>;
 
   /**
    * Deal one or more cards from this Cards document to each of a provided array of Cards destinations.
@@ -1263,7 +769,7 @@ declare class Cards<out SubType extends Cards.SubType = Cards.SubType> extends B
    * @param options - Options which modify how the deal operation is performed (default: `{}`)
    * @returns This Cards document after the deal operation has completed
    */
-  deal(to: Cards.Stored[], number?: number, options?: Cards.DealOptions): Promise<this>;
+  deal(to: Cards.Implementation[], number?: number, options?: Cards.DealOptions): Promise<Cards.Implementation>;
 
   /**
    * Pass an array of specific Card documents from this document to some other Cards stack.
@@ -1272,7 +778,7 @@ declare class Cards<out SubType extends Cards.SubType = Cards.SubType> extends B
    * @param options - Additional options which modify the pass operation (default: `{}`)
    * @returns An array of the Card embedded documents created within the destination stack
    */
-  pass(to: Cards.Stored, ids: string[], options?: Cards.PassOptions): Promise<Card.Stored[]>;
+  pass(to: Cards.Implementation, ids: string[], options?: Cards.PassOptions): Promise<Card.Implementation[]>;
 
   /**
    * Draw one or more cards from some other Cards document.
@@ -1281,7 +787,7 @@ declare class Cards<out SubType extends Cards.SubType = Cards.SubType> extends B
    * @param options - Options which modify how the draw operation is performed (default: `{}`)
    * @returns An array of the Card documents which were drawn
    */
-  draw(from: Cards.Stored, number?: number, options?: Cards.DrawOptions): Promise<Card.Stored[]>;
+  draw(from: Cards.Implementation, number?: number, options?: Cards.DrawOptions): Promise<Card.Implementation[]>;
 
   /**
    * Shuffle this Cards stack, randomizing the sort order of all the cards it contains.
@@ -1324,89 +830,54 @@ declare class Cards<out SubType extends Cards.SubType = Cards.SubType> extends B
   /**
    * An internal helper method for drawing a certain number of Card documents from this Cards stack.
    * @param number - The number of cards to draw
-   * @param how    - A draw mode from {@linkcode CONST.CARD_DRAW_MODES}
+   * @param how    - A draw mode from CONST.CARD_DRAW_MODES
    * @returns An array of drawn Card documents
    */
-  protected _drawCards(number: number, how: CONST.CARD_DRAW_MODES): Card.Stored[];
+  protected _drawCards(number: number, how: CONST.CARD_DRAW_MODES): Card.Implementation[];
 
-  // For type simplicity the following real override(s) are commented out.
-  // These methods historically have been the source of a large amount of computation from tsc.
-
-  // protected override _preCreate(
-  //   data: Cards.CreateData,
-  //   options: Cards.Database.PreCreateOptions,
-  //   user: User.Stored,
-  // ): Promise<boolean | void>;
-
-  // protected override _preDelete(options: Cards.Database.PreDeleteOptions, user: User.Stored): Promise<boolean | void>;
+  // _preCreate and _preDelete are overridden but with no signature changes from BaseCards.
 
   /**
    * Display a dialog which prompts the user to deal cards to some number of hand-type Cards documents.
-   * @see {@linkcode Cards.deal | Cards#deal}
+   * @see {@link Cards.deal | `Cards#deal`}
    */
-  dealDialog(): Promise<Cards.DealDialogReturn<this>>;
+  dealDialog(): Promise<this | null>;
 
   /**
    * Display a dialog which prompts the user to draw cards from some other deck-type Cards documents.
-   * @see {@linkcode Cards.draw | Cards#draw}
+   * @see {@link Cards.draw | `Cards#draw`}
    */
-  drawDialog(): Promise<Cards.DrawDialogReturn>;
+  drawDialog(): Promise<Card.Implementation[] | null>;
 
   /**
    * Display a dialog which prompts the user to pass cards from this document to some other other Cards document.
-   * @see {@linkcode Cards.deal | Cards#deal}
-   * @remarks The `@see` above is accurate, see {@linkcode Cards.PassDialogReturn}.
+   * @see {@link Cards.deal | `Cards#deal`}
    */
-  passDialog(): Promise<Cards.PassDialogReturn<this>>;
+  passDialog(): Promise<this | null>;
 
   /**
    * Display a dialog which prompts the user to play a specific Card to some other Cards document
-   * @see {@linkcode Cards.pass | Cards#pass}
+   * @see {@link Cards.pass | `Cards#pass`}
    * @param card - The specific card being played as part of this dialog
    */
-  playDialog(card: Card.Stored): Promise<Cards.PlayDialogReturn>;
+  playDialog(card: Card.Implementation): Promise<Card.Implementation[] | null>;
 
   /**
    * Display a confirmation dialog for whether or not the user wishes to reset a Cards stack
-   * @see {@linkcode Cards.reset | Cards#reset}
+   * @see {@link Cards.reset | `Cards#reset`}
    */
-  resetDialog(): Promise<Cards.ResetDialogReturn<this>>;
+  resetDialog(): Promise<this | false | null>;
 
-  override deleteDialog<Options extends DialogV2.ConfirmConfig | undefined = undefined>(
-    options?: Options,
-    operation?: Cards.Database.DeleteOneDocumentOperation,
-  ): Promise<Cards.DeleteDialogReturn<Options>>;
+  override deleteDialog(
+    options?: InexactPartial<foundry.applications.api.DialogV2.ConfirmConfig>,
+  ): Promise<this | false | null | undefined>;
 
-  /**
-   * @deprecated "`options` is now an object containing entries supported by {@linkcode DialogV2.confirm | DialogV2.confirm}."
-   * (since v13, until v15)
-   *
-   * @see {@linkcode Document.DeleteDialogDeprecatedConfig}
-   */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  override deleteDialog<Options extends Document.DeleteDialogDeprecatedConfig | undefined = undefined>(
-    options?: Options,
-    operation?: Cards.Database.DeleteOneDocumentOperation,
-  ): Promise<Cards.DeleteDialogReturn<Options>>;
-
-  static override createDialog<Options extends Cards.CreateDialogOptions | undefined = undefined>(
+  /** @remarks No type changes, just creates a fancier `Dialog` than `super` */
+  static override createDialog(
     data?: Cards.CreateDialogData,
-    createOptions?: Cards.Database.CreateDocumentsOperation,
-    options?: Options,
-  ): Promise<Cards.CreateDialogReturn<Options>>;
-
-  /**
-   * @deprecated "The `ClientDocument.createDialog` signature has changed. It now accepts database operation options in its second
-   * parameter, and options for {@linkcode DialogV2.prompt} in its third parameter." (since v13, until v15)
-   *
-   * @see {@linkcode Cards.CreateDialogDeprecatedOptions}
-   */
-  static override createDialog<Options extends Cards.CreateDialogOptions | undefined = undefined>(
-    data: Cards.CreateDialogData,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    createOptions: Cards.CreateDialogDeprecatedOptions,
-    options?: Options,
-  ): Promise<Cards.CreateDialogReturn<Options>>;
+    createOptions?: Cards.Database.DialogCreateOptions,
+    options?: Cards.CreateDialogOptions,
+  ): Promise<Cards.Stored | null | undefined>;
 
   /*
    * After this point these are not really overridden methods.
@@ -1420,29 +891,124 @@ declare class Cards<out SubType extends Cards.SubType = Cards.SubType> extends B
 
   // ClientDocument overrides
 
+  /**
+   * @remarks To make it possible for narrowing one parameter to jointly narrow other parameters
+   * this method must be overridden like so:
+   * ```typescript
+   * class SwadeCards extends Cards {
+   *   protected override _preCreateDescendantDocuments(...args: Cards.PreCreateDescendantDocumentsArgs) {
+   *     super._preCreateDescendantDocuments(...args);
+   *
+   *     const [parent, collection, data, options, userId] = args;
+   *     if (collection === "cards") {
+   *         options; // Will be narrowed.
+   *     }
+   *   }
+   * }
+   * ```
+   */
   protected override _preCreateDescendantDocuments(...args: Cards.PreCreateDescendantDocumentsArgs): void;
 
+  /**
+   * @remarks To make it possible for narrowing one parameter to jointly narrow other parameters
+   * this method must be overridden like so:
+   * ```typescript
+   * class GurpsCards extends Cards {
+   *   protected override _onCreateDescendantDocuments(...args: Cards.OnCreateDescendantDocumentsArgs) {
+   *     super._onCreateDescendantDocuments(...args);
+   *
+   *     const [parent, collection, documents, data, options, userId] = args;
+   *     if (collection === "cards") {
+   *         options; // Will be narrowed.
+   *     }
+   *   }
+   * }
+   * ```
+   */
   protected override _onCreateDescendantDocuments(...args: Cards.OnCreateDescendantDocumentsArgs): void;
 
+  /**
+   * @remarks To make it possible for narrowing one parameter to jointly narrow other parameters
+   * this method must be overridden like so:
+   * ```typescript
+   * class LancerCards extends Cards {
+   *   protected override _preUpdateDescendantDocuments(...args: Cards.OnUpdateDescendantDocuments) {
+   *     super._preUpdateDescendantDocuments(...args);
+   *
+   *     const [parent, collection, changes, options, userId] = args;
+   *     if (collection === "cards") {
+   *         options; // Will be narrowed.
+   *     }
+   *   }
+   * }
+   * ```
+   */
   protected override _preUpdateDescendantDocuments(...args: Cards.PreUpdateDescendantDocumentsArgs): void;
 
+  /**
+   * @remarks To make it possible for narrowing one parameter to jointly narrow other parameters
+   * this method must be overridden like so:
+   * ```typescript
+   * class Ptr2eCards extends Cards {
+   *   protected override _onUpdateDescendantDocuments(...args: Cards.OnUpdateDescendantDocumentsArgs) {
+   *     super._onUpdateDescendantDocuments(...args);
+   *
+   *     const [parent, collection, documents, changes, options, userId] = args;
+   *     if (collection === "cards") {
+   *         options; // Will be narrowed.
+   *     }
+   *   }
+   * }
+   * ```
+   */
   protected override _onUpdateDescendantDocuments(...args: Cards.OnUpdateDescendantDocumentsArgs): void;
 
+  /**
+   * @remarks To make it possible for narrowing one parameter to jointly narrow other parameters
+   * this method must be overridden like so:
+   * ```typescript
+   * class KultCards extends Cards {
+   *   protected override _preDeleteDescendantDocuments(...args: Cards.PreDeleteDescendantDocumentsArgs) {
+   *     super._preDeleteDescendantDocuments(...args);
+   *
+   *     const [parent, collection, ids, options, userId] = args;
+   *     if (collection === "cards") {
+   *         options; // Will be narrowed.
+   *     }
+   *   }
+   * }
+   * ```
+   */
   protected override _preDeleteDescendantDocuments(...args: Cards.PreDeleteDescendantDocumentsArgs): void;
 
+  /**
+   * @remarks To make it possible for narrowing one parameter to jointly narrow other parameters
+   * this method must be overridden like so:
+   * ```typescript
+   * class BladesCards extends Cards {
+   *   protected override _onDeleteDescendantDocuments(...args: Cards.OnUpdateDescendantDocuments) {
+   *     super._onDeleteDescendantDocuments(...args);
+   *
+   *     const [parent, collection, documents, ids, options, userId] = args;
+   *     if (collection === "cards") {
+   *         options; // Will be narrowed.
+   *     }
+   *   }
+   * }
+   * ```
+   */
   protected override _onDeleteDescendantDocuments(...args: Cards.OnDeleteDescendantDocumentsArgs): void;
 
   static override defaultName(context?: Cards.DefaultNameContext): string;
 
-  // `createDialog` omitted from template due to real override above.
-
-  // `deleteDialog` omitted from template due to real override above.
-
-  static override fromDropData(data: Cards.DropData): Promise<Cards.Implementation | undefined>;
+  static override fromDropData(
+    data: Cards.DropData,
+    options?: Cards.DropDataOptions,
+  ): Promise<Cards.Implementation | undefined>;
 
   static override fromImport(
     source: Cards.Source,
-    context?: Document.FromImportContext<Cards.Parent>,
+    context?: Document.FromImportContext<Cards.Parent> | null,
   ): Promise<Cards.Implementation>;
 
   override _onClickDocumentLink(event: MouseEvent): ClientDocument.OnClickDocumentLinkReturn;

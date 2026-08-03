@@ -3,7 +3,6 @@ import { expectTypeOf } from "vitest";
 import AVClient = foundry.av.AVClient;
 import AVConfig = foundry.applications.settings.menus.AVConfig;
 import AVMaster = foundry.av.AVMaster;
-import AVSettings = foundry.av.AVSettings;
 
 declare class CustomAVCLient extends AVClient {
   updateLocalStream(): Promise<void>;
@@ -11,8 +10,7 @@ declare class CustomAVCLient extends AVClient {
   connect(): Promise<boolean>;
   disconnect(): Promise<boolean>;
   getConnectedUsers(): string[];
-  getMediaStreamForUser(userId: string): MediaStream | null | undefined;
-  getLevelsStreamForUser(userId: string): MediaStream | null | undefined;
+  getMediaStreamForUser(userId: string): MediaStream | null;
   isAudioEnabled(): boolean;
   isVideoEnabled(): boolean;
   toggleAudio(enable: boolean): void;
@@ -49,5 +47,5 @@ expectTypeOf(avMaster.client).toEqualTypeOf<CustomAVCLient>();
 expectTypeOf(avMaster.client.customProperty).toEqualTypeOf<string>();
 
 if (game instanceof Game) {
-  expectTypeOf(game.webrtc?.client.customProperty).toEqualTypeOf<string | undefined>();
+  expectTypeOf(game?.webrtc?.client.customProperty).toEqualTypeOf<string | undefined>();
 }

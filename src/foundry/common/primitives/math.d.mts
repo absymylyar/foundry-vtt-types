@@ -4,17 +4,13 @@ declare global {
   interface Math {
     /**
      * √3
-     * @remarks Created with `defineProperties` with no options other than `value` specified, making it
-     * `writeable: false, enumerable: false, configurable: false` by default
      */
-    readonly SQRT3: 1.7320508075688772;
+    SQRT3: 1.7320508075688772;
 
     /**
      * √⅓
-     * @remarks Created with `defineProperties` with no options other than `value` specified, making it
-     * `writeable: false, enumerable: false, configurable: false` by default
      */
-    readonly SQRT1_3: 0.5773502691896257;
+    SQRT1_3: 0.5773502691896257;
 
     /**
      * Bound a number between some minimum and maximum value, inclusively.
@@ -31,7 +27,7 @@ declare global {
      * @param min - The minimum allowed value
      * @param max - The maximum allowed value
      * @returns The clamped number
-     * @deprecated "Math.clamped is deprecated in favor of {@linkcode Math.clamp}." (since v12, until v14)
+     * @deprecated since v12 till v14
      */
     clamped(num: number, min: number, max: number): number;
 
@@ -45,22 +41,21 @@ declare global {
     mix(a: number, b: number, w: number): number;
 
     /**
-     * Transform an angle in degrees to be bounded within the domain [0, 360)
+     * Transform an angle in degrees to be bounded within the domain [0, 360]
      * @param degrees - An angle in degrees
-     * @returns The same angle on the range [0, 360)
+     * @returns The same angle on the range [0, 360) or (0, 360]
      */
     normalizeDegrees(degrees: number): number;
 
     /**
      * Transform an angle in degrees to be bounded within the domain [0, 360]
      * @param degrees - An angle in degrees
-     * @param base    - The base angle to normalize to, either 0 for [0, 360) or 360 for (0, 360]
+     * @param base    - The base angle to normalize to, either 0 for [0, 360) or 360 for (0, 360] (default: `0`)
      * @returns The same angle on the range [0, 360) or (0, 360]
-     * @deprecated "`Math.normalizeDegrees(degrees, base)` is deprecated." (since v12, until v14)
-     * @remarks Despite the parameter description, passing *any* non-`undefined` value for `base` changes behaviour.
-     * This is accurate to the behaviour in v11 and earlier, it's unclear why this wasn't originally a boolean.
+     * @deprecated since v12, until v14.
+     * @remarks Use Math.normalizeDegrees(degrees: number): number.
      */
-    normalizeDegrees(degrees: number, base: number): number;
+    normalizeDegrees(degrees: number, base?: number): number;
 
     /**
      * Transform an angle in radians to be bounded within the domain [-PI, PI]
@@ -73,7 +68,7 @@ declare global {
      * Round a floating point number to a certain number of decimal places
      * @param number - A floating point number
      * @param places - An integer number of decimal places
-     * @deprecated "`Math.roundDecimals` is deprecated." (since v12, until v14)
+     * @deprecated since v12, until v14
      */
     roundDecimals(number: number, places: number): number;
 
@@ -96,9 +91,12 @@ declare global {
      * @param  minVal - The minimal value of the oscillation.
      * @param  maxVal - The maximum value of the oscillation.
      * @param  t      - The time value.
-     * @param  p      - The period (must be nonzero). (default: `1`)
-     * @param  fn     - The optional math function to use for oscillation.  Its period must be 2π (default: `Math.cos`)
-     * @returns The oscillation according to t. `((maxVal - minVal) * (fn(2π * t / p) + 1) / 2) + minVal`
+     * @param  p      - The period (must be nonzero).
+     *                  (default: `1`)
+     * @param  func   - The optional math function to use for oscillation.
+     *                  (default: `Math.cos`)
+     *                  Its period must be 2π
+     * @returns The oscillation according to t. `((maxValue - minValue) * (f(2π * t / p) + 1) / 2) + minValue`
      */
     oscillation(
       minVal: number,
@@ -107,7 +105,7 @@ declare global {
       p?: number,
 
       /** @immediate */
-      fn?: (radians: number) => number,
+      func?: (radians: number) => number,
     ): number;
   }
 }

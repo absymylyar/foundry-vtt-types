@@ -1,9 +1,10 @@
-import type { DeepReadonly, MaybeArray, OverlapsWith } from "#utils";
-import type { DataModel, Document } from "#common/abstract/_module.d.mts";
-import type { DataField, SchemaField } from "#common/data/fields.d.mts";
+import type { AnyMutableObject, DeepReadonly, InexactPartial } from "#utils";
+import type { DataModel } from "../abstract/data.d.mts";
+import type Document from "../abstract/document.mts";
+import type * as CONST from "../constants.mts";
+import type { DataField, SchemaField } from "../data/fields.d.mts";
 import type { fields } from "../data/_module.d.mts";
-import type { Canvas } from "#client/canvas/_module.d.mts";
-import type { BaseGrid } from "#common/grid/_module.d.mts";
+import type { LogCompatibilityWarningOptions } from "../utils/logging.d.mts";
 
 /**
  * The base Token model definition which defines common behavior of an Token document between both client and server.
@@ -20,11 +21,11 @@ declare abstract class BaseToken extends Document<"Token", BaseToken.Schema, any
    * order to use documents on both the client (i.e. where all your code runs) and behind the scenes
    * on the server to manage document validation and storage.
    *
-   * You should use {@linkcode TokenDocument.implementation | new TokenDocument.implementation(...)} instead which will give you
+   * You should use {@link TokenDocument.implementation | `new TokenDocument.implementation(...)`} instead which will give you
    * a system specific implementation of `TokenDocument`.
    */
   // Note(LukeAbby): Optional as there are currently no required properties on `CreateData`.
-  constructor(data?: BaseToken.CreateData, context?: BaseToken.ConstructionContext);
+  constructor(data?: TokenDocument.CreateData, context?: TokenDocument.ConstructionContext);
 
   /**
    * @defaultValue
@@ -64,7 +65,7 @@ declare abstract class BaseToken extends Document<"Token", BaseToken.Schema, any
 
   /**
    * The default icon used for newly created Token documents
-   * @defaultValue {@linkcode CONST.DEFAULT_TOKEN}
+   * @defaultValue `CONST.DEFAULT_TOKEN`
    */
   static DEFAULT_ICON: string;
 
@@ -72,13 +73,16 @@ declare abstract class BaseToken extends Document<"Token", BaseToken.Schema, any
    * Prepare changes to a descendent delta collection.
    * @param changes - Candidate source changes.
    * @param options - Options which determine how the new data is merged.
-   * @internal
    */
-  _prepareDeltaUpdate(changes?: BaseToken.UpdateData, options?: DataModel.UpdateOptions): void;
+  protected _prepareDeltaUpdate(changes?: TokenDocument.UpdateData, options?: DataModel.UpdateOptions): void;
 
-  override updateSource(changes: BaseToken.UpdateData, options?: DataModel.UpdateOptions): BaseToken.UpdateData;
+  // changes, options: not null (parameter default only)
+  override updateSource(
+    changes?: TokenDocument.UpdateData,
+    options?: DataModel.UpdateOptions,
+  ): TokenDocument.UpdateData;
 
-  override clone<Save extends boolean | undefined = false>(
+  override clone<Save extends boolean | null | undefined = false>(
     data?: BaseToken.CreateData,
     context?: Document.CloneContext<Save>,
   ): Document.Clone<this, Save>;
@@ -88,38 +92,39 @@ declare abstract class BaseToken extends Document<"Token", BaseToken.Schema, any
    * @param data - The position and dimensions
    * @returns The snapped position
    */
-  getSnappedPosition(data?: TokenDocument.Dimensions3D): Canvas.ElevatedPoint;
+  getSnappedPosition(data?: TokenDocument.Dimensions3D): foundry.canvas.Canvas.ElevatedPoint;
 
   /**
    * Get the top-left offset of the Token
    * @param data - The position and dimensions
    * @returns The top-left grid offset
-   * @internal
    */
-  _positionToGridOffset(data?: TokenDocument.Dimensions3D): BaseGrid.Offset3D;
+  protected _positionToGridOffset(data?: TokenDocument.Dimensions3D): foundry.grid.BaseGrid.Offset3D;
 
   /**
    * Get the position of the Token from the top-left grid offset.
    * @param offset - The top-left grid offset
    * @param data   - The dimensions that override the current dimensions
    * @returns The snapped position
-   * @internal
    */
-  _gridOffsetToPosition(offset: BaseGrid.Offset3D, data?: TokenDocument.PartialDimensions): Canvas.ElevatedPoint;
+  protected _gridOffsetToPosition(
+    offset: foundry.grid.BaseGrid.Offset3D,
+    data?: TokenDocument.PartialDimensions,
+  ): foundry.canvas.Canvas.ElevatedPoint;
 
   /**
    * Get the width and height of the Token in pixels.
    * @param data - The width and/or height in grid units (must be positive)
    * @returns The width and height in pixels
    */
-  getSize(data?: TokenDocument.GetSizeDimensions): TokenDocument.ShapelessDimensions;
+  getSize(data?: InexactPartial<TokenDocument.ShapelessDimensions>): TokenDocument.ShapelessDimensions;
 
   /**
    * Get the center point of the Token.
    * @param data - The position and dimensions
    * @returns The center point
    */
-  getCenterPoint(data?: TokenDocument.Dimensions3D): Canvas.ElevatedPoint;
+  getCenterPoint(data?: TokenDocument.Dimensions3D): foundry.canvas.Canvas.ElevatedPoint;
 
   /**
    * Get the grid space polygon of the Token.
@@ -127,7 +132,7 @@ declare abstract class BaseToken extends Document<"Token", BaseToken.Schema, any
    * @param data - The dimensions
    * @returns The grid space polygon or undefined if gridless
    */
-  getGridSpacePolygon(data?: TokenDocument.PartialDimensions): Canvas.Point[] | void;
+  getGridSpacePolygon(data?: TokenDocument.PartialDimensions): foundry.canvas.Canvas.Point[] | void;
 
   /**
    * Get the offsets of grid spaces that are occupied by this Token at the current or given position.
@@ -136,7 +141,7 @@ declare abstract class BaseToken extends Document<"Token", BaseToken.Schema, any
    * @param data - The position and dimensions
    * @returns The offsets of occupied grid spaces
    */
-  getOccupiedGridSpaceOffsets(data?: TokenDocument.Dimensions2D): BaseGrid.Offset2D[];
+  getOccupiedGridSpaceOffsets(data?: TokenDocument.Dimensions2D): foundry.grid.BaseGrid.Offset2D[];
 
   /**
    * Get the hexagonal offsets given the type, width, and height.
@@ -153,17 +158,17 @@ declare abstract class BaseToken extends Document<"Token", BaseToken.Schema, any
     columns: boolean,
   ): DeepReadonly<TokenDocument.HexagonalOffsetsData>;
 
-  override getUserLevel(user?: User.Implementation): CONST.DOCUMENT_OWNERSHIP_LEVELS;
+  override getUserLevel(user?: User.Internal.Implementation): CONST.DOCUMENT_OWNERSHIP_LEVELS;
 
   // TODO: Update with the Delta conditionality
-  override toObject(source?: boolean): BaseToken.Source;
+  override toObject(source?: boolean): TokenDocument.Source;
 
   /**
    * @remarks
    * Migrations:
    * - `hexagonalShape` to `shape` (since v13, no specified end)
    */
-  static override migrateData(source: object): object;
+  static override migrateData(source: AnyMutableObject): AnyMutableObject;
 
   /**
    * @remarks
@@ -175,22 +180,24 @@ declare abstract class BaseToken extends Document<"Token", BaseToken.Schema, any
    * - `hexagonalShape` to `shape` (since v13, until v15)
    *   - "`TokenDocument#hexagonalShape` is deprecated in favor of `TokenDocument#shape`."
    */
-  static override shimData(data: object, options?: DataModel.ShimDataOptions): object;
+  // options: not null (destructured)
+  static override shimData(data: AnyMutableObject, options?: DataModel.ShimDataOptions): AnyMutableObject;
 
   /**
-   * @deprecated "TokenDocument#overlayEffect is deprecated in favor of using {@linkcode ActiveEffect} documents on the associated Actor"
-   * (since v12, until v14)
+   * @deprecated since v12, until v14
+   * @remarks "TokenDocument#overlayEffect is deprecated in favor of using {@linkcode ActiveEffect} documents on the associated Actor"
    */
   get effects(): [];
 
   /**
-   * @deprecated "`TokenDocument#overlayEffect` is deprecated in favor of using {@linkcode ActiveEffect} documents on the associated Actor"
-   * (since v12, until v14)
+   * @deprecated since v12, until v14
+   * @remarks "TokenDocument# is deprecated in favor of using {@linkcode ActiveEffect} documents on the associated Actor"
    */
   get overlayEffect(): "";
 
   /**
-   * @deprecated "TokenDocument#hexagonalShape is deprecated in favor of {@linkcode TokenDocument#shape}" (since v13, until v15)
+   * @deprecated since v13, until v15
+   * @remarks "TokenDocument#hexagonalShape is deprecated in favor of {@linkcode TokenDocument#shape}"
    */
   get hexagonalShape(): CONST.TOKEN_SHAPES;
 
@@ -206,199 +213,259 @@ declare abstract class BaseToken extends Document<"Token", BaseToken.Schema, any
 
   /* Document overrides */
 
+  // Same as Document for now
+  protected static override _initializationOrder(): Generator<[string, DataField.Any], void, undefined>;
+
+  override readonly parentCollection: TokenDocument.ParentCollectionName | null;
+
+  override readonly pack: string | null;
+
   static override get implementation(): TokenDocument.ImplementationClass;
 
   static override get baseDocument(): typeof BaseToken;
 
-  static override get collectionName(): BaseToken.ParentCollectionName;
+  static override get collectionName(): TokenDocument.ParentCollectionName;
 
-  static override get documentName(): BaseToken.Name;
+  static override get documentName(): TokenDocument.Name;
 
   static override get TYPES(): CONST.BASE_DOCUMENT_TYPE[];
 
-  static override get hasTypeData(): false;
+  static override get hasTypeData(): undefined;
 
-  static override readonly hierarchy: BaseToken.Hierarchy;
+  static override get hierarchy(): TokenDocument.Hierarchy;
 
-  override parent: BaseToken.Parent;
+  override parent: TokenDocument.Parent;
 
-  override " fvtt_types_internal_document_parent": BaseToken.Parent;
-
-  static override canUserCreate(user: User.Implementation): boolean;
-
-  // `getUserLevel` omitted from template due to actual override above.
-
-  override testUserPermission(
-    user: User.Implementation,
-    permission: Document.ActionPermission,
-    options?: Document.TestUserPermissionOptions,
-  ): boolean;
-
-  override canUserModify<Action extends Document.Database.OperationAction>(
-    user: User.Implementation,
-    action: Action,
-    data?: Document.CanUserModifyData<"Token", Action>,
-  ): boolean;
-
-  static override createDocuments(
-    data: BaseToken.CreateInput[],
-    operation?: BaseToken.Database.CreateDocumentsOperation,
-  ): Promise<TokenDocument.Stored[]>;
+  static override createDocuments<Temporary extends boolean | undefined = undefined>(
+    data: Array<TokenDocument.Implementation | TokenDocument.CreateData> | undefined,
+    operation?: Document.Database.CreateOperation<TokenDocument.Database.Create<Temporary>>,
+  ): Promise<Array<Document.TemporaryIf<TokenDocument.Implementation, Temporary>>>;
 
   static override updateDocuments(
-    updates: BaseToken.UpdateInput[],
-    operation?: BaseToken.Database.UpdateManyDocumentsOperation,
-  ): Promise<TokenDocument.Stored[]>;
+    updates: TokenDocument.UpdateData[] | undefined,
+    operation?: Document.Database.UpdateDocumentsOperation<TokenDocument.Database.Update>,
+  ): Promise<TokenDocument.Implementation[]>;
 
   static override deleteDocuments(
-    ids: readonly string[],
-    operation?: BaseToken.Database.DeleteManyDocumentsOperation,
-  ): Promise<TokenDocument.Stored[]>;
+    ids: readonly string[] | undefined,
+    operation?: Document.Database.DeleteDocumentsOperation<TokenDocument.Database.Delete>,
+  ): Promise<TokenDocument.Implementation[]>;
 
-  static override create<Data extends MaybeArray<BaseToken.CreateInput>>(
-    data: Data,
-    operation?: BaseToken.Database.CreateDocumentsOperation,
-  ): Promise<BaseToken.CreateReturn<Data>>;
+  static override create<Temporary extends boolean | undefined = undefined>(
+    data: TokenDocument.CreateData | TokenDocument.CreateData[],
+    operation?: TokenDocument.Database.CreateOperation<Temporary>,
+  ): Promise<Document.TemporaryIf<TokenDocument.Implementation, Temporary> | undefined>;
 
   override update(
-    data: BaseToken.UpdateInput,
-    operation?: BaseToken.Database.UpdateOneDocumentOperation,
+    data: TokenDocument.UpdateData | undefined,
+    operation?: TokenDocument.Database.UpdateOperation,
   ): Promise<this | undefined>;
 
-  override delete(operation?: BaseToken.Database.DeleteOneDocumentOperation): Promise<this | undefined>;
+  override delete(operation?: TokenDocument.Database.DeleteOperation): Promise<this | undefined>;
 
-  // `TokenDocument`s are neither world documents nor compendium documents, so this always returns `null`.
-  static override get(documentId: string, operation?: BaseToken.Database.GetDocumentsOperation): null;
+  static override get(
+    documentId: string,
+    options?: TokenDocument.Database.GetOptions,
+  ): TokenDocument.Implementation | null;
 
-  static override getCollectionName<Name extends string>(
-    name: OverlapsWith<Name, BaseToken.Embedded.CollectionName>,
-  ): BaseToken.Embedded.GetCollectionNameReturn<Name>;
+  static override getCollectionName<CollectionName extends TokenDocument.Embedded.Name>(
+    name: CollectionName,
+  ): TokenDocument.Embedded.CollectionNameOf<CollectionName> | null;
 
   /**
    * @remarks Calling `BaseToken#getEmbeddedCollection` would result in entirely typical results at
    * runtime, namely returning a `EmbeddedCollection` corresponding to a field in `BaseToken`'s
-   * schema. However {@linkcode TokenDocument.getEmbeddedCollection | TokenDocument#getEmbeddedCollection}
+   * schema. However {@link TokenDocument.getEmbeddedCollection | `TokenDocument#getEmbeddedCollection`}
    * is overridden to add new cases and since `BaseToken` is a superclass it had to be widened to
    * accommodate that.
    */
-  override getEmbeddedCollection(embeddedName: BaseToken.Embedded.CollectionName): Collection.Any;
+  override getEmbeddedCollection(embeddedName: TokenDocument.Embedded.CollectionName): Collection.Any;
 
-  override getEmbeddedDocument<
-    EmbeddedName extends BaseToken.Embedded.CollectionName,
-    Options extends Document.GetEmbeddedDocumentOptions | undefined = undefined,
-  >(embeddedName: EmbeddedName, id: string, options?: Options): BaseToken.Embedded.GetReturn<EmbeddedName, Options>;
-
-  override createEmbeddedDocuments<EmbeddedName extends BaseToken.Embedded.Name>(
+  override getEmbeddedDocument<EmbeddedName extends TokenDocument.Embedded.CollectionName>(
     embeddedName: EmbeddedName,
-    data: Document.CreateDataForName<EmbeddedName>[],
-    operation?: Document.Database.CreateDocumentsOperationForName<EmbeddedName>,
+    id: string,
+    options: Document.GetEmbeddedDocumentOptions,
+  ): TokenDocument.Embedded.DocumentFor<EmbeddedName> | undefined;
+
+  override createEmbeddedDocuments<EmbeddedName extends TokenDocument.Embedded.Name>(
+    embeddedName: EmbeddedName,
+    data: Document.CreateDataForName<EmbeddedName>[] | undefined,
+    // TODO(LukeAbby): The correct signature would be:
+    // operation?: Document.Database.CreateOperation<Document.Database.CreateForName<EmbeddedName>>,
+    // However this causes a number of errors.
+    operation?: object,
+  ): Promise<Array<Document.StoredForName<EmbeddedName>> | undefined>;
+
+  override updateEmbeddedDocuments<EmbeddedName extends TokenDocument.Embedded.Name>(
+    embeddedName: EmbeddedName,
+    updates: Document.UpdateDataForName<EmbeddedName>[] | undefined,
+    operation?: Document.Database.UpdateOperationForName<EmbeddedName>,
+  ): Promise<Array<Document.StoredForName<EmbeddedName>> | undefined>;
+
+  override deleteEmbeddedDocuments<EmbeddedName extends TokenDocument.Embedded.Name>(
+    embeddedName: EmbeddedName,
+    ids: Array<string>,
+    operation?: Document.Database.DeleteOperationForName<EmbeddedName>,
   ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
 
-  override updateEmbeddedDocuments<EmbeddedName extends BaseToken.Embedded.Name>(
-    embeddedName: EmbeddedName,
-    updates: Document.UpdateDataForName<EmbeddedName>[],
-    operation?: Document.Database.UpdateManyDocumentsOperationForName<EmbeddedName>,
-  ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
+  // Same as Document for now
+  override traverseEmbeddedDocuments(
+    _parentPath?: string,
+  ): Generator<[string, Document.AnyChild<this>], void, undefined>;
 
-  override deleteEmbeddedDocuments<EmbeddedName extends BaseToken.Embedded.Name>(
-    embeddedName: EmbeddedName,
-    ids: string[],
-    operation?: Document.Database.DeleteManyDocumentsOperationForName<EmbeddedName>,
-  ): Promise<Array<Document.StoredForName<EmbeddedName>>>;
-
-  override getFlag<Scope extends BaseToken.Flags.Scope, Key extends BaseToken.Flags.Key<Scope>>(
+  override getFlag<Scope extends TokenDocument.Flags.Scope, Key extends TokenDocument.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): BaseToken.Flags.Get<Scope, Key>;
+  ): Document.GetFlag<TokenDocument.Name, Scope, Key>;
 
   override setFlag<
-    Scope extends BaseToken.Flags.Scope,
-    Key extends BaseToken.Flags.Key<Scope>,
-    Value extends BaseToken.Flags.Get<Scope, Key>,
-  >(scope: Scope, key: Key, value: Value): Promise<this | undefined>;
+    Scope extends TokenDocument.Flags.Scope,
+    Key extends TokenDocument.Flags.Key<Scope>,
+    Value extends Document.GetFlag<TokenDocument.Name, Scope, Key>,
+  >(scope: Scope, key: Key, value: Value): Promise<this>;
 
-  override unsetFlag<Scope extends BaseToken.Flags.Scope, Key extends BaseToken.Flags.Key<Scope>>(
+  override unsetFlag<Scope extends TokenDocument.Flags.Scope, Key extends TokenDocument.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): Promise<this | undefined>;
+  ): Promise<this>;
 
   protected override _preCreate(
-    data: BaseToken.CreateData,
-    options: BaseToken.Database.PreCreateOptions,
-    user: User.Stored,
+    data: TokenDocument.CreateData,
+    options: TokenDocument.Database.PreCreateOptions,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected override _onCreate(
-    data: BaseToken.CreateData,
-    options: BaseToken.Database.OnCreateOptions,
+    data: TokenDocument.CreateData,
+    options: TokenDocument.Database.OnCreateOperation,
     userId: string,
   ): void;
 
   protected static override _preCreateOperation(
     documents: TokenDocument.Implementation[],
-    operation: BaseToken.Database.PreCreateOperation,
-    user: User.Stored,
+    operation: Document.Database.PreCreateOperationStatic<TokenDocument.Database.Create>,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected static override _onCreateOperation(
-    documents: TokenDocument.Stored[],
-    operation: BaseToken.Database.OnCreateOperation,
-    user: User.Stored,
+    documents: TokenDocument.Implementation[],
+    operation: TokenDocument.Database.Create,
+    user: User.Implementation,
   ): Promise<void>;
 
   protected override _preUpdate(
-    changed: BaseToken.UpdateData,
-    options: BaseToken.Database.PreUpdateOptions,
-    user: User.Stored,
+    changed: TokenDocument.UpdateData,
+    options: TokenDocument.Database.PreUpdateOptions,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected override _onUpdate(
-    changed: BaseToken.UpdateData,
-    options: BaseToken.Database.OnUpdateOptions,
+    changed: TokenDocument.UpdateData,
+    options: TokenDocument.Database.OnUpdateOperation,
     userId: string,
   ): void;
 
   protected static override _preUpdateOperation(
-    documents: TokenDocument.Stored[],
-    operation: BaseToken.Database.PreUpdateOperation,
-    user: User.Stored,
+    documents: TokenDocument.Implementation[],
+    operation: TokenDocument.Database.Update,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected static override _onUpdateOperation(
-    documents: TokenDocument.Stored[],
-    operation: BaseToken.Database.OnUpdateOperation,
-    user: User.Stored,
+    documents: TokenDocument.Implementation[],
+    operation: TokenDocument.Database.Update,
+    user: User.Implementation,
   ): Promise<void>;
 
   protected override _preDelete(
-    options: BaseToken.Database.PreDeleteOptions,
-    user: User.Stored,
+    options: TokenDocument.Database.PreUpdateOptions,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
-  protected override _onDelete(options: BaseToken.Database.OnDeleteOptions, userId: string): void;
+  protected override _onDelete(options: TokenDocument.Database.OnDeleteOperation, userId: string): void;
 
   protected static override _preDeleteOperation(
-    documents: TokenDocument.Stored[],
-    operation: BaseToken.Database.PreDeleteOperation,
-    user: User.Stored,
+    documents: TokenDocument.Implementation[],
+    operation: TokenDocument.Database.Delete,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected static override _onDeleteOperation(
-    documents: TokenDocument.Stored[],
-    operation: BaseToken.Database.OnDeleteOperation,
-    user: User.Stored,
+    documents: TokenDocument.Implementation[],
+    operation: TokenDocument.Database.Delete,
+    user: User.Implementation,
+  ): Promise<void>;
+
+  // These data field things have been ticketed but will probably go into backlog hell for a while.
+  // We'll end up copy and pasting without modification for now I think. It makes it a tiny bit easier to update though.
+
+  // options: not null (parameter default only in _addDataFieldShim)
+  protected static override _addDataFieldShims(
+    data: AnyMutableObject,
+    shims: Record<string, string>,
+    options?: Document.DataFieldShimOptions,
+  ): void;
+
+  // options: not null (parameter default only)
+  protected static override _addDataFieldShim(
+    data: AnyMutableObject,
+    oldKey: string,
+    newKey: string,
+    options?: Document.DataFieldShimOptions,
+  ): void;
+
+  protected static override _addDataFieldMigration(
+    data: AnyMutableObject,
+    oldKey: string,
+    newKey: string,
+    apply?: ((data: AnyMutableObject) => unknown) | null,
+  ): boolean;
+
+  // options: not null (destructured where forwarded)
+  protected static override _logDataFieldMigration(
+    oldKey: string,
+    newKey: string,
+    options?: LogCompatibilityWarningOptions,
+  ): void;
+
+  /**
+   * @deprecated since v12, will be removed in v14
+   * @remarks "The `Document._onCreateDocuments` static method is deprecated in favor of {@link Document._onCreateOperation | `Document._onCreateOperation`}"
+   */
+  protected static override _onCreateDocuments(
+    documents: TokenDocument.Implementation[],
+    context: Document.ModificationContext<TokenDocument.Parent>,
+  ): Promise<void>;
+
+  /**
+   * @deprecated since v12, will be removed in v14
+   * @remarks "The `Document._onUpdateDocuments` static method is deprecated in favor of {@link Document._onUpdateOperation | `Document._onUpdateOperation`}"
+   */
+  protected static override _onUpdateDocuments(
+    documents: TokenDocument.Implementation[],
+    context: Document.ModificationContext<TokenDocument.Parent>,
+  ): Promise<void>;
+
+  /**
+   * @deprecated since v12, will be removed in v14
+   * @remarks "The `Document._onDeleteDocuments` static method is deprecated in favor of {@link Document._onDeleteOperation | `Document._onDeleteOperation`}"
+   */
+  protected static override _onDeleteDocuments(
+    documents: TokenDocument.Implementation[],
+    context: Document.ModificationContext<TokenDocument.Parent>,
   ): Promise<void>;
 
   /* DataModel overrides */
 
-  static override _schema: SchemaField<BaseToken.Schema>;
+  protected static override _schema: SchemaField<TokenDocument.Schema>;
 
-  static override get schema(): SchemaField<BaseToken.Schema>;
+  static override get schema(): SchemaField<TokenDocument.Schema>;
 
-  static override validateJoint(data: BaseToken.Source): void;
+  static override validateJoint(data: TokenDocument.Source): void;
 
+  // options: not null (parameter default only, destructured in super)
   static override fromSource(
-    source: BaseToken.CreateData,
+    source: TokenDocument.CreateData,
     context?: DataModel.FromSourceOptions,
   ): TokenDocument.Implementation;
 
@@ -414,6 +481,7 @@ export class ActorDeltaField<
   DocumentType extends foundry.documents.BaseActorDelta.AnyConstructor,
   Options extends fields.EmbeddedDocumentField.Options<DocumentType> = fields.EmbeddedDocumentField.DefaultOptions,
 > extends fields.EmbeddedDocumentField<DocumentType, Options> {
+  // options: not null (parameter default only)
   override initialize(
     value: fields.EmbeddedDocumentField.PersistedType<DocumentType, Options>,
     model: DataModel.Any,
@@ -426,32 +494,27 @@ export class ActorDeltaField<
 export default BaseToken;
 
 declare namespace BaseToken {
-  // All types really live in the full document and are mirrored here for convenience
   export import Name = TokenDocument.Name;
   export import ConstructionContext = TokenDocument.ConstructionContext;
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
   export import ConstructorArgs = TokenDocument.ConstructorArgs;
   export import Hierarchy = TokenDocument.Hierarchy;
   export import Metadata = TokenDocument.Metadata;
   export import Parent = TokenDocument.Parent;
   export import Descendant = TokenDocument.Descendant;
   export import DescendantClass = TokenDocument.DescendantClass;
+  export import Pack = TokenDocument.Pack;
   export import Embedded = TokenDocument.Embedded;
   export import ParentCollectionName = TokenDocument.ParentCollectionName;
   export import CollectionClass = TokenDocument.CollectionClass;
   export import Collection = TokenDocument.Collection;
   export import Invalid = TokenDocument.Invalid;
+  export import Stored = TokenDocument.Stored;
   export import Source = TokenDocument.Source;
   export import CreateData = TokenDocument.CreateData;
-  export import CreateInput = TokenDocument.CreateInput;
-  export import CreateReturn = TokenDocument.CreateReturn;
   export import InitializedData = TokenDocument.InitializedData;
   export import UpdateData = TokenDocument.UpdateData;
-  export import UpdateInput = TokenDocument.UpdateInput;
   export import Schema = TokenDocument.Schema;
-  export import Database = TokenDocument.Database;
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  export import TemporaryIf = TokenDocument.TemporaryIf;
+  export import DatabaseOperation = TokenDocument.Database;
   export import Flags = TokenDocument.Flags;
   export import CoreFlags = TokenDocument.CoreFlags;
 

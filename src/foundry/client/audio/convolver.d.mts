@@ -1,4 +1,4 @@
-import type { Identity, InexactPartial } from "#utils";
+import type { Identity, InexactPartial, NullishProps } from "#utils";
 
 declare namespace ConvolverEffect {}
 
@@ -16,6 +16,7 @@ declare class ConvolverEffect extends ConvolverNode {
    * @param context - The audio context required by the ConvolverNode
    * @param options - Additional options which modify the ConvolverEffect behavior
    */
+  // options: not null (destructured)
   constructor(context: AudioContext, options?: ConvolverEffect.ConstructorOptions);
 
   /**
@@ -29,6 +30,7 @@ declare class ConvolverEffect extends ConvolverNode {
    * Update the state of the effect node given the active flag and numeric intensity.
    * @param options - Options which are updated
    */
+  // options: not null (destructured)
   update(options?: ConvolverEffect.UpdateOptions): void;
 
   /** @privateRemarks This override only does side effects then forwards args to super, no type changes */
@@ -55,32 +57,34 @@ declare namespace ConvolverEffect {
   interface AnyConstructor extends Identity<typeof AnyConvolverEffect> {}
 
   /** @internal */
-  interface _ConstructorOptions {
+  type _ConstructorOptions = InexactPartial<{
     /**
      * The file path to the impulse response buffer to use
      * @defaultValue `"sounds/impulse-responses/ir-full.wav"`
+     * @remarks Can't be `null` as it only has a parameter default
      */
     impulseResponsePath: string;
 
     /**
      * The initial intensity of the effect
      * @defaultValue `5`
+     * @remarks Can't be `null` as it only has a parameter default
      */
     intensity: number;
-  }
+  }>;
 
-  interface ConstructorOptions extends InexactPartial<_ConstructorOptions>, ConvolverOptions {}
+  interface ConstructorOptions extends _ConstructorOptions, ConvolverOptions {}
 
   /** @internal */
-  interface _UpdateOptions {
+  type _UpdateOptions = NullishProps<{
     /**
      * A new effect intensity
      * @remarks This is ignored if it fails a `Number.isFinite` check
      */
     intensity: number;
-  }
+  }>;
 
-  interface UpdateOptions extends InexactPartial<_UpdateOptions> {}
+  interface UpdateOptions extends _UpdateOptions {}
 }
 
 export default ConvolverEffect;

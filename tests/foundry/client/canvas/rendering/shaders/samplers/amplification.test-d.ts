@@ -1,7 +1,5 @@
 import { expectTypeOf } from "vitest";
-
-import AmplificationSamplerShader = foundry.canvas.rendering.shaders.AmplificationSamplerShader;
-import AbstractBaseShader = foundry.canvas.rendering.shaders.AbstractBaseShader;
+import { AbstractBaseShader, AmplificationSamplerShader } from "#client/canvas/rendering/shaders/_module.mjs";
 
 const myASS = AmplificationSamplerShader.create();
 expectTypeOf(myASS).toEqualTypeOf<AmplificationSamplerShader>();

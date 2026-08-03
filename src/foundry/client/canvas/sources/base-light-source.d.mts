@@ -140,7 +140,6 @@ declare abstract class BaseLightSource<
    * An animation with flickering ratio and light intensity.
    * @param dt      - Delta time
    * @param options - Additional options which modify the torch animation
-   * @remarks A valid {@linkcode BaseLightSource.LightAnimationFunction | LightAnimationFunction}
    */
   animateTorch(dt: number, options?: RenderedEffectSource.AnimationFunctionOptions): void;
 
@@ -148,7 +147,6 @@ declare abstract class BaseLightSource<
    * An animation with flickering ratio and light intensity
    * @param dt      - Delta time
    * @param options - Additional options which modify the flame animation
-   * @remarks A valid {@linkcode BaseLightSource.LightAnimationFunction | LightAnimationFunction}
    */
   animateFlickering(dt: number, options?: BaseLightSource.AnimateFlickeringOptions): void;
 
@@ -156,7 +154,6 @@ declare abstract class BaseLightSource<
    * A basic "pulse" animation which expands and contracts.
    * @param dt      - Delta time
    * @param options - Additional options which modify the pulse animation
-   * @remarks A valid {@linkcode BaseLightSource.LightAnimationFunction | LightAnimationFunction}
    */
   animatePulse(dt: number, options?: RenderedEffectSource.AnimationFunctionOptions): void;
 
@@ -167,7 +164,6 @@ declare abstract class BaseLightSource<
    *
    * @param dt      - The delta time since the last frame, in milliseconds.
    * @param options - Additional options for customizing the audio reaction.
-   * @remarks A valid {@linkcode BaseLightSource.LightAnimationFunction | LightAnimationFunction}
    */
   animateSoundPulse(dt: number, options?: BaseLightSource.AnimateSoundPulseOptions): void;
 
@@ -263,19 +259,18 @@ declare namespace BaseLightSource {
   }
 
   /** @internal */
-  interface _AnimateFlickeringOptions {
+  type _AnimateFlickeringOptions = InexactPartial<{
     /**
      * Noise amplification (\>1) or dampening (\<1)
      * @defaultValue `1`
      */
     amplification: number;
-  }
+  }>;
 
-  interface AnimateFlickeringOptions
-    extends RenderedEffectSource.AnimationFunctionOptions, InexactPartial<_AnimateFlickeringOptions> {}
+  interface AnimateFlickeringOptions extends RenderedEffectSource.AnimationFunctionOptions, _AnimateFlickeringOptions {}
 
   /** @internal */
-  interface _AnimateSoundPulseOptionsOptions {
+  type _AnimateSoundPulseOptionsOptions = InexactPartial<{
     /**
      * A smoothing factor in `[0..10]`, effectively updates/second.
      * @defaultValue `5`
@@ -294,10 +289,10 @@ declare namespace BaseLightSource {
      * @defaultValue `false`
      */
     reverse: boolean;
-  }
+  }>;
 
   /** @privateRemarks Different property descriptions, otherwise identical to {@linkcode RenderedEffectSource.AnimationFunctionOptions} */
-  interface AnimateSoundPulseOptions extends InexactPartial<_AnimateSoundPulseOptionsOptions> {}
+  interface AnimateSoundPulseOptions extends _AnimateSoundPulseOptionsOptions {}
 }
 
 declare abstract class AnyBaseLightSource extends BaseLightSource<

@@ -76,7 +76,7 @@ declare namespace TextureExtractor {
   interface AnyConstructor extends Identity<typeof AnyTextureExtractor> {}
 
   /** @internal */
-  interface _ConstructorOptions {
+  type _ConstructorOptions = InexactPartial<{
     /**
      * The caller name
      * @defaultValue `"TextureExtractor"`
@@ -100,13 +100,13 @@ declare namespace TextureExtractor {
      * @defaultValue `false`
      */
     debug: boolean;
-  }
+  }>;
 
   /** Options for the constructor of {@linkcode TextureExtractor} */
-  interface ConstructorOptions extends InexactPartial<_ConstructorOptions> {}
+  interface ConstructorOptions extends _ConstructorOptions {}
 
   /** @internal */
-  interface _ExtractionOptions {
+  type _ExtractionOptions = InexactPartial<{
     /**
      * The texture the pixels are extracted from.
      */
@@ -114,16 +114,16 @@ declare namespace TextureExtractor {
 
     /** The rectangle which the pixels are extracted from. */
     frame: PIXI.Rectangle;
-  }
+  }>;
 
   /** @internal */
-  interface _PixelsExtractOptions {
+  type _PixelsExtractOptions = InexactPartial<{
     /** The optional output buffer to write the pixels to. May be detached. */
     out: ArrayBuffer;
-  }
+  }>;
 
   /** @internal */
-  interface _Base64ExtractionOptions {
+  type _Base64ExtractionOptions = InexactPartial<{
     /**
      * The optional image mime type.
      * @defaultValue `"image/png"`
@@ -137,15 +137,14 @@ declare namespace TextureExtractor {
      * @remarks Only seems to be used in the `TextureExtractor##compressBufferLocal` to {@linkcode foundry.helpers.media.ImageHelper.canvasToBase64} path; ignored if using workers
      */
     quality: number;
-  }
+  }>;
 
-  interface PixelsExtractionOptions extends InexactPartial<_PixelsExtractOptions>, InexactPartial<_ExtractionOptions> {
+  interface PixelsExtractionOptions extends _PixelsExtractOptions, _ExtractionOptions {
     /** The NONE compression mode. */
     compression?: TextureExtractor.CompressionModes["NONE"] | undefined;
   }
 
-  interface Base64ExtractionOptions
-    extends InexactPartial<_Base64ExtractionOptions>, InexactPartial<_ExtractionOptions> {
+  interface Base64ExtractionOptions extends _Base64ExtractionOptions, _ExtractionOptions {
     /** The BASE64 compression mode. */
     compression: TextureExtractor.CompressionModes["BASE64"];
   }

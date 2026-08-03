@@ -4,13 +4,7 @@ import type { InterfaceToObject } from "fvtt-types/utils";
 import BaseAmbientSound = foundry.documents.BaseAmbientSound;
 import Document = foundry.abstract.Document;
 
-class TestBaseAmbientSound extends BaseAmbientSound {
-  get compendium() {
-    return this.inCompendium
-      ? (game.packs!.get(this.pack!) as foundry.documents.collections.CompendiumCollection.ForDocument<"ActiveEffect">)
-      : null;
-  }
-}
+class TestBaseAmbientSound extends BaseAmbientSound {}
 
 // AmbientSound has no hard required fields for construction
 new TestBaseAmbientSound();
@@ -119,14 +113,14 @@ new TestBaseAmbientSound({
 
 const mySound = new TestBaseAmbientSound({ effects: undefined });
 
-expectTypeOf(mySound).toEqualTypeOf<TestBaseAmbientSound>();
+expectTypeOf(mySound).toEqualTypeOf<BaseAmbientSound>();
 
 expectTypeOf(mySound._id).toEqualTypeOf<string | null>();
 expectTypeOf(mySound.x).toBeNumber();
 expectTypeOf(mySound.y).toBeNumber();
 expectTypeOf(mySound.elevation).toBeNumber();
 expectTypeOf(mySound.radius).toBeNumber();
-expectTypeOf(mySound.path).toEqualTypeOf<string | null>();
+expectTypeOf(mySound.path).toEqualTypeOf<string | null | undefined>();
 expectTypeOf(mySound.repeat).toBeBoolean();
 expectTypeOf(mySound.volume).toBeNumber();
 expectTypeOf(mySound.walls).toBeBoolean();

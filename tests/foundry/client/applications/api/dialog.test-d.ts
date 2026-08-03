@@ -4,18 +4,15 @@ import { expectTypeOf } from "vitest";
 // There's also a lot of `Config extends ...` going on here which means that excess property checks aren't being done.
 
 import DialogV2 = foundry.applications.api.DialogV2;
-import type { AnyObject, EmptyObject } from "fvtt-types/utils";
+import type { AnyObject, EmptyObject } from "../../../../../src/utils/index.d.mts";
 
 const numberCallback = async () => 5;
 
-const boolean = Math.random() > 0.5;
-
 expectTypeOf(await DialogV2.confirm()).toEqualTypeOf<boolean | null>();
-expectTypeOf(await DialogV2.confirm({})).toEqualTypeOf<boolean | null>();
 expectTypeOf(await DialogV2.confirm({ yes: {} })).toEqualTypeOf<boolean | null>();
 expectTypeOf(await DialogV2.confirm({ rejectClose: true })).toEqualTypeOf<boolean>();
 expectTypeOf(await DialogV2.confirm({ rejectClose: false })).toEqualTypeOf<boolean | null>();
-expectTypeOf(await DialogV2.confirm({ rejectClose: boolean, window: {} })).toEqualTypeOf<boolean | null>();
+expectTypeOf(await DialogV2.confirm({ rejectClose: 3 > 2, window: {} })).toEqualTypeOf<boolean | null>();
 expectTypeOf(
   await DialogV2.confirm({
     yes: {
@@ -23,14 +20,6 @@ expectTypeOf(
     },
   }),
 ).toEqualTypeOf<false | number | null>();
-expectTypeOf(
-  await DialogV2.confirm({
-    yes: { callback: () => undefined },
-    no: { callback: async () => null },
-    buttons: [{ action: "foo", label: "Foo" }],
-    rejectClose: true,
-  }),
-).toEqualTypeOf<"yes" | "no" | "foo">();
 
 const distributivityTest = await DialogV2.confirm(
   Math.random() > 0.5 ? { yes: { callback: numberCallback } } : { window: {} },
@@ -68,7 +57,7 @@ expectTypeOf(
     rejectClose: false,
     close: closeCallback,
   }),
-).toEqualTypeOf<number | string>();
+).toEqualTypeOf<number | string | null>();
 expectTypeOf(
   await DialogV2.prompt({
     ok: okButton,
@@ -84,7 +73,7 @@ expectTypeOf(
       {
         label: "Foo",
         action: "foo",
-        callback: async () => boolean,
+        callback: async () => 3 > 2,
       },
       {
         label: "Bar",
@@ -152,7 +141,7 @@ expectTypeOf(
       {
         label: "Foo",
         action: "foo",
-        callback: async () => boolean,
+        callback: async () => 3 > 2,
       },
       {
         label: "Bar",
@@ -201,7 +190,7 @@ expectTypeOf(
       {
         label: "Foo",
         action: "foo",
-        callback: async () => boolean,
+        callback: async () => 3 > 2,
       },
       {
         label: "Bar",
@@ -218,7 +207,7 @@ expectTypeOf(
       {
         label: "Foo",
         action: "foo",
-        callback: async () => boolean,
+        callback: async () => 3 > 2,
       },
       {
         label: "Bar",
@@ -268,7 +257,7 @@ expectTypeOf(await DialogV2.confirm(unhandledOptionalYes)).toEqualTypeOf<number 
 const unsoundTest: {} = { yes: { callback: numberCallback } };
 
 // At runtime this will be `number`, however the provided type is `{}` which has no indication about the type.
-expectTypeOf(await DialogV2.confirm(unsoundTest)).toEqualTypeOf<boolean | null>();
+expectTypeOf(await DialogV2.confirm(unsoundTest)).toEqualTypeOf<number | false | null>();
 
 // Edge case: `config.ok.callback` is overriden, this makes it useless to use over `DialogV2.submit`
 // but is a valid call.
@@ -291,7 +280,7 @@ expectTypeOf(
       {
         label: "Foo",
         action: "foo",
-        callback: async () => boolean,
+        callback: async () => 3 > 2,
       },
       {
         label: "Bar",

@@ -60,26 +60,19 @@ declare class VisibilityFilter extends AbstractBaseMaskFilter {
 }
 
 declare namespace VisibilityFilter {
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
-  type Any = Internal.Any;
+  interface Any extends AnyVisibilityFilter {}
+  interface AnyConstructor extends Identity<typeof AnyVisibilityFilter> {}
 
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyVisibilityFilter {}
-    interface AnyConstructor extends Identity<typeof AnyVisibilityFilter> {}
-  }
-
-  interface ImplementationClass extends Identity<CONFIG["Canvas"]["visibilityFilter"]> {}
+  // TODO: This can't be an interface yet because of 'An interface can only extend an object type or intersection of object types with statically known members' errors
+  type ImplementationClass = CONFIG["Canvas"]["visibilityFilter"];
   interface Implementation extends FixedInstanceType<ImplementationClass> {}
 
   /** @internal */
-  interface _FragmentShaderOptions {
+  type _FragmentShaderOptions = InexactPartial<{
     persistentVision: boolean;
-  }
+  }>;
 
-  interface FragmentShaderOptions extends InexactPartial<_FragmentShaderOptions> {}
+  interface FragmentShaderOptions extends _FragmentShaderOptions {}
 }
 
 export default VisibilityFilter;

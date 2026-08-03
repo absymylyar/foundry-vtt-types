@@ -1,3 +1,4 @@
+// eslint-disable-next-line import-x/extensions
 import * as worker from "../../../../types/workers/image-compressor.mjs";
 
 declare global {

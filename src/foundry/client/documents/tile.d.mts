@@ -1,14 +1,10 @@
-import type { InterfaceToObject, MaybeArray, Merge } from "#utils";
-import type { fields, TextureData } from "#common/data/_module.d.mts";
-import type { DatabaseBackend, Document } from "#common/abstract/_module.d.mts";
-import type { BaseTile } from "#common/documents/_module.d.mts";
-import type { DialogV2 } from "#client/applications/api/_module.d.mts";
+import type { InexactPartial, InterfaceToObject, Merge } from "#utils";
+import type Document from "#common/abstract/document.d.mts";
+import type { DataSchema } from "#common/data/fields.d.mts";
+import type { TextureData } from "#common/data/data.mjs";
+import type BaseTile from "#common/documents/tile.mjs";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type ClientDatabaseBackend from "#client/data/client-backend.d.mts";
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type ClientDocumentMixin from "#client/documents/abstract/client-document.d.mts";
+import fields = foundry.data.fields;
 
 declare namespace TileDocument {
   /**
@@ -17,24 +13,24 @@ declare namespace TileDocument {
   type Name = "Tile";
 
   /**
-   * The context used to create a `TileDocument`.
+   * The context used to create a `Tile`.
    */
   interface ConstructionContext extends Document.ConstructionContext<Parent> {}
 
   /**
-   * The documents embedded within `TileDocument`.
+   * The documents embedded within `Tile`.
    */
   type Hierarchy = Readonly<Document.HierarchyOf<Schema>>;
 
   /**
-   * The implementation of the `TileDocument` document instance configured through
-   * {@linkcode CONFIG.Tile.documentClass} in Foundry and {@linkcode DocumentClassConfig} in fvtt-types.
+   * The implementation of the `TileDocument` document instance configured through `CONFIG.Tile.documentClass` in Foundry and
+   * {@linkcode DocumentClassConfig} or {@link ConfiguredTileDocument | `fvtt-types/configuration/ConfiguredTileDocument`} in fvtt-types.
    */
   type Implementation = Document.ImplementationFor<Name>;
 
   /**
-   * The implementation of the `TileDocument` document configured through
-   * {@linkcode CONFIG.Tile.documentClass} in Foundry and {@linkcode DocumentClassConfig} in fvtt-types.
+   * The implementation of the `TileDocument` document configured through `CONFIG.Tile.documentClass` in Foundry and
+   * {@linkcode DocumentClassConfig} in fvtt-types.
    */
   type ImplementationClass = Document.ImplementationClassFor<Name>;
 
@@ -42,16 +38,17 @@ declare namespace TileDocument {
    * A document's metadata is special information about the document ranging anywhere from its name,
    * whether it's indexed, or to the permissions a user has over it.
    */
-  interface Metadata extends Merge<
-    Document.Metadata.Default,
-    Readonly<{
-      name: "Tile";
-      collection: "tiles";
-      label: "DOCUMENT.Tile";
-      labelPlural: "DOCUMENT.Tiles";
-      schemaVersion: "13.341";
-    }>
-  > {}
+  interface Metadata
+    extends Merge<
+      Document.Metadata.Default,
+      Readonly<{
+        name: "Tile";
+        collection: "tiles";
+        label: string;
+        labelPlural: string;
+        schemaVersion: string;
+      }>
+    > {}
 
   // No need for Metadata namespace
 
@@ -74,6 +71,14 @@ declare namespace TileDocument {
   type DescendantClass = never;
 
   /**
+   * Types of `CompendiumCollection` this document might be contained in.
+   * Note that `this.pack` will always return a string; this is the type for `game.packs.get(this.pack)`
+   *
+   * Will be `never` if cannot be contained in a `CompendiumCollection`.
+   */
+  type Pack = never;
+
+  /**
    * An embedded document is a document contained in another.
    * For example an `Item` can be contained by an `Actor` which means `Item` can be embedded in `Actor`.
    *
@@ -84,8 +89,7 @@ declare namespace TileDocument {
   /**
    * The name of the world or embedded collection this document can find itself in.
    * For example an `Item` is always going to be inside a collection with a key of `items`.
-   * This is a fixed string per document type and is primarily useful for the descendant Document operation methods, e.g
-   * {@linkcode ClientDocumentMixin.AnyMixed._preCreateDescendantDocuments | ClientDocument._preCreateDescendantDocuments}.
+   * This is a fixed string per document type and is primarily useful for {@link ClientDocumentMixin | `Descendant Document Events`}.
    */
   type ParentCollectionName = Metadata["collection"];
 
@@ -103,7 +107,7 @@ declare namespace TileDocument {
    * An instance of `TileDocument` that comes from the database but failed validation meaning that
    * its `system` and `_source` could theoretically be anything.
    */
-  type Invalid = Document.Internal.Invalid<Implementation>;
+  interface Invalid extends Document.Internal.Invalid<TileDocument.Implementation> {}
 
   /**
    * An instance of `TileDocument` that comes from the database.
@@ -111,19 +115,19 @@ declare namespace TileDocument {
   type Stored = Document.Internal.Stored<TileDocument.Implementation>;
 
   /**
-   * The data put in {@linkcode TileDocument._source | TileDocument#_source}. This data is what was
+   * The data put in {@link TileDocument._source | `TileDocument#_source`}. This data is what was
    * persisted to the database and therefore it must be valid JSON.
    *
-   * For example a {@linkcode fields.SetField | SetField} is persisted to the database as an array
+   * For example a {@link fields.SetField | `SetField`} is persisted to the database as an array
    * but initialized as a {@linkcode Set}.
    */
   interface Source extends fields.SchemaField.SourceData<Schema> {}
 
   /**
    * The data necessary to create a document. Used in places like {@linkcode TileDocument.create}
-   * and {@linkcode TileDocument | new TileDocument(...)}.
+   * and {@link TileDocument | `new TileDocument(...)`}.
    *
-   * For example a {@linkcode fields.SetField | SetField} can accept any {@linkcode Iterable}
+   * For example a {@link fields.SetField | `SetField`} can accept any {@linkcode Iterable}
    * with the right values. This means you can pass a `Set` instance, an array of values,
    * a generator, or any other iterable.
    */
@@ -131,56 +135,33 @@ declare namespace TileDocument {
   interface CreateData extends fields.SchemaField.CreateData<Schema> {}
 
   /**
-   * Used in the {@linkcode TileDocument.create} and {@linkcode TileDocument.createDocuments} signatures, and
-   * {@linkcode TileDocument.Database.CreateOperation} and its derivative interfaces.
-   */
-  type CreateInput = CreateData | Implementation;
-
-  /**
-   * The helper type for the return of {@linkcode TileDocument.create}, returning (a single | an array of) (temporary | stored)
-   * `TileDocument`s.
-   *
-   * `| undefined` is included in the non-array branch because if a `.create` call with non-array data is cancelled by the `preCreate`
-   * method or hook, `shift`ing the return of `.createDocuments` produces `undefined`
-   */
-  type CreateReturn<Data extends MaybeArray<CreateInput>> =
-    Data extends Array<CreateInput> ? TileDocument.Stored[] : TileDocument.Stored | undefined;
-
-  /**
-   * The data after a {@linkcode Document} has been initialized, for example
-   * {@linkcode TileDocument.name | TileDocument#name}.
+   * The data after a {@link foundry.abstract.Document | `Document`} has been initialized, for example
+   * {@link TileDocument.name | `TileDocument#name`}.
    *
    * This is data transformed from {@linkcode TileDocument.Source} and turned into more
-   * convenient runtime data structures. For example a {@linkcode fields.SetField | SetField} is
+   * convenient runtime data structures. For example a {@link fields.SetField | `SetField`} is
    * persisted to the database as an array of values but at runtime it is a `Set` instance.
    */
   interface InitializedData extends fields.SchemaField.InitializedData<Schema> {}
 
   /**
-   * The data used to update a document, for example {@linkcode TileDocument.update | TileDocument#update}.
-   * It is a distinct type from {@linkcode TileDocument.CreateData | DeepPartial<TileDocument.CreateData>} because
+   * The data used to update a document, for example {@link TileDocument.update | `TileDocument#update`}.
+   * It is a distinct type from {@link TileDocument.CreateData | `DeepPartial<TileDocument.CreateData>`} because
    * it has different rules for `null` and `undefined`.
    */
   interface UpdateData extends fields.SchemaField.UpdateData<Schema> {}
 
   /**
-   * Used in the {@linkcode TileDocument.update | TileDocument#update} and
-   * {@linkcode TileDocument.updateDocuments} signatures, and {@linkcode TileDocument.Database.UpdateOperation}
-   * and its derivative interfaces.
-   */
-  type UpdateInput = UpdateData | Implementation;
-
-  /**
-   * The schema for {@linkcode TileDocument}. This is the source of truth for how a `TileDocument` document
+   * The schema for {@linkcode TileDocument}. This is the source of truth for how an TileDocument document
    * must be structured.
    *
    * Foundry uses this schema to validate the structure of the {@linkcode TileDocument}. For example
-   * a {@linkcode fields.StringField | StringField} will enforce that the value is a string. More
-   * complex fields like {@linkcode fields.SetField | SetField} goes through various conversions
+   * a {@link fields.StringField | `StringField`} will enforce that the value is a string. More
+   * complex fields like {@link fields.SetField | `SetField`} goes through various conversions
    * starting as an array in the database, initialized as a set, and allows updates with any
    * iterable.
    */
-  interface Schema extends fields.DataSchema {
+  interface Schema extends DataSchema {
     /**
      * The _id which uniquely identifies this Tile embedded document
      * @defaultValue `null`
@@ -253,7 +234,13 @@ declare namespace TileDocument {
     locked: fields.BooleanField;
 
     /** @defaultValue see properties */
-    restrictions: fields.SchemaField<RestrictionsSchema>;
+    restrictions: fields.SchemaField<{
+      /** @defaultValue `false` */
+      light: fields.BooleanField;
+
+      /** @defaultValue `false` */
+      weather: fields.BooleanField;
+    }>;
 
     /**
      * The tile's occlusion settings
@@ -314,509 +301,141 @@ declare namespace TileDocument {
     flags: fields.DocumentFlagsField<Name, InterfaceToObject<CoreFlags>>;
   }
 
-  interface RestrictionsSchema extends fields.DataSchema {
-    /** @defaultValue `false` */
-    light: fields.BooleanField;
-
-    /** @defaultValue `false` */
-    weather: fields.BooleanField;
-  }
-
-  interface RestrictionsData extends fields.SchemaField.InitializedData<RestrictionsSchema> {}
-
   namespace Database {
-    /* ***********************************************
-     *                GET OPERATIONS                 *
-     *************************************************/
+    /** Options passed along in Get operations for TileDocuments */
+    interface Get extends foundry.abstract.types.DatabaseGetOperation<TileDocument.Parent> {}
+
+    /** Options passed along in Create operations for TileDocuments */
+    interface Create<Temporary extends boolean | undefined = boolean | undefined>
+      extends foundry.abstract.types.DatabaseCreateOperation<TileDocument.CreateData, TileDocument.Parent, Temporary> {}
+
+    /** Options passed along in Delete operations for TileDocuments */
+    interface Delete extends foundry.abstract.types.DatabaseDeleteOperation<TileDocument.Parent> {}
+
+    /** Options passed along in Update operations for TileDocuments */
+    interface Update
+      extends foundry.abstract.types.DatabaseUpdateOperation<TileDocument.UpdateData, TileDocument.Parent> {}
+
+    /** Operation for {@linkcode TileDocument.createDocuments} */
+    interface CreateDocumentsOperation<Temporary extends boolean | undefined>
+      extends Document.Database.CreateOperation<TileDocument.Database.Create<Temporary>> {}
+
+    /** Operation for {@linkcode TileDocument.updateDocuments} */
+    interface UpdateDocumentsOperation
+      extends Document.Database.UpdateDocumentsOperation<TileDocument.Database.Update> {}
+
+    /** Operation for {@linkcode TileDocument.deleteDocuments} */
+    interface DeleteDocumentsOperation
+      extends Document.Database.DeleteDocumentsOperation<TileDocument.Database.Delete> {}
+
+    /** Operation for {@linkcode TileDocument.create} */
+    interface CreateOperation<Temporary extends boolean | undefined>
+      extends Document.Database.CreateOperation<TileDocument.Database.Create<Temporary>> {}
+
+    /** Operation for {@link TileDocument.update | `TileDocument#update`} */
+    interface UpdateOperation extends Document.Database.UpdateOperation<Update> {}
+
+    interface DeleteOperation extends Document.Database.DeleteOperation<Delete> {}
+
+    /** Options for {@linkcode TileDocument.get} */
+    interface GetOptions extends Document.Database.GetOptions {}
+
+    /** Options for {@link TileDocument._preCreate | `TileDocument#_preCreate`} */
+    interface PreCreateOptions extends Document.Database.PreCreateOptions<Create> {}
+
+    /** Options for {@link TileDocument._onCreate | `TileDocument#_onCreate`} */
+    interface OnCreateOptions extends Document.Database.CreateOptions<Create> {}
+
+    /** Operation for {@linkcode TileDocument._preCreateOperation} */
+    interface PreCreateOperation extends Document.Database.PreCreateOperationStatic<TileDocument.Database.Create> {}
+
+    /** Operation for {@link TileDocument._onCreateOperation | `TileDocument#_onCreateOperation`} */
+    interface OnCreateOperation extends TileDocument.Database.Create {}
+
+    /** Options for {@link TileDocument._preUpdate | `TileDocument#_preUpdate`} */
+    interface PreUpdateOptions extends Document.Database.PreUpdateOptions<Update> {}
+
+    /** Options for {@link TileDocument._onUpdate | `TileDocument#_onUpdate`} */
+    interface OnUpdateOptions extends Document.Database.UpdateOptions<Update> {}
+
+    /** Operation for {@linkcode TileDocument._preUpdateOperation} */
+    interface PreUpdateOperation extends TileDocument.Database.Update {}
+
+    /** Operation for {@link TileDocument._onUpdateOperation | `TileDocument._preUpdateOperation`} */
+    interface OnUpdateOperation extends TileDocument.Database.Update {}
+
+    /** Options for {@link TileDocument._preDelete | `TileDocument#_preDelete`} */
+    interface PreDeleteOptions extends Document.Database.PreDeleteOperationInstance<Delete> {}
+
+    /** Options for {@link TileDocument._onDelete | `TileDocument#_onDelete`} */
+    interface OnDeleteOptions extends Document.Database.DeleteOptions<Delete> {}
+
+    /** Options for {@link TileDocument._preDeleteOperation | `TileDocument#_preDeleteOperation`} */
+    interface PreDeleteOperation extends TileDocument.Database.Delete {}
+
+    /** Options for {@link TileDocument._onDeleteOperation | `TileDocument#_onDeleteOperation`} */
+    interface OnDeleteOperation extends TileDocument.Database.Delete {}
+
+    /** Context for {@linkcode TileDocument._onDeleteOperation} */
+    interface OnDeleteDocumentsContext extends Document.ModificationContext<TileDocument.Parent> {}
+
+    /** Context for {@linkcode TileDocument._onCreateDocuments} */
+    interface OnCreateDocumentsContext extends Document.ModificationContext<TileDocument.Parent> {}
+
+    /** Context for {@linkcode TileDocument._onUpdateDocuments} */
+    interface OnUpdateDocumentsContext extends Document.ModificationContext<TileDocument.Parent> {}
 
     /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.GetOperation | GetOperation} interface for
-     * `TileDocument` documents. Valid for passing to
-     * {@linkcode ClientDatabaseBackend._getDocuments | ClientDatabaseBackend#_getDocuments}.
-     *
-     * The {@linkcode GetDocumentsOperation} and {@linkcode BackendGetOperation} interfaces derive from this one.
+     * Options for {@link TileDocument._preCreateDescendantDocuments | `TileDocument#_preCreateDescendantDocuments`}
+     * and {@link TileDocument._onCreateDescendantDocuments | `TileDocument#_onCreateDescendantDocuments`}
      */
-    interface GetOperation extends DatabaseBackend.GetOperation<TileDocument.Parent> {}
+    interface CreateOptions extends Document.Database.CreateOptions<TileDocument.Database.Create> {}
 
     /**
-     * The interface for passing to {@linkcode TileDocument.get}.
-     * @see {@linkcode Document.Database.GetDocumentsOperation}
+     * Options for {@link TileDocument._preUpdateDescendantDocuments | `TileDocument#_preUpdateDescendantDocuments`}
+     * and {@link TileDocument._onUpdateDescendantDocuments | `TileDocument#_onUpdateDescendantDocuments`}
      */
-    interface GetDocumentsOperation extends Document.Database.GetDocumentsOperation<GetOperation> {}
+    interface UpdateOptions extends Document.Database.UpdateOptions<TileDocument.Database.Update> {}
 
     /**
-     * The interface for passing to {@linkcode DatabaseBackend.get | DatabaseBackend#get} for `TileDocument` documents.
-     * @see {@linkcode Document.Database.BackendGetOperation}
+     * Options for {@link TileDocument._preDeleteDescendantDocuments | `TileDocument#_preDeleteDescendantDocuments`}
+     * and {@link TileDocument._onDeleteDescendantDocuments | `TileDocument#_onDeleteDescendantDocuments`}
      */
-    interface BackendGetOperation extends Document.Database.BackendGetOperation<GetOperation> {}
-
-    /* ***********************************************
-     *              CREATE OPERATIONS                *
-     *************************************************/
+    interface DeleteOptions extends Document.Database.DeleteOptions<TileDocument.Database.Delete> {}
 
     /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.CreateOperation | DatabaseCreateOperation}
-     * interface for `TileDocument` documents.
-     *
-     * See {@linkcode DatabaseBackend.CreateOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode TileDocument.create}. The new name for that
-     * interface is {@linkcode CreateDocumentsOperation}.
+     * Create options for {@linkcode TileDocument.createDialog}.
      */
-    interface CreateOperation
-      extends
-        DatabaseBackend.CreateOperation<TileDocument.CreateInput, TileDocument.Parent>,
-        DatabaseBackend._CommonCanvasDocumentCreateProperties {}
-
-    /**
-     * The interface for passing to {@linkcode TileDocument.create} or {@linkcode TileDocument.createDocuments}.
-     * @see {@linkcode Document.Database.CreateDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface CreateDocumentsOperation extends Document.Database.CreateDocumentsOperation<CreateOperation> {}
-
-    /**
-     * The interface for passing to the {@linkcode Document.createEmbeddedDocuments | #createEmbeddedDocuments} method of any Documents that
-     * can contain `TileDocument` documents. (see {@linkcode TileDocument.Parent})
-     * @see {@linkcode Document.Database.CreateEmbeddedOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface CreateEmbeddedOperation extends Document.Database.CreateEmbeddedOperation<CreateOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.create | DatabaseBackend#create} for `TileDocument` documents.
-     * @see {@linkcode Document.Database.BackendCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendCreateOperation extends Document.Database.BackendCreateOperation<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TileDocument._preCreate | TileDocument#_preCreate} and
-     * {@link Hooks.PreCreateDocument | the `preCreateTileDocument` hook}.
-     * @see {@linkcode Document.Database.PreCreateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreCreateOptions extends Document.Database.PreCreateOptions<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TileDocument._preCreateOperation}.
-     * @see {@linkcode Document.Database.PreCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreCreateOperation extends Document.Database.PreCreateOperation<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TileDocument._onCreate | TileDocument#_onCreate} and
-     * {@link Hooks.CreateDocument | the `createTileDocument` hook}.
-     * @see {@linkcode Document.Database.OnCreateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnCreateOptions extends Document.Database.OnCreateOptions<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TileDocument._onCreateOperation} and `TileDocument`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnCreateOperation extends Document.Database.OnCreateOperation<CreateOperation> {}
-
-    /* ***********************************************
-     *              UPDATE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.UpdateOperation | DatabaseUpdateOperation}
-     * interface for `TileDocument` documents.
-     *
-     * See {@linkcode DatabaseBackend.UpdateOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode TileDocument.update | TileDocument#update}.
-     * The new name for that interface is {@linkcode UpdateOneDocumentOperation}.
-     */
-    interface UpdateOperation
-      extends
-        DatabaseBackend.UpdateOperation<TileDocument.UpdateInput, TileDocument.Parent>,
-        DatabaseBackend._CommonCanvasDocumentUpdateProperties {
-      /**
-       * @remarks Sets video sources on tiles affected by this operation to either play or stop in
-       * {@linkcode Tile._onUpdate | Tile#_onUpdate}.
-       */
-      playVideo?: boolean;
-
-      /**
-       * @remarks Sets the video offset for tiles affected by this operation in {@linkcode Tile._onUpdate | Tile#_onUpdate}.
-       */
-      offset?: number;
-    }
-
-    /**
-     * The interface for passing to {@linkcode TileDocument.update | TileDocument#update}.
-     * @see {@linkcode Document.Database.UpdateOneDocumentOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateOneDocumentOperation extends Document.Database.UpdateOneDocumentOperation<UpdateOperation> {}
-
-    /**
-     * The interface for passing to the {@linkcode Document.updateEmbeddedDocuments | #updateEmbeddedDocuments} method of any Documents that
-     * can contain `TileDocument` documents (see {@linkcode TileDocument.Parent}). This interface is just an alias
-     * for {@linkcode UpdateOneDocumentOperation}, as the same keys are provided by the method in both cases.
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateEmbeddedOperation extends UpdateOneDocumentOperation {}
-
-    /**
-     * The interface for passing to {@linkcode TileDocument.updateDocuments}.
-     * @see {@linkcode Document.Database.UpdateManyDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateManyDocumentsOperation extends Document.Database.UpdateManyDocumentsOperation<UpdateOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.update | DatabaseBackend#update} for `TileDocument` documents.
-     * @see {@linkcode Document.Database.BackendUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendUpdateOperation extends Document.Database.BackendUpdateOperation<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TileDocument._preUpdate | TileDocument#_preUpdate} and
-     * {@link Hooks.PreUpdateDocument | the `preUpdateTileDocument` hook}.
-     * @see {@linkcode Document.Database.PreUpdateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreUpdateOptions extends Document.Database.PreUpdateOptions<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TileDocument._preUpdateOperation}.
-     * @see {@linkcode Document.Database.PreUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreUpdateOperation extends Document.Database.PreUpdateOperation<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TileDocument._onUpdate | TileDocument#_onUpdate} and
-     * {@link Hooks.UpdateDocument | the `updateTileDocument` hook}.
-     * @see {@linkcode Document.Database.OnUpdateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnUpdateOptions extends Document.Database.OnUpdateOptions<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TileDocument._onUpdateOperation} and `TileDocument`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnUpdateOperation extends Document.Database.OnUpdateOperation<UpdateOperation> {}
-
-    /* ***********************************************
-     *              DELETE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.DeleteOperation | DatabaseDeleteOperation}
-     * interface for `TileDocument` documents.
-     *
-     * See {@linkcode DatabaseBackend.DeleteOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode TileDocument.delete | TileDocument#delete}.
-     * The new name for that interface is {@linkcode DeleteOneDocumentOperation}.
-     */
-    interface DeleteOperation extends DatabaseBackend.DeleteOperation<TileDocument.Parent> {}
-
-    /**
-     * The interface for passing to {@linkcode TileDocument.delete | TileDocument#delete}.
-     * @see {@linkcode Document.Database.DeleteOneDocumentOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteOneDocumentOperation extends Document.Database.DeleteOneDocumentOperation<DeleteOperation> {}
-
-    /**
-     * The interface for passing to the {@linkcode Document.deleteEmbeddedDocuments | #deleteEmbeddedDocuments} method of any Documents that
-     * can contain `TileDocument` documents (see {@linkcode TileDocument.Parent}). This interface is just an alias
-     * for {@linkcode DeleteOneDocumentOperation}, as the same keys are provided by the method in both cases.
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteEmbeddedOperation extends DeleteOneDocumentOperation {}
-
-    /**
-     * The interface for passing to {@linkcode TileDocument.deleteDocuments}.
-     * @see {@linkcode Document.Database.DeleteManyDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteManyDocumentsOperation extends Document.Database.DeleteManyDocumentsOperation<DeleteOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.delete | DatabaseBackend#delete} for `TileDocument` documents.
-     * @see {@linkcode Document.Database.BackendDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendDeleteOperation extends Document.Database.BackendDeleteOperation<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TileDocument._preDelete | TileDocument#_preDelete} and
-     * {@link Hooks.PreDeleteDocument | the `preDeleteTileDocument` hook}.
-     * @see {@linkcode Document.Database.PreDeleteOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreDeleteOptions extends Document.Database.PreDeleteOptions<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TileDocument._preDeleteOperation}.
-     * @see {@linkcode Document.Database.PreDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreDeleteOperation extends Document.Database.PreDeleteOperation<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TileDocument._onDelete | TileDocument#_onDelete} and
-     * {@link Hooks.DeleteDocument | the `deleteTileDocument` hook}.
-     * @see {@linkcode Document.Database.OnDeleteOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnDeleteOptions extends Document.Database.OnDeleteOptions<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TileDocument._onDeleteOperation} and `TileDocument`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnDeleteOperation extends Document.Database.OnDeleteOperation<DeleteOperation> {}
-
-    namespace Internal {
-      interface OperationNameMap {
-        GetDocumentsOperation: TileDocument.Database.GetDocumentsOperation;
-        BackendGetOperation: TileDocument.Database.BackendGetOperation;
-        GetOperation: TileDocument.Database.GetOperation;
-
-        CreateDocumentsOperation: TileDocument.Database.CreateDocumentsOperation;
-        CreateEmbeddedOperation: TileDocument.Database.CreateEmbeddedOperation;
-        BackendCreateOperation: TileDocument.Database.BackendCreateOperation;
-        CreateOperation: TileDocument.Database.CreateOperation;
-        PreCreateOptions: TileDocument.Database.PreCreateOptions;
-        PreCreateOperation: TileDocument.Database.PreCreateOperation;
-        OnCreateOptions: TileDocument.Database.OnCreateOptions;
-        OnCreateOperation: TileDocument.Database.OnCreateOperation;
-
-        UpdateOneDocumentOperation: TileDocument.Database.UpdateOneDocumentOperation;
-        UpdateEmbeddedOperation: TileDocument.Database.UpdateEmbeddedOperation;
-        UpdateManyDocumentsOperation: TileDocument.Database.UpdateManyDocumentsOperation;
-        BackendUpdateOperation: TileDocument.Database.BackendUpdateOperation;
-        UpdateOperation: TileDocument.Database.UpdateOperation;
-        PreUpdateOptions: TileDocument.Database.PreUpdateOptions;
-        PreUpdateOperation: TileDocument.Database.PreUpdateOperation;
-        OnUpdateOptions: TileDocument.Database.OnUpdateOptions;
-        OnUpdateOperation: TileDocument.Database.OnUpdateOperation;
-
-        DeleteOneDocumentOperation: TileDocument.Database.DeleteOneDocumentOperation;
-        DeleteEmbeddedOperation: TileDocument.Database.DeleteEmbeddedOperation;
-        DeleteManyDocumentsOperation: TileDocument.Database.DeleteManyDocumentsOperation;
-        BackendDeleteOperation: TileDocument.Database.BackendDeleteOperation;
-        DeleteOperation: TileDocument.Database.DeleteOperation;
-        PreDeleteOptions: TileDocument.Database.PreDeleteOptions;
-        PreDeleteOperation: TileDocument.Database.PreDeleteOperation;
-        OnDeleteOptions: TileDocument.Database.OnDeleteOptions;
-        OnDeleteOperation: TileDocument.Database.OnDeleteOperation;
-      }
-    }
+    interface DialogCreateOptions extends InexactPartial<Create> {}
   }
-
-  /**
-   * If `Temporary` is true then {@linkcode TileDocument.Implementation}, otherwise {@linkcode TileDocument.Stored}.
-   * @deprecated `Document.create`/`Documents` can no longer return temporary documents as of v14. This type will be removed in v15.
-   */
-  type TemporaryIf<Temporary extends boolean | undefined> =
-    true extends Extract<Temporary, true> ? TileDocument.Implementation : TileDocument.Stored;
 
   /**
    * The flags that are available for this document in the form `{ [scope: string]: { [key: string]: unknown } }`.
    */
-  interface Flags extends Document.Internal.ConfiguredFlagsForName<Name>, CoreFlags {}
+  interface Flags extends Document.ConfiguredFlagsForName<Name> {}
 
   namespace Flags {
     /**
      * The valid scopes for the flags on this document e.g. `"core"` or `"dnd5e"`.
      */
-    type Scope = Document.Internal.FlagKeyOf<Flags>;
+    type Scope = Document.FlagKeyOf<Flags>;
 
     /**
      * The valid keys for a certain scope for example if the scope is "core" then a valid key may be `"sheetLock"` or `"viewMode"`.
      */
-    type Key<Scope extends Flags.Scope> = Document.Internal.FlagKeyOf<Document.Internal.FlagGetKey<Flags, Scope>>;
+    type Key<Scope extends Flags.Scope> = Document.FlagKeyOf<Document.FlagGetKey<Flags, Scope>>;
 
     /**
      * Gets the type of a particular flag given a `Scope` and a `Key`.
      */
-    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.Internal.GetFlag<Flags, Scope, Key>;
+    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.GetFlag<Name, Scope, Key>;
   }
 
   interface CoreFlags {
     core?: {
       /**
-       * @deprecated "Tiling Sprites are deprecated without replacement." (since v12, until 14)
+       * @deprecated since v12, until 14
+       * @remarks "Tiling Sprites are deprecated without replacement."
        */
       isTilingSprite?: boolean;
 
@@ -825,72 +444,19 @@ declare namespace TileDocument {
     };
   }
 
-  /* ***********************************************
-   *       CLIENT DOCUMENT TEMPLATE TYPES          *
-   *************************************************/
-
-  /** The interface {@linkcode TileDocument.fromDropData} receives */
   interface DropData extends Document.Internal.DropData<Name> {}
+  interface DropDataOptions extends Document.DropDataOptions {}
 
-  /**
-   * @deprecated Foundry prior to v13 had a completely unused `options` parameter in the {@linkcode TileDocument.fromDropData}
-   * signature that has since been removed. This type will be removed in v14.
-   */
-  type DropDataOptions = never;
+  interface DefaultNameContext extends Document.DefaultNameContext<Name, NonNullable<Parent>> {}
 
-  /**
-   * The interface for passing to {@linkcode TileDocument.defaultName}
-   * @see {@linkcode Document.DefaultNameContext}
-   */
-  interface DefaultNameContext extends Document.DefaultNameContext<Name, Parent> {}
-
-  /**
-   * The interface for passing to {@linkcode TileDocument.createDialog}'s first parameter
-   * @see {@linkcode Document.CreateDialogData}
-   */
   interface CreateDialogData extends Document.CreateDialogData<CreateData> {}
-
-  /**
-   * @deprecated This is for a deprecated signature, and will be removed in v15.
-   * The interface for passing to {@linkcode TileDocument.createDialog}'s second parameter that still includes partial Dialog
-   * options, instead of being purely a {@linkcode Database.CreateDocumentsOperation | CreateDocumentsOperation}.
-   */
-  interface CreateDialogDeprecatedOptions
-    extends Database.CreateDocumentsOperation, Document._PartialDialogV1OptionsForCreateDialog {}
-
-  /**
-   * The interface for passing to {@linkcode TileDocument.createDialog}'s third parameter
-   * @see {@linkcode Document.CreateDialogOptions}
-   */
   interface CreateDialogOptions extends Document.CreateDialogOptions<Name> {}
-
-  /**
-   * The return type for {@linkcode TileDocument.createDialog}.
-   * @see {@linkcode Document.CreateDialogReturn}
-   */
-  type CreateDialogReturn<Config extends TileDocument.CreateDialogOptions | undefined> = Document.CreateDialogReturn<
-    TileDocument.Stored,
-    Config
-  >;
-
-  /**
-   * The return type for {@linkcode TileDocument.deleteDialog | TileDocument#deleteDialog}.
-   * @see {@linkcode Document.DeleteDialogReturn}
-   */
-  type DeleteDialogReturn<Config extends DialogV2.ConfirmConfig | undefined> = Document.DeleteDialogReturn<
-    TileDocument.Stored,
-    Config
-  >;
-
-  /* ***********************************************
-   *              TILE-SPECIFIC TYPES              *
-   *************************************************/
 
   /**
    * The arguments to construct the document.
    *
-   * @deprecated Writing the signature directly has helped reduce circularities and therefore is
-   * now recommended. This type will be removed in v14.
+   * @deprecated - Writing the signature directly has helped reduce circularities and therefore is
+   * now recommended.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   type ConstructorArgs = Document.ConstructorParameters<CreateData, Parent>;
@@ -925,51 +491,29 @@ declare class TileDocument extends BaseTile.Internal.CanvasDocument {
 
   // Descendant Document operations have been left out because Tile does not have any descendant documents.
 
-  // `context` must contain a `parent`, so is required.
+  /** @remarks `context` must contain a `pack` or `parent`. */
   static override defaultName(context: TileDocument.DefaultNameContext): string;
 
-  // `createOptions` must contain a  `parent`, so is required.
-  static override createDialog<Options extends TileDocument.CreateDialogOptions | undefined = undefined>(
+  /** @remarks `createOptions` must contain a `pack` or `parent`. */
+  static override createDialog(
     data: TileDocument.CreateDialogData | undefined,
-    createOptions: TileDocument.Database.CreateDocumentsOperation,
-    options?: Options,
-  ): Promise<TileDocument.CreateDialogReturn<Options>>;
+    createOptions: TileDocument.Database.DialogCreateOptions,
+    options?: TileDocument.CreateDialogOptions,
+  ): Promise<TileDocument.Stored | null | undefined>;
 
-  /**
-   * @deprecated "The `ClientDocument.createDialog` signature has changed. It now accepts database operation options in its second
-   * parameter, and options for {@linkcode DialogV2.prompt} in its third parameter." (since v13, until v15)
-   *
-   * @see {@linkcode TileDocument.CreateDialogDeprecatedOptions}
-   */
-  static override createDialog<Options extends TileDocument.CreateDialogOptions | undefined = undefined>(
-    data: TileDocument.CreateDialogData | undefined,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    createOptions: TileDocument.CreateDialogDeprecatedOptions,
-    options?: Options,
-  ): Promise<TileDocument.CreateDialogReturn<Options>>;
+  override deleteDialog(
+    options?: InexactPartial<foundry.applications.api.DialogV2.ConfirmConfig>,
+    operation?: Document.Database.DeleteOperationForName<"Tile">,
+  ): Promise<this | false | null | undefined>;
 
-  override deleteDialog<Options extends DialogV2.ConfirmConfig | undefined = undefined>(
-    options?: Options,
-    operation?: TileDocument.Database.DeleteOneDocumentOperation,
-  ): Promise<TileDocument.DeleteDialogReturn<Options>>;
-
-  /**
-   * @deprecated "`options` is now an object containing entries supported by {@linkcode DialogV2.confirm | DialogV2.confirm}."
-   * (since v13, until v15)
-   *
-   * @see {@linkcode Document.DeleteDialogDeprecatedConfig}
-   */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  override deleteDialog<Options extends Document.DeleteDialogDeprecatedConfig | undefined = undefined>(
-    options?: Options,
-    operation?: TileDocument.Database.DeleteOneDocumentOperation,
-  ): Promise<TileDocument.DeleteDialogReturn<Options>>;
-
-  static override fromDropData(data: TileDocument.DropData): Promise<TileDocument.Implementation | undefined>;
+  static override fromDropData(
+    data: TileDocument.DropData,
+    options?: TileDocument.DropDataOptions,
+  ): Promise<TileDocument.Implementation | undefined>;
 
   static override fromImport(
     source: TileDocument.Source,
-    context?: Document.FromImportContext<TileDocument.Parent>,
+    context?: Document.FromImportContext<TileDocument.Parent> | null,
   ): Promise<TileDocument.Implementation>;
 
   override _onClickDocumentLink(event: MouseEvent): ClientDocument.OnClickDocumentLinkReturn;

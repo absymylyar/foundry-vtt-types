@@ -1,14 +1,11 @@
-import type { MaybeArray, Merge } from "#utils";
-import type { fields, TextureData } from "#common/data/_module.d.mts";
-import type { DatabaseBackend, Document } from "#common/abstract/_module.d.mts";
-import type { BaseJournalEntryPage, BaseJournalEntry, BaseNote } from "#client/documents/_module.d.mts";
-import type { DialogV2 } from "#client/applications/api/_module.d.mts";
+import type { InexactPartial, Merge } from "#utils";
+import type { documents } from "#client/client.d.mts";
+import type Document from "#common/abstract/document.d.mts";
+import type { DataSchema } from "#common/data/fields.d.mts";
+import type BaseNote from "#common/documents/note.d.mts";
+import type { TextureData } from "#common/data/data.mjs";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type ClientDatabaseBackend from "#client/data/client-backend.d.mts";
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type ClientDocumentMixin from "#client/documents/abstract/client-document.d.mts";
+import fields = foundry.data.fields;
 
 declare namespace NoteDocument {
   /**
@@ -17,7 +14,7 @@ declare namespace NoteDocument {
   type Name = "Note";
 
   /**
-   * The context used to create a `NoteDocument`.
+   * The context used to create a `Note`.
    */
   interface ConstructionContext extends Document.ConstructionContext<Parent> {}
 
@@ -27,14 +24,14 @@ declare namespace NoteDocument {
   type Hierarchy = Readonly<Document.HierarchyOf<Schema>>;
 
   /**
-   * The implementation of the `NoteDocument` document instance configured through
-   * {@linkcode CONFIG.Note.documentClass} in Foundry and {@linkcode DocumentClassConfig} in fvtt-types.
+   * The implementation of the `NoteDocument` document instance configured through `CONFIG.Note.documentClass` in Foundry and
+   * {@linkcode DocumentClassConfig} or {@link ConfiguredNoteDocument | `fvtt-types/configuration/ConfiguredNoteDocument`} in fvtt-types.
    */
   type Implementation = Document.ImplementationFor<Name>;
 
   /**
-   * The implementation of the `NoteDocument` document configured through
-   * {@linkcode CONFIG.Note.documentClass} in Foundry and {@linkcode DocumentClassConfig} in fvtt-types.
+   * The implementation of the `NoteDocument` document configured through `CONFIG.Note.documentClass` in Foundry and
+   * {@linkcode DocumentClassConfig} in fvtt-types.
    */
   type ImplementationClass = Document.ImplementationClassFor<Name>;
 
@@ -42,17 +39,18 @@ declare namespace NoteDocument {
    * A document's metadata is special information about the document ranging anywhere from its name,
    * whether it's indexed, or to the permissions a user has over it.
    */
-  interface Metadata extends Merge<
-    Document.Metadata.Default,
-    Readonly<{
-      name: "Note";
-      collection: "notes";
-      label: "DOCUMENT.Note";
-      labelPlural: "DOCUMENT.Notes";
-      permissions: Metadata.Permissions;
-      schemaVersion: "13.341";
-    }>
-  > {}
+  interface Metadata
+    extends Merge<
+      Document.Metadata.Default,
+      Readonly<{
+        name: "Note";
+        collection: "notes";
+        label: string;
+        labelPlural: string;
+        permissions: Metadata.Permissions;
+        schemaVersion: string;
+      }>
+    > {}
 
   namespace Metadata {
     /**
@@ -83,6 +81,15 @@ declare namespace NoteDocument {
   type DescendantClass = never;
 
   /**
+   * Types of `CompendiumCollection` this document might be contained in.
+   * Note that `this.pack` will always return a string; this is the type for `game.packs.get(this.pack)`
+   *
+   * Will be `never` if cannot be contained in a `CompendiumCollection`.
+   */
+  // Note: Takes any document in the heritage chain (i.e. itself or any parent, transitive or not) that can be contained in a compendium.
+  type Pack = foundry.documents.collections.CompendiumCollection.ForDocument<"Scene">;
+
+  /**
    * An embedded document is a document contained in another.
    * For example an `Item` can be contained by an `Actor` which means `Item` can be embedded in `Actor`.
    *
@@ -93,8 +100,7 @@ declare namespace NoteDocument {
   /**
    * The name of the world or embedded collection this document can find itself in.
    * For example an `Item` is always going to be inside a collection with a key of `items`.
-   * This is a fixed string per document type and is primarily useful for the descendant Document operation methods, e.g
-   * {@linkcode ClientDocumentMixin.AnyMixed._preCreateDescendantDocuments | ClientDocument._preCreateDescendantDocuments}.
+   * This is a fixed string per document type and is primarily useful for {@link ClientDocumentMixin | `Descendant Document Events`}.
    */
   type ParentCollectionName = Metadata["collection"];
 
@@ -112,7 +118,7 @@ declare namespace NoteDocument {
    * An instance of `NoteDocument` that comes from the database but failed validation meaning that
    * its `system` and `_source` could theoretically be anything.
    */
-  type Invalid = Document.Internal.Invalid<Implementation>;
+  interface Invalid extends Document.Internal.Invalid<NoteDocument.Implementation> {}
 
   /**
    * An instance of `NoteDocument` that comes from the database.
@@ -120,75 +126,52 @@ declare namespace NoteDocument {
   type Stored = Document.Internal.Stored<NoteDocument.Implementation>;
 
   /**
-   * The data put in {@linkcode NoteDocument._source | NoteDocument#_source}. This data is what was
+   * The data put in {@link NoteDocument._source | `NoteDocument#_source`}. This data is what was
    * persisted to the database and therefore it must be valid JSON.
    *
-   * For example a {@linkcode fields.SetField | SetField} is persisted to the database as an array
+   * For example a {@link fields.SetField | `SetField`} is persisted to the database as an array
    * but initialized as a {@linkcode Set}.
    */
   interface Source extends fields.SchemaField.SourceData<Schema> {}
 
   /**
    * The data necessary to create a document. Used in places like {@linkcode NoteDocument.create}
-   * and {@linkcode NoteDocument | new NoteDocument(...)}.
+   * and {@link NoteDocument | `new NoteDocument(...)`}.
    *
-   * For example a {@linkcode fields.SetField | SetField} can accept any {@linkcode Iterable}
+   * For example a {@link fields.SetField | `SetField`} can accept any {@linkcode Iterable}
    * with the right values. This means you can pass a `Set` instance, an array of values,
    * a generator, or any other iterable.
    */
   interface CreateData extends fields.SchemaField.CreateData<Schema> {}
 
   /**
-   * Used in the {@linkcode NoteDocument.create} and {@linkcode NoteDocument.createDocuments} signatures, and
-   * {@linkcode NoteDocument.Database.CreateOperation} and its derivative interfaces.
-   */
-  type CreateInput = CreateData | Implementation;
-
-  /**
-   * The helper type for the return of {@linkcode NoteDocument.create}, returning (a single | an array of) (temporary | stored)
-   * `NoteDocument`s.
-   *
-   * `| undefined` is included in the non-array branch because if a `.create` call with non-array data is cancelled by the `preCreate`
-   * method or hook, `shift`ing the return of `.createDocuments` produces `undefined`
-   */
-  type CreateReturn<Data extends MaybeArray<CreateInput>> =
-    Data extends Array<CreateInput> ? NoteDocument.Stored[] : NoteDocument.Stored | undefined;
-
-  /**
-   * The data after a {@linkcode Document} has been initialized, for example
-   * {@linkcode NoteDocument.name | NoteDocument#name}.
+   * The data after a {@link foundry.abstract.Document | `Document`} has been initialized, for example
+   * {@link NoteDocument.name | `NoteDocument#name`}.
    *
    * This is data transformed from {@linkcode NoteDocument.Source} and turned into more
-   * convenient runtime data structures. For example a {@linkcode fields.SetField | SetField} is
+   * convenient runtime data structures. For example a {@link fields.SetField | `SetField`} is
    * persisted to the database as an array of values but at runtime it is a `Set` instance.
    */
   interface InitializedData extends fields.SchemaField.InitializedData<Schema> {}
 
   /**
-   * The data used to update a document, for example {@linkcode NoteDocument.update | NoteDocument#update}.
-   * It is a distinct type from {@linkcode NoteDocument.CreateData | DeepPartial<NoteDocument.CreateData>} because
+   * The data used to update a document, for example {@link NoteDocument.update | `NoteDocument#update`}.
+   * It is a distinct type from {@link NoteDocument.CreateData | `DeepPartial<NoteDocument.CreateData>`} because
    * it has different rules for `null` and `undefined`.
    */
   interface UpdateData extends fields.SchemaField.UpdateData<Schema> {}
 
   /**
-   * Used in the {@linkcode NoteDocument.update | NoteDocument#update} and
-   * {@linkcode NoteDocument.updateDocuments} signatures, and {@linkcode NoteDocument.Database.UpdateOperation}
-   * and its derivative interfaces.
-   */
-  type UpdateInput = UpdateData | Implementation;
-
-  /**
-   * The schema for {@linkcode NoteDocument}. This is the source of truth for how a `NoteDocument` document
+   * The schema for {@linkcode NoteDocument}. This is the source of truth for how an NoteDocument document
    * must be structured.
    *
    * Foundry uses this schema to validate the structure of the {@linkcode NoteDocument}. For example
-   * a {@linkcode fields.StringField | StringField} will enforce that the value is a string. More
-   * complex fields like {@linkcode fields.SetField | SetField} goes through various conversions
+   * a {@link fields.StringField | `StringField`} will enforce that the value is a string. More
+   * complex fields like {@link fields.SetField | `SetField`} goes through various conversions
    * starting as an array in the database, initialized as a set, and allows updates with any
    * iterable.
    */
-  interface Schema extends fields.DataSchema {
+  interface Schema extends DataSchema {
     /**
      * The _id which uniquely identifies this BaseNote embedded document
      * @defaultValue `null`
@@ -199,13 +182,13 @@ declare namespace NoteDocument {
      * The _id of a JournalEntry document which this Note represents
      * @defaultValue `null`
      */
-    entryId: fields.ForeignDocumentField<typeof BaseJournalEntry, { idOnly: true }>;
+    entryId: fields.ForeignDocumentField<typeof documents.BaseJournalEntry, { idOnly: true }>;
 
     /**
      * The _id of a specific JournalEntryPage document which this Note represents
      * @defaultValue `null`
      */
-    pageId: fields.ForeignDocumentField<typeof BaseJournalEntryPage, { idOnly: true }>;
+    pageId: fields.ForeignDocumentField<typeof documents.BaseJournalEntryPage, { idOnly: true }>;
 
     /**
      * The x-coordinate position of the center of the note icon
@@ -319,547 +302,148 @@ declare namespace NoteDocument {
   }
 
   namespace Database {
-    /* ***********************************************
-     *                GET OPERATIONS                 *
-     *************************************************/
+    /** Options passed along in Get operations for NoteDocuments */
+    interface Get extends foundry.abstract.types.DatabaseGetOperation<NoteDocument.Parent> {}
+
+    /** Options passed along in Create operations for NoteDocuments */
+    interface Create<Temporary extends boolean | undefined = boolean | undefined>
+      extends foundry.abstract.types.DatabaseCreateOperation<NoteDocument.CreateData, NoteDocument.Parent, Temporary> {}
+
+    /** Options passed along in Delete operations for NoteDocuments */
+    interface Delete extends foundry.abstract.types.DatabaseDeleteOperation<NoteDocument.Parent> {}
+
+    /** Options passed along in Update operations for NoteDocuments */
+    interface Update
+      extends foundry.abstract.types.DatabaseUpdateOperation<NoteDocument.UpdateData, NoteDocument.Parent> {}
+
+    /** Operation for {@linkcode NoteDocument.createDocuments} */
+    interface CreateDocumentsOperation<Temporary extends boolean | undefined>
+      extends Document.Database.CreateOperation<NoteDocument.Database.Create<Temporary>> {}
+
+    /** Operation for {@linkcode NoteDocument.updateDocuments} */
+    interface UpdateDocumentsOperation
+      extends Document.Database.UpdateDocumentsOperation<NoteDocument.Database.Update> {}
+
+    /** Operation for {@linkcode NoteDocument.deleteDocuments} */
+    interface DeleteDocumentsOperation
+      extends Document.Database.DeleteDocumentsOperation<NoteDocument.Database.Delete> {}
+
+    /** Operation for {@linkcode NoteDocument.create} */
+    interface CreateOperation<Temporary extends boolean | undefined>
+      extends Document.Database.CreateOperation<NoteDocument.Database.Create<Temporary>> {}
+
+    /** Operation for {@link NoteDocument.update | `NoteDocument#update`} */
+    interface UpdateOperation extends Document.Database.UpdateOperation<Update> {}
+
+    interface DeleteOperation extends Document.Database.DeleteOperation<Delete> {}
+
+    /** Options for {@linkcode NoteDocument.get} */
+    interface GetOptions extends Document.Database.GetOptions {}
+
+    /** Options for {@link NoteDocument._preCreate | `NoteDocument#_preCreate`} */
+    interface PreCreateOptions extends Document.Database.PreCreateOptions<Create> {}
+
+    /** Options for {@link NoteDocument._onCreate | `NoteDocument#_onCreate`} */
+    interface OnCreateOptions extends Document.Database.CreateOptions<Create> {}
+
+    /** Operation for {@linkcode NoteDocument._preCreateOperation} */
+    interface PreCreateOperation extends Document.Database.PreCreateOperationStatic<NoteDocument.Database.Create> {}
+
+    /** Operation for {@link NoteDocument._onCreateOperation | `NoteDocument#_onCreateOperation`} */
+    interface OnCreateOperation extends NoteDocument.Database.Create {}
+
+    /** Options for {@link NoteDocument._preUpdate | `NoteDocument#_preUpdate`} */
+    interface PreUpdateOptions extends Document.Database.PreUpdateOptions<Update> {}
+
+    /** Options for {@link NoteDocument._onUpdate | `NoteDocument#_onUpdate`} */
+    interface OnUpdateOptions extends Document.Database.UpdateOptions<Update> {}
+
+    /** Operation for {@linkcode NoteDocument._preUpdateOperation} */
+    interface PreUpdateOperation extends NoteDocument.Database.Update {}
+
+    /** Operation for {@link NoteDocument._onUpdateOperation | `NoteDocument._preUpdateOperation`} */
+    interface OnUpdateOperation extends NoteDocument.Database.Update {}
+
+    /** Options for {@link NoteDocument._preDelete | `NoteDocument#_preDelete`} */
+    interface PreDeleteOptions extends Document.Database.PreDeleteOperationInstance<Delete> {}
+
+    /** Options for {@link NoteDocument._onDelete | `NoteDocument#_onDelete`} */
+    interface OnDeleteOptions extends Document.Database.DeleteOptions<Delete> {}
+
+    /** Options for {@link NoteDocument._preDeleteOperation | `NoteDocument#_preDeleteOperation`} */
+    interface PreDeleteOperation extends NoteDocument.Database.Delete {}
+
+    /** Options for {@link NoteDocument._onDeleteOperation | `NoteDocument#_onDeleteOperation`} */
+    interface OnDeleteOperation extends NoteDocument.Database.Delete {}
+
+    /** Context for {@linkcode NoteDocument._onDeleteOperation} */
+    interface OnDeleteDocumentsContext extends Document.ModificationContext<NoteDocument.Parent> {}
+
+    /** Context for {@linkcode NoteDocument._onCreateDocuments} */
+    interface OnCreateDocumentsContext extends Document.ModificationContext<NoteDocument.Parent> {}
+
+    /** Context for {@linkcode NoteDocument._onUpdateDocuments} */
+    interface OnUpdateDocumentsContext extends Document.ModificationContext<NoteDocument.Parent> {}
 
     /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.GetOperation | GetOperation} interface for
-     * `NoteDocument` documents. Valid for passing to
-     * {@linkcode ClientDatabaseBackend._getDocuments | ClientDatabaseBackend#_getDocuments}.
-     *
-     * The {@linkcode GetDocumentsOperation} and {@linkcode BackendGetOperation} interfaces derive from this one.
+     * Options for {@link NoteDocument._preCreateDescendantDocuments | `NoteDocument#_preCreateDescendantDocuments`}
+     * and {@link NoteDocument._onCreateDescendantDocuments | `NoteDocument#_onCreateDescendantDocuments`}
      */
-    interface GetOperation extends DatabaseBackend.GetOperation<NoteDocument.Parent> {}
+    interface CreateOptions extends Document.Database.CreateOptions<NoteDocument.Database.Create> {}
 
     /**
-     * The interface for passing to {@linkcode NoteDocument.get}.
-     * @see {@linkcode Document.Database.GetDocumentsOperation}
+     * Options for {@link NoteDocument._preUpdateDescendantDocuments | `NoteDocument#_preUpdateDescendantDocuments`}
+     * and {@link NoteDocument._onUpdateDescendantDocuments | `NoteDocument#_onUpdateDescendantDocuments`}
      */
-    interface GetDocumentsOperation extends Document.Database.GetDocumentsOperation<GetOperation> {}
+    interface UpdateOptions extends Document.Database.UpdateOptions<NoteDocument.Database.Update> {}
 
     /**
-     * The interface for passing to {@linkcode DatabaseBackend.get | DatabaseBackend#get} for `NoteDocument` documents.
-     * @see {@linkcode Document.Database.BackendGetOperation}
+     * Options for {@link NoteDocument._preDeleteDescendantDocuments | `NoteDocument#_preDeleteDescendantDocuments`}
+     * and {@link NoteDocument._onDeleteDescendantDocuments | `NoteDocument#_onDeleteDescendantDocuments`}
      */
-    interface BackendGetOperation extends Document.Database.BackendGetOperation<GetOperation> {}
-
-    /* ***********************************************
-     *              CREATE OPERATIONS                *
-     *************************************************/
+    interface DeleteOptions extends Document.Database.DeleteOptions<NoteDocument.Database.Delete> {}
 
     /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.CreateOperation | DatabaseCreateOperation}
-     * interface for `NoteDocument` documents.
-     *
-     * See {@linkcode DatabaseBackend.CreateOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode NoteDocument.create}. The new name for that
-     * interface is {@linkcode CreateDocumentsOperation}.
+     * Create options for {@linkcode NoteDocument.createDialog}.
      */
-    interface CreateOperation
-      extends
-        DatabaseBackend.CreateOperation<NoteDocument.CreateInput, NoteDocument.Parent>,
-        DatabaseBackend._CommonCanvasDocumentCreateProperties {}
-
-    /**
-     * The interface for passing to {@linkcode NoteDocument.create} or {@linkcode NoteDocument.createDocuments}.
-     * @see {@linkcode Document.Database.CreateDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface CreateDocumentsOperation extends Document.Database.CreateDocumentsOperation<CreateOperation> {}
-
-    /**
-     * The interface for passing to the {@linkcode Document.createEmbeddedDocuments | #createEmbeddedDocuments} method of any Documents that
-     * can contain `NoteDocument` documents. (see {@linkcode NoteDocument.Parent})
-     * @see {@linkcode Document.Database.CreateEmbeddedOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface CreateEmbeddedOperation extends Document.Database.CreateEmbeddedOperation<CreateOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.create | DatabaseBackend#create} for `NoteDocument` documents.
-     * @see {@linkcode Document.Database.BackendCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendCreateOperation extends Document.Database.BackendCreateOperation<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode NoteDocument._preCreate | NoteDocument#_preCreate} and
-     * {@link Hooks.PreCreateDocument | the `preCreateNoteDocument` hook}.
-     * @see {@linkcode Document.Database.PreCreateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreCreateOptions extends Document.Database.PreCreateOptions<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode NoteDocument._preCreateOperation}.
-     * @see {@linkcode Document.Database.PreCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreCreateOperation extends Document.Database.PreCreateOperation<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode NoteDocument._onCreate | NoteDocument#_onCreate} and
-     * {@link Hooks.CreateDocument | the `createNoteDocument` hook}.
-     * @see {@linkcode Document.Database.OnCreateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnCreateOptions extends Document.Database.OnCreateOptions<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode NoteDocument._onCreateOperation} and `NoteDocument`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnCreateOperation extends Document.Database.OnCreateOperation<CreateOperation> {}
-
-    /* ***********************************************
-     *              UPDATE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.UpdateOperation | DatabaseUpdateOperation}
-     * interface for `NoteDocument` documents.
-     *
-     * See {@linkcode DatabaseBackend.UpdateOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode NoteDocument.update | NoteDocument#update}.
-     * The new name for that interface is {@linkcode UpdateOneDocumentOperation}.
-     */
-    interface UpdateOperation
-      extends
-        DatabaseBackend.UpdateOperation<NoteDocument.UpdateInput, NoteDocument.Parent>,
-        DatabaseBackend._CommonCanvasDocumentUpdateProperties {}
-
-    /**
-     * The interface for passing to {@linkcode NoteDocument.update | NoteDocument#update}.
-     * @see {@linkcode Document.Database.UpdateOneDocumentOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateOneDocumentOperation extends Document.Database.UpdateOneDocumentOperation<UpdateOperation> {}
-
-    /**
-     * The interface for passing to the {@linkcode Document.updateEmbeddedDocuments | #updateEmbeddedDocuments} method of any Documents that
-     * can contain `NoteDocument` documents (see {@linkcode NoteDocument.Parent}). This interface is just an alias
-     * for {@linkcode UpdateOneDocumentOperation}, as the same keys are provided by the method in both cases.
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateEmbeddedOperation extends UpdateOneDocumentOperation {}
-
-    /**
-     * The interface for passing to {@linkcode NoteDocument.updateDocuments}.
-     * @see {@linkcode Document.Database.UpdateManyDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateManyDocumentsOperation extends Document.Database.UpdateManyDocumentsOperation<UpdateOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.update | DatabaseBackend#update} for `NoteDocument` documents.
-     * @see {@linkcode Document.Database.BackendUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendUpdateOperation extends Document.Database.BackendUpdateOperation<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode NoteDocument._preUpdate | NoteDocument#_preUpdate} and
-     * {@link Hooks.PreUpdateDocument | the `preUpdateNoteDocument` hook}.
-     * @see {@linkcode Document.Database.PreUpdateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreUpdateOptions extends Document.Database.PreUpdateOptions<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode NoteDocument._preUpdateOperation}.
-     * @see {@linkcode Document.Database.PreUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreUpdateOperation extends Document.Database.PreUpdateOperation<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode NoteDocument._onUpdate | NoteDocument#_onUpdate} and
-     * {@link Hooks.UpdateDocument | the `updateNoteDocument` hook}.
-     * @see {@linkcode Document.Database.OnUpdateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnUpdateOptions extends Document.Database.OnUpdateOptions<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode NoteDocument._onUpdateOperation} and `NoteDocument`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnUpdateOperation extends Document.Database.OnUpdateOperation<UpdateOperation> {}
-
-    /* ***********************************************
-     *              DELETE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.DeleteOperation | DatabaseDeleteOperation}
-     * interface for `NoteDocument` documents.
-     *
-     * See {@linkcode DatabaseBackend.DeleteOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode NoteDocument.delete | NoteDocument#delete}.
-     * The new name for that interface is {@linkcode DeleteOneDocumentOperation}.
-     */
-    interface DeleteOperation extends DatabaseBackend.DeleteOperation<NoteDocument.Parent> {}
-
-    /**
-     * The interface for passing to {@linkcode NoteDocument.delete | NoteDocument#delete}.
-     * @see {@linkcode Document.Database.DeleteOneDocumentOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteOneDocumentOperation extends Document.Database.DeleteOneDocumentOperation<DeleteOperation> {}
-
-    /**
-     * The interface for passing to the {@linkcode Document.deleteEmbeddedDocuments | #deleteEmbeddedDocuments} method of any Documents that
-     * can contain `NoteDocument` documents (see {@linkcode NoteDocument.Parent}). This interface is just an alias
-     * for {@linkcode DeleteOneDocumentOperation}, as the same keys are provided by the method in both cases.
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteEmbeddedOperation extends DeleteOneDocumentOperation {}
-
-    /**
-     * The interface for passing to {@linkcode NoteDocument.deleteDocuments}.
-     * @see {@linkcode Document.Database.DeleteManyDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteManyDocumentsOperation extends Document.Database.DeleteManyDocumentsOperation<DeleteOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.delete | DatabaseBackend#delete} for `NoteDocument` documents.
-     * @see {@linkcode Document.Database.BackendDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendDeleteOperation extends Document.Database.BackendDeleteOperation<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode NoteDocument._preDelete | NoteDocument#_preDelete} and
-     * {@link Hooks.PreDeleteDocument | the `preDeleteNoteDocument` hook}.
-     * @see {@linkcode Document.Database.PreDeleteOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreDeleteOptions extends Document.Database.PreDeleteOptions<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode NoteDocument._preDeleteOperation}.
-     * @see {@linkcode Document.Database.PreDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreDeleteOperation extends Document.Database.PreDeleteOperation<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode NoteDocument._onDelete | NoteDocument#_onDelete} and
-     * {@link Hooks.DeleteDocument | the `deleteNoteDocument` hook}.
-     * @see {@linkcode Document.Database.OnDeleteOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnDeleteOptions extends Document.Database.OnDeleteOptions<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode NoteDocument._onDeleteOperation} and `NoteDocument`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnDeleteOperation extends Document.Database.OnDeleteOperation<DeleteOperation> {}
-
-    namespace Internal {
-      interface OperationNameMap {
-        GetDocumentsOperation: NoteDocument.Database.GetDocumentsOperation;
-        BackendGetOperation: NoteDocument.Database.BackendGetOperation;
-        GetOperation: NoteDocument.Database.GetOperation;
-
-        CreateDocumentsOperation: NoteDocument.Database.CreateDocumentsOperation;
-        CreateEmbeddedOperation: NoteDocument.Database.CreateEmbeddedOperation;
-        BackendCreateOperation: NoteDocument.Database.BackendCreateOperation;
-        CreateOperation: NoteDocument.Database.CreateOperation;
-        PreCreateOptions: NoteDocument.Database.PreCreateOptions;
-        PreCreateOperation: NoteDocument.Database.PreCreateOperation;
-        OnCreateOptions: NoteDocument.Database.OnCreateOptions;
-        OnCreateOperation: NoteDocument.Database.OnCreateOperation;
-
-        UpdateOneDocumentOperation: NoteDocument.Database.UpdateOneDocumentOperation;
-        UpdateEmbeddedOperation: NoteDocument.Database.UpdateEmbeddedOperation;
-        UpdateManyDocumentsOperation: NoteDocument.Database.UpdateManyDocumentsOperation;
-        BackendUpdateOperation: NoteDocument.Database.BackendUpdateOperation;
-        UpdateOperation: NoteDocument.Database.UpdateOperation;
-        PreUpdateOptions: NoteDocument.Database.PreUpdateOptions;
-        PreUpdateOperation: NoteDocument.Database.PreUpdateOperation;
-        OnUpdateOptions: NoteDocument.Database.OnUpdateOptions;
-        OnUpdateOperation: NoteDocument.Database.OnUpdateOperation;
-
-        DeleteOneDocumentOperation: NoteDocument.Database.DeleteOneDocumentOperation;
-        DeleteEmbeddedOperation: NoteDocument.Database.DeleteEmbeddedOperation;
-        DeleteManyDocumentsOperation: NoteDocument.Database.DeleteManyDocumentsOperation;
-        BackendDeleteOperation: NoteDocument.Database.BackendDeleteOperation;
-        DeleteOperation: NoteDocument.Database.DeleteOperation;
-        PreDeleteOptions: NoteDocument.Database.PreDeleteOptions;
-        PreDeleteOperation: NoteDocument.Database.PreDeleteOperation;
-        OnDeleteOptions: NoteDocument.Database.OnDeleteOptions;
-        OnDeleteOperation: NoteDocument.Database.OnDeleteOperation;
-      }
-    }
+    interface DialogCreateOptions extends InexactPartial<Create> {}
   }
-
-  /**
-   * If `Temporary` is true then {@linkcode NoteDocument.Implementation}, otherwise {@linkcode NoteDocument.Stored}.
-   * @deprecated `Document.create`/`Documents` can no longer return temporary documents as of v14. This type will be removed in v15.
-   */
-  type TemporaryIf<Temporary extends boolean | undefined> =
-    true extends Extract<Temporary, true> ? NoteDocument.Implementation : NoteDocument.Stored;
 
   /**
    * The flags that are available for this document in the form `{ [scope: string]: { [key: string]: unknown } }`.
    */
-  interface Flags extends Document.Internal.ConfiguredFlagsForName<Name> {}
+  interface Flags extends Document.ConfiguredFlagsForName<Name> {}
 
   namespace Flags {
     /**
      * The valid scopes for the flags on this document e.g. `"core"` or `"dnd5e"`.
      */
-    type Scope = Document.Internal.FlagKeyOf<Flags>;
+    type Scope = Document.FlagKeyOf<Flags>;
 
     /**
      * The valid keys for a certain scope for example if the scope is "core" then a valid key may be `"sheetLock"` or `"viewMode"`.
      */
-    type Key<Scope extends Flags.Scope> = Document.Internal.FlagKeyOf<Document.Internal.FlagGetKey<Flags, Scope>>;
+    type Key<Scope extends Flags.Scope> = Document.FlagKeyOf<Document.FlagGetKey<Flags, Scope>>;
 
     /**
      * Gets the type of a particular flag given a `Scope` and a `Key`.
      */
-    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.Internal.GetFlag<Flags, Scope, Key>;
+    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.GetFlag<Name, Scope, Key>;
   }
 
-  /* ***********************************************
-   *       CLIENT DOCUMENT TEMPLATE TYPES          *
-   *************************************************/
-
-  /** The interface {@linkcode NoteDocument.fromDropData} receives */
   interface DropData extends Document.Internal.DropData<Name> {}
+  interface DropDataOptions extends Document.DropDataOptions {}
 
-  /**
-   * @deprecated Foundry prior to v13 had a completely unused `options` parameter in the {@linkcode NoteDocument.fromDropData}
-   * signature that has since been removed. This type will be removed in v14.
-   */
-  type DropDataOptions = never;
+  interface DefaultNameContext extends Document.DefaultNameContext<Name, NonNullable<Parent>> {}
 
-  /**
-   * The interface for passing to {@linkcode NoteDocument.defaultName}
-   * @see {@linkcode Document.DefaultNameContext}
-   */
-  interface DefaultNameContext extends Document.DefaultNameContext<Name, Parent> {}
-
-  /**
-   * The interface for passing to {@linkcode NoteDocument.createDialog}'s first parameter
-   * @see {@linkcode Document.CreateDialogData}
-   */
   interface CreateDialogData extends Document.CreateDialogData<CreateData> {}
-
-  /**
-   * @deprecated This is for a deprecated signature, and will be removed in v15.
-   * The interface for passing to {@linkcode NoteDocument.createDialog}'s second parameter that still includes partial Dialog
-   * options, instead of being purely a {@linkcode Database.CreateDocumentsOperation | CreateDocumentsOperation}.
-   */
-  interface CreateDialogDeprecatedOptions
-    extends Database.CreateDocumentsOperation, Document._PartialDialogV1OptionsForCreateDialog {}
-
-  /**
-   * The interface for passing to {@linkcode NoteDocument.createDialog}'s third parameter
-   * @see {@linkcode Document.CreateDialogOptions}
-   */
   interface CreateDialogOptions extends Document.CreateDialogOptions<Name> {}
-
-  /**
-   * The return type for {@linkcode NoteDocument.createDialog}.
-   * @see {@linkcode Document.CreateDialogReturn}
-   */
-  // TODO: Type for the override returning a `Note` placeable in some cases.
-
-  type CreateDialogReturn<Config extends NoteDocument.CreateDialogOptions | undefined> = Document.CreateDialogReturn<
-    NoteDocument.Stored,
-    Config
-  >;
-
-  /**
-   * The return type for {@linkcode NoteDocument.deleteDialog | NoteDocument#deleteDialog}.
-   * @see {@linkcode Document.DeleteDialogReturn}
-   */
-  type DeleteDialogReturn<Config extends DialogV2.ConfirmConfig | undefined> = Document.DeleteDialogReturn<
-    NoteDocument.Stored,
-    Config
-  >;
 
   /**
    * The arguments to construct the document.
    *
-   * @deprecated Writing the signature directly has helped reduce circularities and therefore is
-   * now recommended. This type will be removed in v14.
+   * @deprecated - Writing the signature directly has helped reduce circularities and therefore is
+   * now recommended.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   type ConstructorArgs = Document.ConstructorParameters<CreateData, Parent>;
@@ -880,35 +464,27 @@ declare class NoteDocument extends BaseNote.Internal.CanvasDocument {
   // Note(LukeAbby): Optional as there are currently no required properties on `CreateData`.
   constructor(data?: NoteDocument.CreateData, context?: NoteDocument.ConstructionContext);
 
-  // `createOptions` must contain a  `parent`, so is required.
-  static override createDialog<Options extends NoteDocument.CreateDialogOptions | undefined = undefined>(
+  /** @remarks `createOptions` must contain a `pack` or `parent`. */
+  static override createDialog(
     data: NoteDocument.CreateDialogData | undefined,
-    createOptions: NoteDocument.Database.CreateDocumentsOperation,
-    options?: Options,
-  ): Promise<NoteDocument.CreateDialogReturn<Options>>;
+    createOptions: NoteDocument.Database.DialogCreateOptions,
+    dialogoptions?: NoteDocument.CreateDialogOptions,
+  ): Promise<NoteDocument.Stored | null | undefined>;
 
-  /**
-   * @deprecated "The `ClientDocument.createDialog` signature has changed. It now accepts database operation options in its second
-   * parameter, and options for {@linkcode DialogV2.prompt} in its third parameter." (since v13, until v15)
-   *
-   * @see {@linkcode NoteDocument.CreateDialogDeprecatedOptions}
-   */
-  static override createDialog<Options extends NoteDocument.CreateDialogOptions | undefined = undefined>(
-    data: NoteDocument.CreateDialogData | undefined,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    createOptions: NoteDocument.CreateDialogDeprecatedOptions,
-    options?: Options,
-  ): Promise<NoteDocument.CreateDialogReturn<Options>>;
+  override deleteDialog(
+    options?: InexactPartial<foundry.applications.api.DialogV2.ConfirmConfig>,
+    operation?: Document.Database.DeleteOperationForName<"Note">,
+  ): Promise<this | false | null | undefined>;
 
   /**
    * The associated JournalEntry which is referenced by this Note
    */
-  get entry(): JournalEntry.Stored | undefined;
+  get entry(): JournalEntry.Implementation | undefined;
 
   /**
    * The specific JournalEntryPage within the associated JournalEntry referenced by this Note.
    */
-  get page(): JournalEntryPage.Stored | undefined;
+  get page(): JournalEntryPage.Implementation | undefined;
 
   /**
    * The text label used to annotate this Note
@@ -929,33 +505,17 @@ declare class NoteDocument extends BaseNote.Internal.CanvasDocument {
 
   // Descendant Document operations have been left out because Note does not have any descendant documents.
 
-  // `context` must contain a `parent`, so is required.
+  /** @remarks `context` must contain a `pack` or `parent`. */
   static override defaultName(context: NoteDocument.DefaultNameContext): string;
 
-  // `createDialog` omitted from template due to real override above
-
-  override deleteDialog<Options extends DialogV2.ConfirmConfig | undefined = undefined>(
-    options?: Options,
-    operation?: NoteDocument.Database.DeleteOneDocumentOperation,
-  ): Promise<NoteDocument.DeleteDialogReturn<Options>>;
-
-  /**
-   * @deprecated "`options` is now an object containing entries supported by {@linkcode DialogV2.confirm | DialogV2.confirm}."
-   * (since v13, until v15)
-   *
-   * @see {@linkcode Document.DeleteDialogDeprecatedConfig}
-   */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  override deleteDialog<Options extends Document.DeleteDialogDeprecatedConfig | undefined = undefined>(
-    options?: Options,
-    operation?: NoteDocument.Database.DeleteOneDocumentOperation,
-  ): Promise<NoteDocument.DeleteDialogReturn<Options>>;
-
-  static override fromDropData(data: NoteDocument.DropData): Promise<NoteDocument.Implementation | undefined>;
+  static override fromDropData(
+    data: NoteDocument.DropData,
+    options?: NoteDocument.DropDataOptions,
+  ): Promise<NoteDocument.Implementation | undefined>;
 
   static override fromImport(
     source: NoteDocument.Source,
-    context?: Document.FromImportContext<NoteDocument.Parent>,
+    context?: Document.FromImportContext<NoteDocument.Parent> | null,
   ): Promise<NoteDocument.Implementation>;
 
   override _onClickDocumentLink(event: MouseEvent): ClientDocument.OnClickDocumentLinkReturn;

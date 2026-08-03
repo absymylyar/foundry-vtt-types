@@ -108,10 +108,11 @@ declare global {
        * to {@linkcode PIXI.Polygon.intersectPolygon | PIXI.Polygon#intersectPolygon}
        */
       interface ClipperLibIntersectPolygonOptions
-        extends PIXI.Rectangle.ClipperLibIntersectPolygonOptions, Pick<PIXI.Circle.PointsForArcOptions, "density"> {}
+        extends PIXI.Rectangle.ClipperLibIntersectPolygonOptions,
+          Pick<PIXI.Circle.PointsForArcOptions, "density"> {}
 
       /** @internal */
-      interface _PointsForArcOptions {
+      type _PointsForArcOptions = InexactPartial<{
         /**
          * The number of points which defines the density of approximation
          * @defaultValue {@linkcode PIXI.Circle.approximateVertexDensity | PIXI.Circle.approximateVertexDensity(this.radius)}
@@ -123,12 +124,13 @@ declare global {
          * @defaultValue `true`
          */
         includeEndpoints: boolean;
-      }
+      }>;
 
-      interface PointsForArcOptions extends InexactPartial<_PointsForArcOptions> {}
+      interface PointsForArcOptions extends _PointsForArcOptions {}
 
       interface IntersectClipperOptions
-        extends PIXI.Polygon.IntersectClipperOptions, Pick<PIXI.Circle.PointsForArcOptions, "density"> {}
+        extends PIXI.Polygon.IntersectClipperOptions,
+          Pick<PIXI.Circle.PointsForArcOptions, "density"> {}
     }
 
     class Circle extends _PIXI.Circle {

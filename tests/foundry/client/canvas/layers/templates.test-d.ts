@@ -1,7 +1,6 @@
 import { expectTypeOf } from "vitest";
-
-import TemplateLayer = foundry.canvas.layers.TemplateLayer;
-import MeasuredTemplate = foundry.canvas.placeables.MeasuredTemplate;
+import { TemplateLayer } from "#client/canvas/layers/_module.mjs";
+import type { MeasuredTemplate } from "#client/canvas/placeables/_module.d.mts";
 
 expectTypeOf(TemplateLayer.documentName).toEqualTypeOf<"MeasuredTemplate">();
 expectTypeOf(TemplateLayer.instance).toEqualTypeOf<TemplateLayer | undefined>();

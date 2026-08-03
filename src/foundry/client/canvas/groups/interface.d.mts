@@ -1,4 +1,4 @@
-import type { FixedInstanceType, HandleEmptyObject, Identity, InexactPartial } from "#utils";
+import type { HandleEmptyObject, Identity, InexactPartial, NullishProps } from "#utils";
 import type { Canvas } from "#client/canvas/_module.d.mts";
 import type { PreciseText } from "#client/canvas/containers/_module.mjs";
 import type { CanvasGroupMixin } from "#client/canvas/groups/_module.d.mts";
@@ -7,7 +7,7 @@ import type { Drawing } from "#client/canvas/placeables/_module.d.mts";
 declare module "#configuration" {
   namespace Hooks {
     interface CanvasGroupConfig {
-      InterfaceCanvasGroup: InterfaceCanvasGroup.Implementation;
+      InterfaceCanvasGroup: InterfaceCanvasGroup.Any;
     }
   }
 }
@@ -19,8 +19,6 @@ declare class InterfaceCanvasGroup<
   DrawOptions extends InterfaceCanvasGroup.DrawOptions = InterfaceCanvasGroup.DrawOptions,
   TearDownOptions extends InterfaceCanvasGroup.TearDownOptions = InterfaceCanvasGroup.TearDownOptions,
 > extends CanvasGroupMixin<typeof PIXI.Container, "interface">(PIXI.Container)<DrawOptions, TearDownOptions> {
-  // static override groupName is handled by the CanvasGroupMixin type
-
   /**
    * Add a PrimaryGraphics to the group.
    * @param drawing - The Drawing being added
@@ -38,61 +36,44 @@ declare class InterfaceCanvasGroup<
   protected override _draw(options: HandleEmptyObject<DrawOptions>): Promise<void>;
 
   /**
-   * Display scrolling status text originating from an origin point on the Canvas.
+   * Display scrolling status text originating from this ObjectHUD container.
    * @param origin  - An origin point where the text should first emerge
    * @param content - The text content to display
-   * @param options - Options which customize the text animation (default: `{}`)
-   * @returns The created {@linkcode PreciseText} object which is scrolling
-   * @remarks Only returns `undefined` if the core `scrollingStatusText` setting is falsey
+   * @param options - Options which customize the text animation
+   * @returns - The created PreciseText object which is scrolling
+   * @remarks Only returns `null` if the core `scrollingStatusText` setting is falsey
    */
   createScrollingText(
     origin: Canvas.Point,
     content: string,
     options?: InterfaceCanvasGroup.CreateScrollingTextOptions,
-  ): Promise<PreciseText | undefined>;
-
-  #InterfaceCanvasGroup: true;
+  ): Promise<PreciseText | null>;
 }
 
 declare namespace InterfaceCanvasGroup {
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode Implementation} instead */
-  type Any = Internal.Any;
+  interface Any extends AnyInterfaceCanvasGroup {}
+  interface AnyConstructor extends Identity<typeof AnyInterfaceCanvasGroup> {}
 
-  /** @deprecated There should only be a single implementation of this class in use at one time, use {@linkcode ImplementationClass} instead */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyInterfaceCanvasGroup {}
-    interface AnyConstructor extends Identity<typeof AnyInterfaceCanvasGroup> {}
-  }
-
-  interface ImplementationClass extends Identity<typeof CONFIG.Canvas.groups.interface.groupClass> {}
-  interface Implementation extends FixedInstanceType<ImplementationClass> {}
-
-  /**
-   * Additional parameters of PIXI.TextStyle which are applied to the text.
-   * Excess keys are collected as `{...textStyle}` and passed to {@linkcode PreciseText.getTextStyle} which checks for `!== undefined`,
-   * so this doesn't fall under the usual 'no InexactPartial on external interfaces' rule
-   * @internal
-   */
-  interface _CreateScrollingTextOptions extends InexactPartial<PIXI.ITextStyle> {
+  /** @internal */
+  type _CreateScrollingTextOptions = NullishProps<{
     /**
      * The distance in pixels that the scrolling text should travel
      * @defaultValue Double the width or height of the text, depending on direction
+     * @remarks Default provided by `??`
      */
     distance: number;
 
     /**
      * The original anchor point where the text appears
-     * @defaultValue {@linkcode CONST.TEXT_ANCHOR_POINTS.CENTER}
+     * @defaultValue `CONST.TEXT_ANCHOR_POINTS.CENTER`
      */
-    anchor: CONST.TEXT_ANCHOR_POINTS;
+    anchor: foundry.CONST.TEXT_ANCHOR_POINTS;
 
     /**
      * The direction in which the text scrolls
-     * @defaultValue {@linkcode CONST.TEXT_ANCHOR_POINTS.TOP}
+     * @defaultValue `CONST.TEXT_ANCHOR_POINTS.TOP`
      */
-    direction: CONST.TEXT_ANCHOR_POINTS;
+    direction: foundry.CONST.TEXT_ANCHOR_POINTS;
 
     /**
      * An amount of randomization between [0, 1] applied to the initial position
@@ -100,15 +81,22 @@ declare namespace InterfaceCanvasGroup {
      * @remarks Only used if truthy
      */
     jitter: number;
-
-    /**
-     * The duration of the scrolling effect in milliseconds
-     * @defaultValue `2000`
+  }> &
+    InexactPartial<{
+      /**
+       * The duration of the scrolling effect in milliseconds
+       * @defaultValue `2000`
+       * @remarks Can't be `null` as it only has a parameter default and a duration of `0` is not appropriate
+       */
+      duration: number;
+    }> &
+    /*
+     * Additional parameters of PIXI.TextStyle which are applied to the text
+     * Excess keys are collected as `{...textStyle}` and passed to {@linkcode PreciseText.getTextStyle} which checks for `!== undefined`, so this can't be NullishProps
      */
-    duration: number;
-  }
+    InexactPartial<PIXI.ITextStyle>;
 
-  interface CreateScrollingTextOptions extends InexactPartial<_CreateScrollingTextOptions> {}
+  interface CreateScrollingTextOptions extends _CreateScrollingTextOptions {}
 
   interface DrawOptions extends CanvasGroupMixin.DrawOptions {}
 

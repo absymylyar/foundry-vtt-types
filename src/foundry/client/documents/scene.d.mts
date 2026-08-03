@@ -1,33 +1,12 @@
-import type { InexactPartial, MaybeArray, Merge } from "#utils";
-import type { LightData, TextureData, fields } from "#common/data/_module.d.mts";
-import type { DatabaseBackend, Document, EmbeddedCollection } from "#common/abstract/_module.d.mts";
-import type {
-  BaseAmbientLight,
-  BaseAmbientSound,
-  BaseDrawing,
-  BaseFolder,
-  BaseJournalEntry,
-  BaseJournalEntryPage,
-  BaseMeasuredTemplate,
-  BaseNote,
-  BasePlaylist,
-  BasePlaylistSound,
-  BaseRegion,
-  BaseScene,
-  BaseTile,
-  BaseToken,
-  BaseWall,
-} from "#common/documents/_module.d.mts";
-import type { ImageHelper } from "#client/helpers/media/_module.d.mts";
+import type { InexactPartial, Merge } from "#utils";
+import type { documents } from "#client/client.d.mts";
+import type Document from "#common/abstract/document.d.mts";
+import type { DataSchema } from "#common/data/fields.d.mts";
+import type { LightData, TextureData } from "#common/data/data.d.mts";
+import type ImageHelper from "#client/helpers/media/image-helper.d.mts";
 import type { Canvas } from "#client/canvas/_module.d.mts";
-import type { DialogV2 } from "#client/applications/api/_module.d.mts";
-import type { Notifications } from "#client/applications/ui/_module.d.mts";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type ClientDatabaseBackend from "#client/data/client-backend.d.mts";
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type ClientDocumentMixin from "#client/documents/abstract/client-document.d.mts";
+import fields = foundry.data.fields;
 
 declare namespace Scene {
   /**
@@ -46,36 +25,36 @@ declare namespace Scene {
   type Hierarchy = Readonly<Document.HierarchyOf<Schema>>;
 
   /**
-   * The implementation of the `Scene` document instance configured through
-   * {@linkcode CONFIG.Scene.documentClass} in Foundry and {@linkcode DocumentClassConfig} or
-   * {@linkcode ConfiguredScene | fvtt-types/configuration/ConfiguredScene} in fvtt-types.
+   * The implementation of the `Scene` document instance configured through `CONFIG.Scene.documentClass` in Foundry and
+   * {@linkcode DocumentClassConfig} or {@link ConfiguredScene | `fvtt-types/configuration/ConfiguredScene`} in fvtt-types.
    */
-  type Implementation = Document.ImplementationFor<Name>;
+  type Implementation = Document.ImplementationFor<"Scene">;
 
   /**
-   * The implementation of the `Scene` document configured through
-   * {@linkcode CONFIG.Scene.documentClass} in Foundry and {@linkcode DocumentClassConfig} in fvtt-types.
+   * The implementation of the `Scene` document configured through `CONFIG.Scene.documentClass` in Foundry and
+   * {@linkcode DocumentClassConfig} in fvtt-types.
    */
-  type ImplementationClass = Document.ImplementationClassFor<Name>;
+  type ImplementationClass = Document.ImplementationClassFor<"Scene">;
 
   /**
    * A document's metadata is special information about the document ranging anywhere from its name,
    * whether it's indexed, or to the permissions a user has over it.
    */
-  interface Metadata extends Merge<
-    Document.Metadata.Default,
-    Readonly<{
-      name: "Scene";
-      collection: "scenes";
-      indexed: true;
-      compendiumIndexFields: ["_id", "name", "thumb", "sort", "folder"];
-      embedded: Metadata.Embedded;
-      label: "DOCUMENT.Scene";
-      labelPlural: "Document.Scenes";
-      preserveOnImport: ["_id", "sort", "ownership", "active"];
-      schemaVersion: "13.341";
-    }>
-  > {}
+  interface Metadata
+    extends Merge<
+      Document.Metadata.Default,
+      Readonly<{
+        name: "Scene";
+        collection: "scenes";
+        indexed: true;
+        compendiumIndexFields: ["_id", "name", "thumb", "sort", "folder"];
+        embedded: Metadata.Embedded;
+        label: string;
+        labelPlural: string;
+        preserveOnImport: ["_id", "sort", "ownership", "active"];
+        schemaVersion: string;
+      }>
+    > {}
 
   namespace Metadata {
     /**
@@ -104,31 +83,16 @@ declare namespace Scene {
    * A document's direct descendants are documents that are contained directly within its schema.
    * This is a union of all such instances, or never if the document doesn't have any descendants.
    */
-  type DirectDescendantName =
-    | "AmbientLight"
-    | "AmbientSound"
-    | "Drawing"
-    | "MeasuredTemplate"
-    | "Note"
-    | "Region"
-    | "Tile"
-    | "Token"
-    | "Wall";
-
-  /**
-   * A document's direct descendants are documents that are contained directly within its schema.
-   * This is a union of all such instances, or never if the document doesn't have any descendants.
-   */
   type DirectDescendant =
-    | AmbientLightDocument.Stored
-    | AmbientSoundDocument.Stored
-    | DrawingDocument.Stored
-    | MeasuredTemplateDocument.Stored
-    | NoteDocument.Stored
-    | RegionDocument.Stored
-    | TileDocument.Stored
-    | TokenDocument.Stored
-    | WallDocument.Stored;
+    | AmbientLightDocument.Implementation
+    | AmbientSoundDocument.Implementation
+    | DrawingDocument.Implementation
+    | MeasuredTemplateDocument.Implementation
+    | NoteDocument.Implementation
+    | RegionDocument.Implementation
+    | TileDocument.Implementation
+    | TokenDocument.Implementation
+    | WallDocument.Implementation;
 
   /**
    * A document's direct descendants are documents that are contained directly within its schema.
@@ -159,14 +123,18 @@ declare namespace Scene {
   type DescendantClass = DirectDescendantClass | RegionDocument.DescendantClass | TokenDocument.DescendantClass;
 
   /**
+   * Types of `CompendiumCollection` this document might be contained in.
+   * Note that `this.pack` will always return a string; this is the type for `game.packs.get(this.pack)`
+   */
+  type Pack = foundry.documents.collections.CompendiumCollection.ForDocument<"Scene">;
+
+  /**
    * An embedded document is a document contained in another.
    * For example an `Item` can be contained by an `Actor` which means `Item` can be embedded in `Actor`.
    *
    * If this is `never` it is because there are no embeddable documents (or there's a bug!).
-   *
-   * @privateRemarks This is always the same as `DirectDescendant` and is provided as a convenient alias for users. It is not deprecated.
    */
-  type Embedded = DirectDescendant;
+  type Embedded = Document.ImplementationFor<Embedded.Name>;
 
   namespace Embedded {
     /**
@@ -178,10 +146,12 @@ declare namespace Scene {
     type Name = keyof Metadata.Embedded;
 
     /**
-     * A valid name to refer to a collection embedded in this document.
-     * @remarks Functionally identical to `keyof `{@linkcode Metadata.Embedded}` | ValueOf<Metadata.Embedded>`
+     * Gets the collection name for an embedded document.
      */
-    type CollectionName = Document.Embedded.CollectionName<Metadata.Embedded>;
+    type CollectionNameOf<CollectionName extends Embedded.CollectionName> = Document.Embedded.CollectionNameFor<
+      Metadata.Embedded,
+      CollectionName
+    >;
 
     /**
      * Gets the collection document for an embedded document.
@@ -201,55 +171,35 @@ declare namespace Scene {
     >;
 
     /**
-     * The return type for {@linkcode Scene.getCollectionName | Scene#getCollectionName}. If the
-     * passed name is not a known valid embedded document type/collection name for `Scene`, returns `null`.
+     * A valid name to refer to a collection embedded in this document. For example an `Actor`
+     * has the key `"items"` which contains `Item` instance which would make both `"Item" | "Items"`
+     * valid keys (amongst others).
      */
-    type GetCollectionNameReturn<Name extends string> = Name extends CollectionName
-      ? Document.Embedded._CollectionNameForName<Metadata.Embedded, Name>
-      : null;
-
-    /**
-     * The return type for {@linkcode Scene.getEmbeddedDocument | Scene#getEmbeddedDocument}.
-     * See {@linkcode EmbeddedCollection.GetReturn}.
-     */
-    type GetReturn<
-      EmbeddedName extends CollectionName,
-      Options extends EmbeddedCollection.GetOptions | undefined,
-    > = EmbeddedCollection.GetReturn<DocumentFor<EmbeddedName>, Options>;
-
-    /**
-     * @deprecated This type has been made internal. If you are actively using it for some reason, please let us know.
-     * This type will be removed in v15.
-     */
-    type CollectionNameOf<Name extends Embedded.CollectionName> = Document.Embedded._CollectionNameForName<
-      Metadata.Embedded,
-      Name
-    >;
+    type CollectionName = Document.Embedded.CollectionName<Metadata.Embedded>;
   }
 
   /**
    * The name of the world or embedded collection this document can find itself in.
    * For example an `Item` is always going to be inside a collection with a key of `items`.
-   * This is a fixed string per document type and is primarily useful for the descendant Document operation methods, e.g
-   * {@linkcode ClientDocumentMixin.AnyMixed._preCreateDescendantDocuments | ClientDocument._preCreateDescendantDocuments}.
+   * This is a fixed string per document type and is primarily useful for {@link ClientDocumentMixin | `Descendant Document Events`}.
    */
   type ParentCollectionName = Metadata["collection"];
 
   /**
    * The world collection that contains `Scene`s. Will be `never` if none exists.
    */
-  type CollectionClass = foundry.documents.collections.Scenes.ImplementationClass;
+  type CollectionClass = foundry.documents.collections.Scenes.ConfiguredClass;
 
   /**
    * The world collection that contains `Scene`s. Will be `never` if none exists.
    */
-  type Collection = foundry.documents.collections.Scenes.Implementation;
+  type Collection = foundry.documents.collections.Scenes.Configured;
 
   /**
    * An instance of `Scene` that comes from the database but failed validation meaning that
    * its `system` and `_source` could theoretically be anything.
    */
-  type Invalid = Document.Internal.Invalid<Implementation>;
+  interface Invalid extends Document.Internal.Invalid<Scene.Implementation> {}
 
   /**
    * An instance of `Scene` that comes from the database.
@@ -257,64 +207,41 @@ declare namespace Scene {
   type Stored = Document.Internal.Stored<Scene.Implementation>;
 
   /**
-   * The data put in {@linkcode Scene._source | Scene#_source}. This data is what was
+   * The data put in {@link Scene._source | `Scene#_source`}. This data is what was
    * persisted to the database and therefore it must be valid JSON.
    *
-   * For example a {@linkcode fields.SetField | SetField} is persisted to the database as an array
+   * For example a {@link fields.SetField | `SetField`} is persisted to the database as an array
    * but initialized as a {@linkcode Set}.
    */
   interface Source extends fields.SchemaField.SourceData<Schema> {}
 
   /**
    * The data necessary to create a document. Used in places like {@linkcode Scene.create}
-   * and {@linkcode Scene | new Scene(...)}.
+   * and {@link Scene | `new Scene(...)`}.
    *
-   * For example a {@linkcode fields.SetField | SetField} can accept any {@linkcode Iterable}
+   * For example a {@link fields.SetField | `SetField`} can accept any {@linkcode Iterable}
    * with the right values. This means you can pass a `Set` instance, an array of values,
    * a generator, or any other iterable.
    */
   interface CreateData extends fields.SchemaField.CreateData<Schema> {}
 
   /**
-   * Used in the {@linkcode Scene.create} and {@linkcode Scene.createDocuments} signatures, and
-   * {@linkcode Scene.Database.CreateOperation} and its derivative interfaces.
-   */
-  type CreateInput = CreateData | Implementation;
-
-  /**
-   * The helper type for the return of {@linkcode Scene.create}, returning (a single | an array of) (temporary | stored)
-   * `Scene`s.
-   *
-   * `| undefined` is included in the non-array branch because if a `.create` call with non-array data is cancelled by the `preCreate`
-   * method or hook, `shift`ing the return of `.createDocuments` produces `undefined`
-   */
-  type CreateReturn<Data extends MaybeArray<CreateInput>> =
-    Data extends Array<CreateInput> ? Scene.Stored[] : Scene.Stored | undefined;
-
-  /**
-   * The data after a {@linkcode Document} has been initialized, for example
-   * {@linkcode Scene.name | Scene#name}.
+   * The data after a {@link foundry.abstract.Document | `Document`} has been initialized, for example
+   * {@link Scene.name | `Scene#name`}.
    *
    * This is data transformed from {@linkcode Scene.Source} and turned into more
-   * convenient runtime data structures. For example a {@linkcode fields.SetField | SetField} is
+   * convenient runtime data structures. For example a {@link fields.SetField | `SetField`} is
    * persisted to the database as an array of values but at runtime it is a `Set` instance.
    */
   interface InitializedData extends fields.SchemaField.InitializedData<Schema> {}
 
   /**
-   * The data used to update a document, for example {@linkcode Scene.update | Scene#update}.
-   * It is a distinct type from {@linkcode Scene.CreateData | DeepPartial<Scene.CreateData>} because
+   * The data used to update a document, for example {@link Scene.update | `Scene#update`}.
+   * It is a distinct type from {@link Scene.CreateData | `DeepPartial<Scene.CreateData>`} because
    * it has different rules for `null` and `undefined`.
    */
   interface UpdateData extends fields.SchemaField.UpdateData<Schema> {}
 
-  /**
-   * Used in the {@linkcode Scene.update | Scene#update} and
-   * {@linkcode Scene.updateDocuments} signatures, and {@linkcode Scene.Database.UpdateOperation}
-   * and its derivative interfaces.
-   */
-  type UpdateInput = UpdateData | Implementation;
-
   interface EnvironmentDataSchemaDefaults {
     hue: number;
     intensity: number;
@@ -323,7 +250,7 @@ declare namespace Scene {
     shadows: number;
   }
 
-  interface EnvironmentDataSchema<Defaults extends EnvironmentDataSchemaDefaults> extends fields.DataSchema {
+  interface EnvironmentDataSchema<Defaults extends EnvironmentDataSchemaDefaults> extends DataSchema {
     /**
      * The normalized hue angle.
      * @defaultValue `0` for `environment.base`, `257/360` for `environment.dark`
@@ -398,7 +325,7 @@ declare namespace Scene {
     shadows: number;
   }
 
-  interface EnvironmentDataSchema<Defaults extends EnvironmentDataSchemaDefaults> extends fields.DataSchema {
+  interface EnvironmentDataSchema<Defaults extends EnvironmentDataSchemaDefaults> extends DataSchema {
     /**
      * The normalized hue angle.
      * @defaultValue `0` for `environment.base`, `257/360` for `environment.dark`
@@ -466,16 +393,16 @@ declare namespace Scene {
   }
 
   /**
-   * The schema for {@linkcode Scene}. This is the source of truth for how a `Scene` document
+   * The schema for {@linkcode Scene}. This is the source of truth for how an Scene document
    * must be structured.
    *
    * Foundry uses this schema to validate the structure of the {@linkcode Scene}. For example
-   * a {@linkcode fields.StringField | StringField} will enforce that the value is a string. More
-   * complex fields like {@linkcode fields.SetField | SetField} goes through various conversions
+   * a {@link fields.StringField | `StringField`} will enforce that the value is a string. More
+   * complex fields like {@link fields.SetField | `SetField`} goes through various conversions
    * starting as an array in the database, initialized as a set, and allows updates with any
    * iterable.
    */
-  interface Schema extends fields.DataSchema {
+  interface Schema extends DataSchema {
     /**
      * The _id which uniquely identifies this Scene document
      * @defaultValue `null`
@@ -486,7 +413,13 @@ declare namespace Scene {
      * The name of this scene
      * @defaultValue `""`
      */
-    name: fields.StringField<{ required: true; blank: false; textSearch: true }>;
+    name: fields.StringField<
+      { required: true; blank: false; textSearch: true },
+      // Note(LukeAbby): Field override because `blank: false` isn't fully accounted for or something.
+      string,
+      string,
+      string
+    >;
 
     /**
      * Is this scene currently active? Only one scene may be active at a given time
@@ -527,7 +460,7 @@ declare namespace Scene {
     /**
      * The elevation of the foreground layer where overhead tiles reside
      * @defaultValue `null`
-     * @remarks If falsey, {@linkcode Scene.prepareBaseData | Scene#prepareBaseData} initializes this to `this.grid.distance * 4`, with the comment:
+     * @remarks If falsey, {@link Scene.prepareBaseData | `Scene#prepareBaseData`} initializes this to `this.grid.distance * 4`, with the comment:
      *
      * "A temporary assumption until a more robust long-term solution when we implement Scene Levels."
      */
@@ -581,7 +514,7 @@ declare namespace Scene {
     /**
      * Grid configuration for the scene
      * @defaultValue see properties
-     * @remarks Initialized in {@linkcode Scene.prepareBaseData | Scene#prepareBaseData} to `Scene.#getGrid(this)`, which returns {@linkcode BaseGrid} or a subclass
+     * @remarks Initialized in {@link Scene.prepareBaseData | `Scene#prepareBaseData`} to `Scene.#getGrid(this)`, which returns {@linkcode BaseGrid} or a subclass
      */
     grid: fields.SchemaField<
       GridSchema,
@@ -601,7 +534,42 @@ declare namespace Scene {
     /**
      * Fog-exploration settings and other data
      */
-    fog: fields.SchemaField<FogSchema>;
+    fog: fields.SchemaField<{
+      /**
+       * Should fog exploration progress be tracked for this Scene?
+       * @defaultValue `true`
+       */
+      exploration: fields.BooleanField<{ initial: true }>;
+
+      /**
+       * The timestamp at which fog of war was last reset for this Scene.
+       * @defaultValue `undefined`
+       */
+      reset: fields.NumberField<{ required: false; initial: undefined }>;
+
+      /**
+       * A special overlay image or video texture which is used for fog of war
+       * @defaultValue `null`
+       */
+      overlay: fields.FilePathField<{ categories: ["IMAGE", "VIDEO"]; virtual: true }>;
+
+      /**
+       * Fog-exploration coloration data
+       */
+      colors: fields.SchemaField<{
+        /**
+         * A color tint applied to explored regions of fog of war
+         * @defaultValue `null`
+         */
+        explored: fields.ColorField;
+
+        /**
+         * A color tint applied to unexplored regions of fog of war
+         * @defaultValue `null`
+         */
+        unexplored: fields.ColorField;
+      }>;
+    }>;
 
     /**
      * The environment data applied to the Scene.
@@ -612,83 +580,83 @@ declare namespace Scene {
      * A collection of embedded Drawing objects.
      * @defaultValue `[]`
      */
-    drawings: fields.EmbeddedCollectionField<typeof BaseDrawing, Scene.Implementation>;
+    drawings: fields.EmbeddedCollectionField<typeof documents.BaseDrawing, Scene.Implementation>;
 
     /**
      * A collection of embedded Tile objects.
      * @defaultValue `[]`
      */
-    tokens: fields.EmbeddedCollectionField<typeof BaseToken, Scene.Implementation>;
+    tokens: fields.EmbeddedCollectionField<typeof documents.BaseToken, Scene.Implementation>;
 
     /**
      * A collection of embedded Token objects.
      * @defaultValue `[]`
      */
-    lights: fields.EmbeddedCollectionField<typeof BaseAmbientLight, Scene.Implementation>;
+    lights: fields.EmbeddedCollectionField<typeof documents.BaseAmbientLight, Scene.Implementation>;
 
     /**
      * A collection of embedded AmbientLight objects.
      * @defaultValue `[]`
      */
-    notes: fields.EmbeddedCollectionField<typeof BaseNote, Scene.Implementation>;
+    notes: fields.EmbeddedCollectionField<typeof documents.BaseNote, Scene.Implementation>;
 
     /**
      * A collection of embedded Note objects.
      * @defaultValue `[]`
      */
-    sounds: fields.EmbeddedCollectionField<typeof BaseAmbientSound, Scene.Implementation>;
+    sounds: fields.EmbeddedCollectionField<typeof documents.BaseAmbientSound, Scene.Implementation>;
 
     /**
      * A collection of embedded Region documents.
      * @defaultValue `[]`
      */
-    regions: fields.EmbeddedCollectionField<typeof BaseRegion, Scene.Implementation>;
+    regions: fields.EmbeddedCollectionField<typeof documents.BaseRegion, Scene.Implementation>;
 
     /**
      * A collection of embedded AmbientSound objects.
      * @defaultValue `[]`
      */
-    templates: fields.EmbeddedCollectionField<typeof BaseMeasuredTemplate, Scene.Implementation>;
+    templates: fields.EmbeddedCollectionField<typeof documents.BaseMeasuredTemplate, Scene.Implementation>;
 
     /**
      * A collection of embedded MeasuredTemplate objects.
      * @defaultValue `[]`
      */
-    tiles: fields.EmbeddedCollectionField<typeof BaseTile, Scene.Implementation>;
+    tiles: fields.EmbeddedCollectionField<typeof documents.BaseTile, Scene.Implementation>;
 
     /**
      * A collection of embedded Wall objects
      * @defaultValue `[]`
      */
-    walls: fields.EmbeddedCollectionField<typeof BaseWall, Scene.Implementation>;
+    walls: fields.EmbeddedCollectionField<typeof documents.BaseWall, Scene.Implementation>;
 
     /**
      * A linked Playlist document which should begin automatically playing when this Scene becomes active.
      * @defaultValue `null`
      */
-    playlist: fields.ForeignDocumentField<typeof BasePlaylist>;
+    playlist: fields.ForeignDocumentField<typeof documents.BasePlaylist>;
 
     /**
      * A linked PlaylistSound document from the selected playlist that will
      * begin automatically playing when this Scene becomes active
      * @defaultValue `null`
-     * @remarks This is `idOnly` because {@linkcode fields.ForeignDocumentField | ForeignDocumentField} doesn't know how to get embedded documents;
-     * {@linkcode Scene.prepareBaseData | Scene#prepareBaseData} attempts to `get()` this ID from the provided `playlist`, if any, making this
+     * @remarks This is `idOnly` because {@link fields.ForeignDocumentField | `ForeignDocumentField`} doesn't know how to get embedded documents;
+     * {@link Scene.prepareBaseData | `Scene#prepareBaseData`} attempts to `get()` this ID from the provided `playlist`, if any, making this
      * `PlaylistSound.Implementation | undefined | null` at runtime
      */
-    playlistSound: fields.ForeignDocumentField<typeof BasePlaylistSound, { idOnly: true }>;
+    playlistSound: fields.ForeignDocumentField<typeof documents.BasePlaylistSound, { idOnly: true }>;
 
     /**
      * A JournalEntry document which provides narrative details about this Scene
      * @defaultValue `null`
      */
-    journal: fields.ForeignDocumentField<typeof BaseJournalEntry>;
+    journal: fields.ForeignDocumentField<typeof documents.BaseJournalEntry>;
 
     /**
      * A document ID for a JournalEntryPage which provides narrative details about this Scene
      * @defaultValue `null`
      */
-    journalEntryPage: fields.ForeignDocumentField<typeof BaseJournalEntryPage, { idOnly: true }>;
+    journalEntryPage: fields.ForeignDocumentField<typeof documents.BaseJournalEntryPage, { idOnly: true }>;
 
     /**
      * A named weather effect which should be rendered in this Scene.
@@ -700,7 +668,7 @@ declare namespace Scene {
      * The _id of a Folder which contains this Actor
      * @defaultValue `null`
      */
-    folder: fields.ForeignDocumentField<typeof BaseFolder>;
+    folder: fields.ForeignDocumentField<typeof documents.BaseFolder>;
 
     /**
      * The numeric sort value which orders this Actor relative to its siblings
@@ -727,52 +695,9 @@ declare namespace Scene {
     _stats: fields.DocumentStatsField;
   }
 
-  interface FogSchema extends fields.DataSchema {
+  interface EnvironmentSchema extends DataSchema {
     /**
-     * Should fog exploration progress be tracked for this Scene?
-     * @defaultValue `true`
-     */
-    exploration: fields.BooleanField<{ initial: true }>;
-
-    /**
-     * The timestamp at which fog of war was last reset for this Scene.
-     * @defaultValue `undefined`
-     */
-    reset: fields.NumberField<{ required: false; initial: undefined }>;
-
-    /**
-     * A special overlay image or video texture which is used for fog of war
-     * @defaultValue `null`
-     */
-    overlay: fields.FilePathField<{ categories: ["IMAGE", "VIDEO"]; virtual: true }>;
-
-    /**
-     * Fog-exploration coloration data
-     */
-    colors: fields.SchemaField<FogColorSchema>;
-  }
-
-  interface FogData extends fields.SchemaField.InitializedData<FogSchema> {}
-
-  interface FogColorSchema extends fields.DataSchema {
-    /**
-     * A color tint applied to explored regions of fog of war
-     * @defaultValue `null`
-     */
-    explored: fields.ColorField;
-
-    /**
-     * A color tint applied to unexplored regions of fog of war
-     * @defaultValue `null`
-     */
-    unexplored: fields.ColorField;
-  }
-
-  interface FogColorData extends fields.SchemaField.InitializedData<FogColorSchema> {}
-
-  interface EnvironmentSchema extends fields.DataSchema {
-    /**
-     * The ambient darkness level in this Scene, where 0 represents midday (maximum illumination) and 1 represents midnight (maximum darkness)
+     * The environment darkness level.
      * @defaultValue `0`
      */
     darknessLevel: fields.AlphaField<{ initial: 0 }>;
@@ -794,64 +719,64 @@ declare namespace Scene {
       enabled: fields.BooleanField<{ required: true; initial: false }>;
 
       /**
-       * @see {@linkcode LightData.Schema.alpha}
-       * @privateRemarks The field is defined in Foundry by pulling from the {@linkcode LightData} schema
+       * @see {@linkcode foundry.data.LightData.Schema.alpha}
+       * @privateRemarks The field is defined in Foundry by pulling from the {@linkcode foundry.data.LightData} schema
        */
       alpha: LightData.Schema["alpha"];
 
       /**
        * Is the global light in bright mode?
        * @defaultValue `false`
-       * @remarks This is `boolean` here instead {@linkcode LightData} schema's `number`, because the global light has infinite range
+       * @remarks This is `boolean` here instead {@linkcode foundry.data.LightData} schema's `number`, because the global light has infinite range
        */
       bright: fields.BooleanField<{ required: true; initial: false }>;
 
       /**
-       * @see {@linkcode LightData.Schema.color}
-       * @privateRemarks The field is defined in Foundry by pulling from the {@linkcode LightData} schema
+       * @see {@linkcode foundry.data.LightData.Schema.color}
+       * @privateRemarks The field is defined in Foundry by pulling from the {@linkcode foundry.data.LightData} schema
        */
       color: LightData.Schema["color"];
 
       /**
-       * @see {@linkcode LightData.Schema.coloration}
-       * @privateRemarks The field is defined in Foundry by pulling from the {@linkcode LightData} schema
+       * @see {@linkcode foundry.data.LightData.Schema.coloration}
+       * @privateRemarks The field is defined in Foundry by pulling from the {@linkcode foundry.data.LightData} schema
        */
       coloration: LightData.Schema["coloration"];
 
       /**
        * The luminosity applied in the shader
        * @defaultValue `0`
-       * @remarks Doesn't pull from the {@linkcode LightData} schema, unlike its siblings, as it has a different `initial`
+       * @remarks Doesn't pull from the {@linkcode foundry.data.LightData} schema, unlike its siblings, as it has a different `initial`
        */
       luminosity: fields.NumberField<{ required: true; nullable: false; initial: 0; min: 0; max: 1 }>;
 
       /**
-       * @see {@linkcode LightData.Schema.saturation}
-       * @privateRemarks The field is defined in Foundry by pulling from the {@linkcode LightData} schema
+       * @see {@linkcode foundry.data.LightData.Schema.saturation}
+       * @privateRemarks The field is defined in Foundry by pulling from the {@linkcode foundry.data.LightData} schema
        */
       saturation: LightData.Schema["saturation"];
 
       /**
-       * @see {@linkcode LightData.Schema.contrast}
-       * @privateRemarks The field is defined in Foundry by pulling from the {@linkcode LightData} schema
+       * @see {@linkcode foundry.data.LightData.Schema.contrast}
+       * @privateRemarks The field is defined in Foundry by pulling from the {@linkcode foundry.data.LightData} schema
        */
       contrast: LightData.Schema["contrast"];
 
       /**
-       * @see {@linkcode LightData.Schema.shadows}
-       * @privateRemarks The field is defined in Foundry by pulling from the {@linkcode LightData} schema
+       * @see {@linkcode foundry.data.LightData.Schema.shadows}
+       * @privateRemarks The field is defined in Foundry by pulling from the {@linkcode foundry.data.LightData} schema
        */
       shadows: LightData.Schema["shadows"];
 
       /**
-       * @see {@linkcode LightData.Schema.darkness}
-       * @privateRemarks The field is defined in Foundry by pulling from the {@linkcode LightData} schema
+       * @see {@linkcode foundry.data.LightData.Schema.darkness}
+       * @privateRemarks The field is defined in Foundry by pulling from the {@linkcode foundry.data.LightData} schema
        */
       darkness: LightData.Schema["darkness"];
     }>;
 
     /**
-     * If cycling between {@linkcode base} and {@linkcode dark} is activated.
+     * If cycling between Night and Day is activated.
      * @defaultValue `true`
      */
     cycle: fields.BooleanField<{ initial: true }>;
@@ -872,10 +797,10 @@ declare namespace Scene {
 
   interface EnvironmentData extends fields.SchemaField.InitializedData<EnvironmentSchema> {}
 
-  interface GridSchema extends fields.DataSchema {
+  interface GridSchema extends DataSchema {
     /**
      * The type of grid, a number from CONST.GRID_TYPES.
-     * @defaultValue {@linkcode foundry.packages.BaseSystem.grid | game.system.grid.type}
+     * @defaultValue `game.system.grid.type`
      */
     type: fields.NumberField<
       {
@@ -942,633 +867,173 @@ declare namespace Scene {
   }
 
   namespace Database {
-    /* ***********************************************
-     *                GET OPERATIONS                 *
-     *************************************************/
+    /** Options passed along in Get operations for Scenes */
+    interface Get extends foundry.abstract.types.DatabaseGetOperation<Scene.Parent> {}
 
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.GetOperation | GetOperation} interface for
-     * `Scene` documents. Valid for passing to
-     * {@linkcode ClientDatabaseBackend._getDocuments | ClientDatabaseBackend#_getDocuments}.
-     *
-     * The {@linkcode GetDocumentsOperation} and {@linkcode BackendGetOperation} interfaces derive from this one.
-     */
-    interface GetOperation extends DatabaseBackend.GetOperation<Scene.Parent> {}
+    /** Options passed along in Create operations for Scenes */
+    interface Create<Temporary extends boolean | undefined = boolean | undefined>
+      extends foundry.abstract.types.DatabaseCreateOperation<Scene.CreateData, Scene.Parent, Temporary> {}
 
-    /**
-     * The interface for passing to {@linkcode Scene.get}.
-     * @see {@linkcode Document.Database.GetDocumentsOperation}
-     */
-    interface GetDocumentsOperation extends Document.Database.GetDocumentsOperation<GetOperation> {}
+    /** Options passed along in Delete operations for Scenes */
+    interface Delete extends foundry.abstract.types.DatabaseDeleteOperation<Scene.Parent> {}
 
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.get | DatabaseBackend#get} for `Scene` documents.
-     * @see {@linkcode Document.Database.BackendGetOperation}
-     */
-    interface BackendGetOperation extends Document.Database.BackendGetOperation<GetOperation> {}
-
-    /* ***********************************************
-     *              CREATE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.CreateOperation | DatabaseCreateOperation}
-     * interface for `Scene` documents.
-     *
-     * See {@linkcode DatabaseBackend.CreateOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode Scene.create}. The new name for that
-     * interface is {@linkcode CreateDocumentsOperation}.
-     */
-    interface CreateOperation extends DatabaseBackend.CreateOperation<Scene.CreateInput, Scene.Parent> {
-      /**
-       * @remarks If there is an active scene, {@linkcode Scene._preCreateOperation} will set this to its `id`, and
-       * {@linkcode Scene._onCreate | Scene#_onCreate} will call {@linkcode game.playlists._onChangeScene} with the scene retrieved with
-       * that `id`.
-       */
-      priorActiveScene?: string;
-    }
-
-    /**
-     * The interface for passing to {@linkcode Scene.create} or {@linkcode Scene.createDocuments}.
-     * @see {@linkcode Document.Database.CreateDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface CreateDocumentsOperation extends Document.Database.CreateDocumentsOperation<CreateOperation> {}
-
-    /**
-     * @deprecated `Scene` documents are never embedded. This interface exists for consistency with other documents.
-     *
-     * The interface for passing to the {@linkcode Document.createEmbeddedDocuments | #createEmbeddedDocuments} method of any Documents that
-     * can contain `Scene` documents. (see {@linkcode Scene.Parent})
-     * @see {@linkcode Document.Database.CreateEmbeddedOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface CreateEmbeddedOperation extends Document.Database.CreateEmbeddedOperation<CreateOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.create | DatabaseBackend#create} for `Scene` documents.
-     * @see {@linkcode Document.Database.BackendCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendCreateOperation extends Document.Database.BackendCreateOperation<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Scene._preCreate | Scene#_preCreate} and
-     * {@link Hooks.PreCreateDocument | the `preCreateScene` hook}.
-     * @see {@linkcode Document.Database.PreCreateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreCreateOptions extends Document.Database.PreCreateOptions<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Scene._preCreateOperation}.
-     * @see {@linkcode Document.Database.PreCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreCreateOperation extends Document.Database.PreCreateOperation<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Scene._onCreate | Scene#_onCreate} and
-     * {@link Hooks.CreateDocument | the `createScene` hook}.
-     * @see {@linkcode Document.Database.OnCreateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnCreateOptions extends Document.Database.OnCreateOptions<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Scene._onCreateOperation} and `Scene`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnCreateOperation extends Document.Database.OnCreateOperation<CreateOperation> {}
-
-    /* ***********************************************
-     *              UPDATE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.UpdateOperation | DatabaseUpdateOperation}
-     * interface for `Scene` documents.
-     *
-     * See {@linkcode DatabaseBackend.UpdateOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode Scene.update | Scene#update}.
-     * The new name for that interface is {@linkcode UpdateOneDocumentOperation}.
-     */
-    interface UpdateOperation extends DatabaseBackend.UpdateOperation<Scene.UpdateInput, Scene.Parent> {
-      /**
-       * @remarks If `true`, {@linkcode Scene._preUpdate | Scene#_preUpdate} will call `Scene##repositionObjects` on the associated change.
-       * Conditionally set by {@linkcode foundry.applications.sheets.SceneConfig._processSubmitData | SceneConfig#_processSubmitData}.
-       */
+    /** Options passed along in Update operations for Scenes */
+    interface Update extends foundry.abstract.types.DatabaseUpdateOperation<Scene.UpdateData, Scene.Parent> {
+      thumb?: (string | null)[];
       autoReposition?: boolean;
-
-      /**
-       * @remarks If the `active` value of any scenes affected by this operation is changed, {@linkcode Scene._preUpdate | Scene#_preUpdate}
-       * will set this to `game.scenes.active?.id`.
-       *
-       * {@linkcode Scene._onUpdate | Scene#_onUpdate} will call {@linkcode game.playlists._onChangeScene} with the scene retrieved with
-       * that `id`.
-       *
-       * {@linkcode Scene._onUpdateOperation} will then call its {@linkcode Scene._onActivate | #onActivate(false)}.
-       */
-      priorActiveScene?: string | undefined;
-
-      /**
-       * @remarks {@linkcode Scene._preUpdate | Scene#_preUpdate} adds its scene's `id` to this array (creating it if necessary) if its
-       * {@linkcode Scene.thumb | thumb} is being updated. {@linkcode Scene._onUpdate | Scene#_onUpdate} uses this in a confusing way that
-       * appears to do nothing unless something inserts `thumb` into the `changes` for the scene between `_preUpdate` and `_onUpdate`, which
-       * no core code does; {@linkcode foundry.applications.sheets.SceneConfig._processSubmitData | SceneConfig#_processSubmitData} handles
-       * thumbnail creation and adds it into the submit data before `_preUpdate` even sees it.
-       */
-      thumb?: string[];
+      animateDarkness?: number;
     }
 
-    /**
-     * The interface for passing to {@linkcode Scene.update | Scene#update}.
-     * @see {@linkcode Document.Database.UpdateOneDocumentOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateOneDocumentOperation extends Document.Database.UpdateOneDocumentOperation<UpdateOperation> {}
+    /** Operation for {@linkcode Scene.createDocuments} */
+    interface CreateDocumentsOperation<Temporary extends boolean | undefined>
+      extends Document.Database.CreateOperation<Scene.Database.Create<Temporary>> {}
+
+    /** Operation for {@linkcode Scene.updateDocuments} */
+    interface UpdateDocumentsOperation extends Document.Database.UpdateDocumentsOperation<Scene.Database.Update> {}
+
+    /** Operation for {@linkcode Scene.deleteDocuments} */
+    interface DeleteDocumentsOperation extends Document.Database.DeleteDocumentsOperation<Scene.Database.Delete> {}
+
+    /** Operation for {@linkcode Scene.create} */
+    interface CreateOperation<Temporary extends boolean | undefined>
+      extends Document.Database.CreateOperation<Scene.Database.Create<Temporary>> {}
+
+    /** Operation for {@link Scene.update | `Scene#update`} */
+    interface UpdateOperation extends Document.Database.UpdateOperation<Update> {}
+
+    interface DeleteOperation extends Document.Database.DeleteOperation<Delete> {}
+
+    /** Options for {@linkcode Scene.get} */
+    interface GetOptions extends Document.Database.GetOptions {}
+
+    /** Options for {@link Scene._preCreate | `Scene#_preCreate`} */
+    interface PreCreateOptions extends Document.Database.PreCreateOptions<Create> {}
+
+    /** Options for {@link Scene._onCreate | `Scene#_onCreate`} */
+    interface OnCreateOptions extends Document.Database.CreateOptions<Create> {}
+
+    /** Operation for {@linkcode Scene._preCreateOperation} */
+    interface PreCreateOperation extends Document.Database.PreCreateOperationStatic<Scene.Database.Create> {}
+
+    /** Operation for {@link Scene._onCreateOperation | `Scene#_onCreateOperation`} */
+    interface OnCreateOperation extends Scene.Database.Create {}
+
+    /** Options for {@link Scene._preUpdate | `Scene#_preUpdate`} */
+    interface PreUpdateOptions extends Document.Database.PreUpdateOptions<Update> {}
+
+    /** Options for {@link Scene._onUpdate | `Scene#_onUpdate`} */
+    interface OnUpdateOptions extends Document.Database.UpdateOptions<Update> {}
+
+    /** Operation for {@linkcode Scene._preUpdateOperation} */
+    interface PreUpdateOperation extends Scene.Database.Update {}
+
+    /** Operation for {@link Scene._onUpdateOperation | `Scene._preUpdateOperation`} */
+    interface OnUpdateOperation extends Scene.Database.Update {}
+
+    /** Options for {@link Scene._preDelete | `Scene#_preDelete`} */
+    interface PreDeleteOptions extends Document.Database.PreDeleteOperationInstance<Delete> {}
+
+    /** Options for {@link Scene._onDelete | `Scene#_onDelete`} */
+    interface OnDeleteOptions extends Document.Database.DeleteOptions<Delete> {}
+
+    /** Options for {@link Scene._preDeleteOperation | `Scene#_preDeleteOperation`} */
+    interface PreDeleteOperation extends Scene.Database.Delete {}
+
+    /** Options for {@link Scene._onDeleteOperation | `Scene#_onDeleteOperation`} */
+    interface OnDeleteOperation extends Scene.Database.Delete {}
+
+    /** Context for {@linkcode Scene._onDeleteOperation} */
+    interface OnDeleteDocumentsContext extends Document.ModificationContext<Scene.Parent> {}
+
+    /** Context for {@linkcode Scene._onCreateDocuments} */
+    interface OnCreateDocumentsContext extends Document.ModificationContext<Scene.Parent> {}
+
+    /** Context for {@linkcode Scene._onUpdateDocuments} */
+    interface OnUpdateDocumentsContext extends Document.ModificationContext<Scene.Parent> {}
 
     /**
-     * @deprecated `Scene` documents are never embedded. This interface exists for consistency with other documents.
-     *
-     * The interface for passing to the {@linkcode Document.updateEmbeddedDocuments | #updateEmbeddedDocuments} method of any Documents that
-     * can contain `Scene` documents (see {@linkcode Scene.Parent}). This interface is just an alias
-     * for {@linkcode UpdateOneDocumentOperation}, as the same keys are provided by the method in both cases.
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
+     * Options for {@link Scene._preCreateDescendantDocuments | `Scene#_preCreateDescendantDocuments`}
+     * and {@link Scene._onCreateDescendantDocuments | `Scene#_onCreateDescendantDocuments`}
      */
-    interface UpdateEmbeddedOperation extends UpdateOneDocumentOperation {}
+    interface CreateOptions extends Document.Database.CreateOptions<Scene.Database.Create> {}
 
     /**
-     * The interface for passing to {@linkcode Scene.updateDocuments}.
-     * @see {@linkcode Document.Database.UpdateManyDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
+     * Options for {@link Scene._preUpdateDescendantDocuments | `Scene#_preUpdateDescendantDocuments`}
+     * and {@link Scene._onUpdateDescendantDocuments | `Scene#_onUpdateDescendantDocuments`}
      */
-    interface UpdateManyDocumentsOperation extends Document.Database.UpdateManyDocumentsOperation<UpdateOperation> {}
+    interface UpdateOptions extends Document.Database.UpdateOptions<Scene.Database.Update> {}
 
     /**
-     * The interface for passing to {@linkcode DatabaseBackend.update | DatabaseBackend#update} for `Scene` documents.
-     * @see {@linkcode Document.Database.BackendUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
+     * Options for {@link Scene._preDeleteDescendantDocuments | `Scene#_preDeleteDescendantDocuments`}
+     * and {@link Scene._onDeleteDescendantDocuments | `Scene#_onDeleteDescendantDocuments`}
      */
-    interface BackendUpdateOperation extends Document.Database.BackendUpdateOperation<UpdateOperation> {}
+    interface DeleteOptions extends Document.Database.DeleteOptions<Scene.Database.Delete> {}
 
     /**
-     * The interface passed to {@linkcode Scene._preUpdate | Scene#_preUpdate} and
-     * {@link Hooks.PreUpdateDocument | the `preUpdateScene` hook}.
-     * @see {@linkcode Document.Database.PreUpdateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
+     * Create options for {@linkcode Scene.createDialog}.
      */
-    interface PreUpdateOptions extends Document.Database.PreUpdateOptions<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Scene._preUpdateOperation}.
-     * @see {@linkcode Document.Database.PreUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreUpdateOperation extends Document.Database.PreUpdateOperation<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Scene._onUpdate | Scene#_onUpdate} and
-     * {@link Hooks.UpdateDocument | the `updateScene` hook}.
-     * @see {@linkcode Document.Database.OnUpdateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnUpdateOptions extends Document.Database.OnUpdateOptions<UpdateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Scene._onUpdateOperation} and `Scene`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnUpdateOperation extends Document.Database.OnUpdateOperation<UpdateOperation> {}
-
-    /* ***********************************************
-     *              DELETE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.DeleteOperation | DatabaseDeleteOperation}
-     * interface for `Scene` documents.
-     *
-     * See {@linkcode DatabaseBackend.DeleteOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode Scene.delete | Scene#delete}.
-     * The new name for that interface is {@linkcode DeleteOneDocumentOperation}.
-     */
-    interface DeleteOperation extends DatabaseBackend.DeleteOperation<Scene.Parent> {}
-
-    /**
-     * The interface for passing to {@linkcode Scene.delete | Scene#delete}.
-     * @see {@linkcode Document.Database.DeleteOneDocumentOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteOneDocumentOperation extends Document.Database.DeleteOneDocumentOperation<DeleteOperation> {}
-
-    /**
-     * @deprecated `Scene` documents are never embedded. This interface exists for consistency with other documents.
-     *
-     * The interface for passing to the {@linkcode Document.deleteEmbeddedDocuments | #deleteEmbeddedDocuments} method of any Documents that
-     * can contain `Scene` documents (see {@linkcode Scene.Parent}). This interface is just an alias
-     * for {@linkcode DeleteOneDocumentOperation}, as the same keys are provided by the method in both cases.
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteEmbeddedOperation extends DeleteOneDocumentOperation {}
-
-    /**
-     * The interface for passing to {@linkcode Scene.deleteDocuments}.
-     * @see {@linkcode Document.Database.DeleteManyDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteManyDocumentsOperation extends Document.Database.DeleteManyDocumentsOperation<DeleteOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.delete | DatabaseBackend#delete} for `Scene` documents.
-     * @see {@linkcode Document.Database.BackendDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendDeleteOperation extends Document.Database.BackendDeleteOperation<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Scene._preDelete | Scene#_preDelete} and
-     * {@link Hooks.PreDeleteDocument | the `preDeleteScene` hook}.
-     * @see {@linkcode Document.Database.PreDeleteOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreDeleteOptions extends Document.Database.PreDeleteOptions<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Scene._preDeleteOperation}.
-     * @see {@linkcode Document.Database.PreDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreDeleteOperation extends Document.Database.PreDeleteOperation<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Scene._onDelete | Scene#_onDelete} and
-     * {@link Hooks.DeleteDocument | the `deleteScene` hook}.
-     * @see {@linkcode Document.Database.OnDeleteOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnDeleteOptions extends Document.Database.OnDeleteOptions<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode Scene._onDeleteOperation} and `Scene`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnDeleteOperation extends Document.Database.OnDeleteOperation<DeleteOperation> {}
-
-    namespace Internal {
-      interface OperationNameMap {
-        GetDocumentsOperation: Scene.Database.GetDocumentsOperation;
-        BackendGetOperation: Scene.Database.BackendGetOperation;
-        GetOperation: Scene.Database.GetOperation;
-
-        CreateDocumentsOperation: Scene.Database.CreateDocumentsOperation;
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        CreateEmbeddedOperation: Scene.Database.CreateEmbeddedOperation;
-        BackendCreateOperation: Scene.Database.BackendCreateOperation;
-        CreateOperation: Scene.Database.CreateOperation;
-        PreCreateOptions: Scene.Database.PreCreateOptions;
-        PreCreateOperation: Scene.Database.PreCreateOperation;
-        OnCreateOptions: Scene.Database.OnCreateOptions;
-        OnCreateOperation: Scene.Database.OnCreateOperation;
-
-        UpdateOneDocumentOperation: Scene.Database.UpdateOneDocumentOperation;
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        UpdateEmbeddedOperation: Scene.Database.UpdateEmbeddedOperation;
-        UpdateManyDocumentsOperation: Scene.Database.UpdateManyDocumentsOperation;
-        BackendUpdateOperation: Scene.Database.BackendUpdateOperation;
-        UpdateOperation: Scene.Database.UpdateOperation;
-        PreUpdateOptions: Scene.Database.PreUpdateOptions;
-        PreUpdateOperation: Scene.Database.PreUpdateOperation;
-        OnUpdateOptions: Scene.Database.OnUpdateOptions;
-        OnUpdateOperation: Scene.Database.OnUpdateOperation;
-
-        DeleteOneDocumentOperation: Scene.Database.DeleteOneDocumentOperation;
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        DeleteEmbeddedOperation: Scene.Database.DeleteEmbeddedOperation;
-        DeleteManyDocumentsOperation: Scene.Database.DeleteManyDocumentsOperation;
-        BackendDeleteOperation: Scene.Database.BackendDeleteOperation;
-        DeleteOperation: Scene.Database.DeleteOperation;
-        PreDeleteOptions: Scene.Database.PreDeleteOptions;
-        PreDeleteOperation: Scene.Database.PreDeleteOperation;
-        OnDeleteOptions: Scene.Database.OnDeleteOptions;
-        OnDeleteOperation: Scene.Database.OnDeleteOperation;
-      }
-    }
+    interface DialogCreateOptions extends InexactPartial<Create> {}
   }
-
-  /**
-   * If `Temporary` is true then {@linkcode Scene.Implementation}, otherwise {@linkcode Scene.Stored}.
-   * @deprecated `Document.create`/`Documents` can no longer return temporary documents as of v14. This type will be removed in v15.
-   */
-  type TemporaryIf<Temporary extends boolean | undefined> =
-    true extends Extract<Temporary, true> ? Scene.Implementation : Scene.Stored;
 
   /**
    * The flags that are available for this document in the form `{ [scope: string]: { [key: string]: unknown } }`.
    */
-  interface Flags extends Document.Internal.ConfiguredFlagsForName<Name> {}
+  interface Flags extends Document.ConfiguredFlagsForName<Name> {}
 
   namespace Flags {
     /**
      * The valid scopes for the flags on this document e.g. `"core"` or `"dnd5e"`.
      */
-    type Scope = Document.Internal.FlagKeyOf<Flags>;
+    type Scope = Document.FlagKeyOf<Flags>;
 
     /**
      * The valid keys for a certain scope for example if the scope is "core" then a valid key may be `"sheetLock"` or `"viewMode"`.
      */
-    type Key<Scope extends Flags.Scope> = Document.Internal.FlagKeyOf<Document.Internal.FlagGetKey<Flags, Scope>>;
+    type Key<Scope extends Flags.Scope> = Document.FlagKeyOf<Document.FlagGetKey<Flags, Scope>>;
 
     /**
      * Gets the type of a particular flag given a `Scope` and a `Key`.
      */
-    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.Internal.GetFlag<Flags, Scope, Key>;
+    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.GetFlag<Name, Scope, Key>;
   }
 
-  /* ***********************************************
-   *       CLIENT DOCUMENT TEMPLATE TYPES          *
-   *************************************************/
-
-  /** The interface {@linkcode Scene.fromDropData} receives */
   interface DropData extends Document.Internal.DropData<Name> {}
+  interface DropDataOptions extends Document.DropDataOptions {}
 
-  /**
-   * @deprecated Foundry prior to v13 had a completely unused `options` parameter in the {@linkcode Scene.fromDropData}
-   * signature that has since been removed. This type will be removed in v14.
-   */
-  type DropDataOptions = never;
-
-  /**
-   * The interface for passing to {@linkcode Scene.defaultName}
-   * @see {@linkcode Document.DefaultNameContext}
-   */
   interface DefaultNameContext extends Document.DefaultNameContext<Name, Parent> {}
 
-  /**
-   * The interface for passing to {@linkcode Scene.createDialog}'s first parameter
-   * @see {@linkcode Document.CreateDialogData}
-   */
   interface CreateDialogData extends Document.CreateDialogData<CreateData> {}
-
-  /**
-   * @deprecated This is for a deprecated signature, and will be removed in v15.
-   * The interface for passing to {@linkcode Scene.createDialog}'s second parameter that still includes partial Dialog
-   * options, instead of being purely a {@linkcode Database.CreateDocumentsOperation | CreateDocumentsOperation}.
-   */
-  interface CreateDialogDeprecatedOptions
-    extends Database.CreateDocumentsOperation, Document._PartialDialogV1OptionsForCreateDialog {}
-
-  /**
-   * The interface for passing to {@linkcode Scene.createDialog}'s third parameter
-   * @see {@linkcode Document.CreateDialogOptions}
-   */
   interface CreateDialogOptions extends Document.CreateDialogOptions<Name> {}
 
-  /**
-   * The return type for {@linkcode Scene.createDialog}.
-   * @see {@linkcode Document.CreateDialogReturn}
-   */
-  type CreateDialogReturn<Config extends Scene.CreateDialogOptions | undefined> = Document.CreateDialogReturn<
-    Scene.Stored,
-    Config
-  >;
-
-  /**
-   * The return type for {@linkcode Scene.deleteDialog | Scene#deleteDialog}.
-   * @see {@linkcode Document.DeleteDialogReturn}
-   */
-  type DeleteDialogReturn<Config extends DialogV2.ConfirmConfig | undefined> = Document.DeleteDialogReturn<
-    Scene.Stored,
-    Config
-  >;
-
   type PreCreateDescendantDocumentsArgs =
-    | Document.Internal.PreCreateDescendantDocumentsArgs<
-        Scene.Stored,
-        Scene.DirectDescendantName,
-        Scene.Metadata.Embedded
-      >
+    | Document.PreCreateDescendantDocumentsArgs<Scene.Stored, Scene.DirectDescendant, Scene.Metadata.Embedded>
     | TokenDocument.PreCreateDescendantDocumentsArgs
     | RegionDocument.PreCreateDescendantDocumentsArgs;
 
   type OnCreateDescendantDocumentsArgs =
-    | Document.Internal.OnCreateDescendantDocumentsArgs<
-        Scene.Stored,
-        Scene.DirectDescendantName,
-        Scene.Metadata.Embedded
-      >
+    | Document.OnCreateDescendantDocumentsArgs<Scene.Stored, Scene.DirectDescendant, Scene.Metadata.Embedded>
     | TokenDocument.OnCreateDescendantDocumentsArgs
     | RegionDocument.OnCreateDescendantDocumentsArgs;
 
   type PreUpdateDescendantDocumentsArgs =
-    | Document.Internal.PreUpdateDescendantDocumentsArgs<
-        Scene.Stored,
-        Scene.DirectDescendantName,
-        Scene.Metadata.Embedded
-      >
+    | Document.PreUpdateDescendantDocumentsArgs<Scene.Stored, Scene.DirectDescendant, Scene.Metadata.Embedded>
     | TokenDocument.PreUpdateDescendantDocumentsArgs
     | RegionDocument.PreUpdateDescendantDocumentsArgs;
 
   type OnUpdateDescendantDocumentsArgs =
-    | Document.Internal.OnUpdateDescendantDocumentsArgs<
-        Scene.Stored,
-        Scene.DirectDescendantName,
-        Scene.Metadata.Embedded
-      >
+    | Document.OnUpdateDescendantDocumentsArgs<Scene.Stored, Scene.DirectDescendant, Scene.Metadata.Embedded>
     | TokenDocument.OnUpdateDescendantDocumentsArgs
     | RegionDocument.OnUpdateDescendantDocumentsArgs;
 
   type PreDeleteDescendantDocumentsArgs =
-    | Document.Internal.PreDeleteDescendantDocumentsArgs<
-        Scene.Stored,
-        Scene.DirectDescendantName,
-        Scene.Metadata.Embedded
-      >
+    | Document.PreDeleteDescendantDocumentsArgs<Scene.Stored, Scene.DirectDescendant, Scene.Metadata.Embedded>
     | TokenDocument.PreDeleteDescendantDocumentsArgs
     | RegionDocument.PreDeleteDescendantDocumentsArgs;
 
   type OnDeleteDescendantDocumentsArgs =
-    | Document.Internal.OnDeleteDescendantDocumentsArgs<
-        Scene.Stored,
-        Scene.DirectDescendantName,
-        Scene.Metadata.Embedded
-      >
+    | Document.OnDeleteDescendantDocumentsArgs<Scene.Stored, Scene.DirectDescendant, Scene.Metadata.Embedded>
     | TokenDocument.OnDeleteDescendantDocumentsArgs
     | RegionDocument.OnDeleteDescendantDocumentsArgs;
-
-  /* ***********************************************
-   *             SCENE-SPECIFIC TYPES              *
-   *************************************************/
 
   interface Dimensions {
     /** The width of the canvas. */
@@ -1581,7 +1046,7 @@ declare namespace Scene {
     size: number;
 
     /** The canvas rectangle. */
-    rect: PIXI.Rectangle;
+    rect: Canvas.Rectangle;
 
     /** The X coordinate of the scene rectangle within the larger canvas. */
     sceneX: number;
@@ -1596,7 +1061,7 @@ declare namespace Scene {
     sceneHeight: number;
 
     /** The scene rectangle. */
-    sceneRect: PIXI.Rectangle;
+    sceneRect: Canvas.Rectangle;
 
     /** The number of distance units in a single grid space. */
     distance: number;
@@ -1604,12 +1069,8 @@ declare namespace Scene {
     /** The factor to convert distance units to pixels */
     distancePixels: number;
 
-    /**
-     * The units of distance
-     * @remarks This still exists in the typedef, but isn't returned by {@linkcode Scene.getDimensions | Scene#getDimensions} as ov 13.
-     * Possibly should be deprecated.
-     */
-    units?: string;
+    /** The units of distance */
+    units: string;
 
     /** The aspect ratio of the scene rectangle. */
     ratio: number;
@@ -1637,13 +1098,13 @@ declare namespace Scene {
      * The desired thumbnail width. Default is 300px
      * @defaultValue `300`
      */
-    width: number;
+    width: number | null;
 
     /**
      * The desired thumbnail height. Default is 100px;
      * @defaultValue `100`
      */
-    height: number;
+    height: number | null;
 
     /**
      * Which image format should be used? image/png, image/jpeg, or image/webp
@@ -1666,8 +1127,8 @@ declare namespace Scene {
   /**
    * The arguments to construct the document.
    *
-   * @deprecated Writing the signature directly has helped reduce circularities and therefore is
-   * now recommended. This type will be removed in v14.
+   * @deprecated - Writing the signature directly has helped reduce circularities and therefore is
+   * now recommended.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   type ConstructorArgs = Document.ConstructorParameters<CreateData, Parent>;
@@ -1679,7 +1140,7 @@ declare namespace Scene {
  * @see {@linkcode Scenes}            The world-level collection of Scene documents
  * @see {@linkcode SceneConfig}       The Scene configuration application
  */
-declare class Scene extends BaseScene.Internal.ClientDocument {
+declare class Scene extends foundry.documents.BaseScene.Internal.ClientDocument {
   /**
    * @param data    - Initial data from which to construct the `Scene`
    * @param context - Construction context options
@@ -1693,7 +1154,7 @@ declare class Scene extends BaseScene.Internal.ClientDocument {
    * @internal
    * @remarks This is intentionally public because it is used in Canvas._initializeCanvasPosition() and Canvas.pan()
    */
-  _viewPosition: Canvas.PartialViewPosition;
+  _viewPosition: Canvas.ViewPosition;
 
   /**
    * Track whether the scene is the active view
@@ -1711,7 +1172,7 @@ declare class Scene extends BaseScene.Internal.ClientDocument {
   /**
    * Determine the canvas dimensions this Scene would occupy, if rendered
    * @defaultValue `{}`
-   * @remarks Technically `undefined` prior to the first time {@linkcode Scene.prepareBaseData | Scene#prepareBaseData} is called
+   * @remarks Technically `undefined` prior to the first time {@link Scene.prepareBaseData | `Scene#prepareBaseData`} is called
    */
   dimensions: Scene.Dimensions;
 
@@ -1729,7 +1190,7 @@ declare class Scene extends BaseScene.Internal.ClientDocument {
    * Pull the specified users to this Scene.
    * @param users - An array of User documents or IDs.
    */
-  pullUsers(users?: (User.Stored | string)[]): void;
+  pullUsers(users?: (User.Implementation | string)[]): void;
 
   /**
    * Set this scene as currently active
@@ -1741,14 +1202,18 @@ declare class Scene extends BaseScene.Internal.ClientDocument {
    * Set this scene as the current view
    * @remarks If `canvas.loading`, returns a `ui.notifications.warn`, thence the `| number` in the return type
    */
-  view(): Promise<this | Notifications.Notification<"warning">>;
+  view(): Promise<this | number>;
 
   /**
    * Unview the current Scene, clearing the game canvas.
    */
   unview(): Promise<this | undefined>;
 
-  override clone<Save extends boolean | undefined = false>(
+  /**
+   * @param createData - (default: `{}`)
+   * @param options    - (default: `{}`)
+   */
+  override clone<Save extends boolean | null | undefined = false>(
     data?: Scene.CreateData,
     context?: Document.CloneContext<Save>,
   ): Document.Clone<this, Save>;
@@ -1759,7 +1224,7 @@ declare class Scene extends BaseScene.Internal.ClientDocument {
    * @remarks If `source` is falsey, and the grid is hexagonal with the `legacyHex` flag set,
    * does some conversion on `object.grid.size` (leaving it numeric, no type change) before returning
    */
-  override toObject(source?: boolean): Scene.Source;
+  override toObject(source?: boolean | null): fields.SchemaField.SourceData<Scene.Schema>;
 
   /**
    * @remarks
@@ -1793,64 +1258,97 @@ declare class Scene extends BaseScene.Internal.ClientDocument {
    * each Token accordingly.
    *
    * This function doesn't need to be called by the systems/modules unless
-   * {@linkcode TokenDocument.testInsideRegion | foundry.documents.TokenDocument#testInsideRegion} is overridden and non-Token properties
-   * other than `Scene#grid.type` and `Scene#grid.size` change that are used in the override of
-   * {@linkcode TokenDocument.TestInsideRegion | foundry.documents.TokenDocument#testInsideRegion}.
+   * {@link TokenDocument.testInsideRegion | `foundry.documents.TokenDocument#testInsideRegion`} is overridden and non-Token properties other than
+   * `Scene#grid.type` and `Scene#grid.size` change that are used in the override of
+   * {@link TokenDocument.TestInsideRegion | `foundry.documents.TokenDocument#testInsideRegion`}.
    * @param tokens - The Tokens whose regions should be updates
    * @returns The array of Tokens whose regions changed
    */
-  updateTokenRegions(tokens?: Iterable<TokenDocument.Implementation>): Promise<TokenDocument.Stored[]>;
+  updateTokenRegions(tokens?: Iterable<TokenDocument.Implementation>): Promise<TokenDocument.Implementation[]>;
 
-  // For type simplicity the following real override(s) are commented out.
-  // These methods historically have been the source of a large amount of computation from tsc.
+  /** @deprecated Foundry made this method truly private in v13 (this warning will be removed in v14) */
+  protected _repositionObject(sceneUpdateData: never): never;
 
-  // protected override _preCreate(
-  //   data: Scene.CreateData,
-  //   options: Scene.Database.PreCreateOptions,
-  //   user: User.Stored,
-  // ): Promise<boolean | void>;
-
-  // protected static override _preCreateOperation(
-  //   documents: Scene.Implementation[],
-  //   operation: Scene.Database.PreCreateOperation,
-  //   user: User.Stored,
-  // ): Promise<boolean | void>;
-
-  // protected override _onCreate(data: Scene.CreateData, options: Scene.Database.OnCreateOptions, userId: string): void;
-
-  // protected override _preUpdate(
-  //   changed: Scene.UpdateData,
-  //   options: Scene.Database.PreUpdateOptions,
-  //   user: User.Stored,
-  // ): Promise<boolean | void>;
-
-  // protected static override _onUpdateOperation(
-  //   documents: Scene.Stored[],
-  //   operation: Scene.Database.OnUpdateOperation,
-  //   user: User.Stored,
-  // ): Promise<void>;
-
-  // protected override _onUpdate(
-  //   changed: Scene.UpdateData,
-  //   options: Scene.Database.OnUpdateOptions,
-  //   userId: string,
-  // ): void;
-
-  // protected override _onDelete(options: Scene.Database.OnDeleteOptions, userId: string): void;
+  // _preCreate, _preCreateOperation, _onCreate, and _preUpdate, _onUpdateOperation, _onUpdate, and _onDelete are all overridden but with no signature changes.
+  // For type simplicity they are left off. These methods historically have been the source of a large amount of computation from tsc.
 
   /**
    * Handle Scene activation workflow if the active state is changed to true
    * @param active - Is the scene now active?
    */
-  protected _onActivate(active: boolean): void;
+  protected _onActivate(active: boolean): Promise<this | Canvas>;
 
+  /**
+   * @remarks To make it possible for narrowing one parameter to jointly narrow other parameters
+   * this method must be overridden like so:
+   * ```typescript
+   * class SwadeScene extends Scene {
+   *   protected override _preCreateDescendantDocuments(...args: Scene.PreCreateDescendantDocumentsArgs) {
+   *     super._preCreateDescendantDocuments(...args);
+   *
+   *     const [parent, collection, data, options, userId] = args;
+   *     if (collection === "tokens") {
+   *         options; // Will be narrowed.
+   *     }
+   *   }
+   * }
+   * ```
+   */
   protected override _preCreateDescendantDocuments(...args: Scene.PreCreateDescendantDocumentsArgs): void;
 
+  /**
+   * @remarks To make it possible for narrowing one parameter to jointly narrow other parameters
+   * this method must be overridden like so:
+   * ```typescript
+   * class LancerScene extends Scene {
+   *   protected override _preUpdateDescendantDocuments(...args: Scene.OnUpdateDescendantDocuments) {
+   *     super._preUpdateDescendantDocuments(...args);
+   *
+   *     const [parent, collection, changes, options, userId] = args;
+   *     if (collection === "tokens") {
+   *         options; // Will be narrowed.
+   *     }
+   *   }
+   * }
+   * ```
+   */
   protected override _preUpdateDescendantDocuments(...args: Scene.PreUpdateDescendantDocumentsArgs): void;
 
-  protected override _preDeleteDescendantDocuments(...args: Scene.PreDeleteDescendantDocumentsArgs): void;
-
+  /**
+   * @remarks To make it possible for narrowing one parameter to jointly narrow other parameters
+   * this method must be overridden like so:
+   * ```typescript
+   * class Ptr2eScene extends Scene {
+   *   protected override _onUpdateDescendantDocuments(...args: Scene.OnUpdateDescendantDocumentsArgs) {
+   *     super._onUpdateDescendantDocuments(...args);
+   *
+   *     const [parent, collection, documents, changes, options, userId] = args;
+   *     if (collection === "tokens") {
+   *         options; // Will be narrowed.
+   *     }
+   *   }
+   * }
+   * ```
+   */
   protected override _onUpdateDescendantDocuments(...args: Scene.OnUpdateDescendantDocumentsArgs): void;
+
+  /**
+   * @remarks To make it possible for narrowing one parameter to jointly narrow other parameters
+   * this method must be overridden like so:
+   * ```typescript
+   * class KultScene extends Scene {
+   *   protected override _preDeleteDescendantDocuments(...args: Scene.PreDeleteDescendantDocumentsArgs) {
+   *     super._preDeleteDescendantDocuments(...args);
+   *
+   *     const [parent, collection, ids, options, userId] = args;
+   *     if (collection === "tokens") {
+   *         options; // Will be narrowed.
+   *     }
+   *   }
+   * }
+   * ```
+   */
+  protected override _preDeleteDescendantDocuments(...args: Scene.PreDeleteDescendantDocumentsArgs): void;
 
   override toCompendium<Options extends ClientDocument.ToCompendiumOptions | undefined = undefined>(
     pack?: foundry.documents.collections.CompendiumCollection.Any | null,
@@ -1863,9 +1361,6 @@ declare class Scene extends BaseScene.Internal.ClientDocument {
    * @returns The created thumbnail data.
    */
   createThumbnail(data?: Scene.ThumbnailCreationData): Promise<ImageHelper.ThumbnailReturn>;
-
-  /** @deprecated Foundry made this method truly private in v13 (this warning will be removed in v14) */
-  protected _repositionObject(sceneUpdateData: never): never;
 
   /*
    * After this point these are not really overridden methods.
@@ -1881,53 +1376,63 @@ declare class Scene extends BaseScene.Internal.ClientDocument {
 
   // Other Descendant Document operations are actually overridden above
 
+  /**
+   * @remarks To make it possible for narrowing one parameter to jointly narrow other parameters
+   * this method must be overridden like so:
+   * ```typescript
+   * class GurpsScene extends Scene {
+   *   protected override _onCreateDescendantDocuments(...args: Scene.OnCreateDescendantDocumentsArgs) {
+   *     super._onCreateDescendantDocuments(...args);
+   *
+   *     const [parent, collection, documents, data, options, userId] = args;
+   *     if (collection === "tokens") {
+   *         options; // Will be narrowed.
+   *     }
+   *   }
+   * }
+   * ```
+   */
   protected override _onCreateDescendantDocuments(...args: Scene.OnCreateDescendantDocumentsArgs): void;
 
+  /**
+   * @remarks To make it possible for narrowing one parameter to jointly narrow other parameters
+   * this method must be overridden like so:
+   * ```typescript
+   * class BladesScene extends Scene {
+   *   protected override _onDeleteDescendantDocuments(...args: Scene.OnUpdateDescendantDocuments) {
+   *     super._onDeleteDescendantDocuments(...args);
+   *
+   *     const [parent, collection, documents, ids, options, userId] = args;
+   *     if (collection === "tokens") {
+   *         options; // Will be narrowed.
+   *     }
+   *   }
+   * }
+   * ```
+   */
   protected override _onDeleteDescendantDocuments(...args: Scene.OnDeleteDescendantDocumentsArgs): void;
 
   static override defaultName(context?: Scene.DefaultNameContext): string;
 
-  static override createDialog<Options extends Scene.CreateDialogOptions | undefined = undefined>(
+  static override createDialog(
     data?: Scene.CreateDialogData,
-    createOptions?: Scene.Database.CreateDocumentsOperation,
-    options?: Options,
-  ): Promise<Scene.CreateDialogReturn<Options>>;
+    createOptions?: Scene.Database.DialogCreateOptions,
+    options?: Scene.CreateDialogOptions,
+  ): Promise<Scene.Stored | null | undefined>;
 
-  /**
-   * @deprecated "The `ClientDocument.createDialog` signature has changed. It now accepts database operation options in its second
-   * parameter, and options for {@linkcode DialogV2.prompt} in its third parameter." (since v13, until v15)
-   *
-   * @see {@linkcode Scene.CreateDialogDeprecatedOptions}
-   */
-  static override createDialog<Options extends Scene.CreateDialogOptions | undefined = undefined>(
-    data: Scene.CreateDialogData,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    createOptions: Scene.CreateDialogDeprecatedOptions,
-    options?: Options,
-  ): Promise<Scene.CreateDialogReturn<Options>>;
+  override deleteDialog(
+    options?: InexactPartial<foundry.applications.api.DialogV2.ConfirmConfig>,
+    operation?: Document.Database.DeleteOperationForName<"Scene">,
+  ): Promise<this | false | null | undefined>;
 
-  override deleteDialog<Options extends DialogV2.ConfirmConfig | undefined = undefined>(
-    options?: Options,
-    operation?: Scene.Database.DeleteOneDocumentOperation,
-  ): Promise<Scene.DeleteDialogReturn<Options>>;
-
-  /**
-   * @deprecated "`options` is now an object containing entries supported by {@linkcode DialogV2.confirm | DialogV2.confirm}."
-   * (since v13, until v15)
-   *
-   * @see {@linkcode Document.DeleteDialogDeprecatedConfig}
-   */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  override deleteDialog<Options extends Document.DeleteDialogDeprecatedConfig | undefined = undefined>(
-    options?: Options,
-    operation?: Scene.Database.DeleteOneDocumentOperation,
-  ): Promise<Scene.DeleteDialogReturn<Options>>;
-
-  static override fromDropData(data: Scene.DropData): Promise<Scene.Implementation | undefined>;
+  static override fromDropData(
+    data: Scene.DropData,
+    options?: Scene.DropDataOptions,
+  ): Promise<Scene.Implementation | undefined>;
 
   static override fromImport(
     source: Scene.Source,
-    context?: Document.FromImportContext<Scene.Parent>,
+    context?: Document.FromImportContext<Scene.Parent> | null,
   ): Promise<Scene.Implementation>;
 
   #Scene: true;

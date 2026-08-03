@@ -1,20 +1,15 @@
 import { expectTypeOf } from "vitest";
+import type PointDarknessSource from "../../../../../src/foundry/client/canvas/sources/point-darkness-source.d.mts";
+import type PointLightSource from "../../../../../src/foundry/client/canvas/sources/point-light-source.d.mts";
+import { AmbientLight, PlaceableObject } from "#client/canvas/placeables/_module.mjs";
 
-import AmbientLight = foundry.canvas.placeables.AmbientLight;
-import PlaceableObject = foundry.canvas.placeables.PlaceableObject;
-import PointDarknessSource = foundry.canvas.sources.PointDarknessSource;
-import PointLightSource = foundry.canvas.sources.PointLightSource;
-
-expectTypeOf(AmbientLight.implementation).toEqualTypeOf<AmbientLight.ImplementationClass>();
 expectTypeOf(AmbientLight.embeddedName).toEqualTypeOf<"AmbientLight">();
-expectTypeOf(AmbientLight.RENDER_FLAGS.redraw.propagate).toEqualTypeOf<
+expectTypeOf(AmbientLight.RENDER_FLAGS.redraw?.propagate).toEqualTypeOf<
   // undefined only from the optional chain, not underlying type
   Array<"refresh" | "refreshState" | "refreshField" | "refreshPosition" | "refreshElevation"> | undefined
 >();
 
 declare const doc: AmbientLightDocument.Stored;
-declare const scene: Scene.Stored;
-
 const light = new CONFIG.AmbientLight.objectClass(doc);
 
 expectTypeOf(light.field).toEqualTypeOf<PIXI.Graphics | undefined>();
@@ -50,7 +45,7 @@ expectTypeOf(light.clear()).toEqualTypeOf<AmbientLight.Implementation>();
 expectTypeOf(light["_applyRenderFlags"]()).toBeVoid();
 expectTypeOf(light["_applyRenderFlags"]({})).toBeVoid();
 // all falsey values have no effect
-expectTypeOf(light["_applyRenderFlags"]({ refreshElevation: false, refreshPosition: undefined })).toBeVoid();
+expectTypeOf(light["_applyRenderFlags"]({ refreshElevation: null, refreshPosition: undefined })).toBeVoid();
 expectTypeOf(
   light["_applyRenderFlags"]({
     redraw: true,
@@ -68,35 +63,27 @@ expectTypeOf(light["_refreshElevation"]()).toBeVoid();
 expectTypeOf(light["_refreshState"]()).toBeVoid();
 
 expectTypeOf(
-  light["_onCreate"](
-    doc.toObject(),
-    { action: "create", parent: scene, modifiedTime: 7, render: true, renderSheet: false },
-    "XXXXXSomeIDXXXXX",
-  ),
+  light["_onCreate"](doc.toObject(), { modifiedTime: 7, render: true, renderSheet: false }, "XXXXXSomeIDXXXXX"),
 ).toBeVoid();
 
 expectTypeOf(
   light["_onUpdate"](
     // partial source data
     { config: { bright: 20, dim: 50, color: "#AB9435" }, flags: { core: { sheetLock: true } } },
-    { action: "update", parent: scene, modifiedTime: 7, render: true, diff: true, recursive: true },
+    { modifiedTime: 7, render: true, diff: true, recursive: true },
     "XXXXXSomeIDXXXXX",
   ),
 ).toBeVoid();
 
-expectTypeOf(
-  light["_onDelete"]({ action: "delete", parent: scene, modifiedTime: 7, render: true }, "XXXXXSomeIDXXXXX"),
-).toBeVoid();
+expectTypeOf(light["_onDelete"]({ modifiedTime: 7, render: true }, "XXXXXSomeIDXXXXX")).toBeVoid();
 
 expectTypeOf(light.refreshControl()).toBeVoid();
 
 expectTypeOf(light.initializeLightSource()).toBeVoid();
 expectTypeOf(light.initializeLightSource({})).toBeVoid();
 expectTypeOf(light.initializeLightSource({ deleted: true })).toBeVoid();
-expectTypeOf(light.initializeLightSource({ deleted: undefined })).toBeVoid();
+expectTypeOf(light.initializeLightSource({ deleted: null })).toBeVoid();
 expectTypeOf(light["_getLightSourceData"]()).toEqualTypeOf<AmbientLight.LightSourceData>();
-
-// TODO: _onCreate, _onUpdate, _onDelete tests after document test helpers are done
 
 declare const someUser: User.Implementation;
 declare const pointerEvent: foundry.canvas.Canvas.Event.Pointer;
@@ -117,7 +104,7 @@ expectTypeOf(light.updateSource({})).toBeVoid();
 // eslint-disable-next-line @typescript-eslint/no-deprecated
 expectTypeOf(light.updateSource({ deleted: true })).toBeVoid();
 // eslint-disable-next-line @typescript-eslint/no-deprecated
-expectTypeOf(light.updateSource({ deleted: undefined })).toBeVoid();
+expectTypeOf(light.updateSource({ deleted: null })).toBeVoid();
 // eslint-disable-next-line @typescript-eslint/no-deprecated
 expectTypeOf(light.source).toEqualTypeOf<
   PointLightSource.Implementation | PointDarknessSource.Implementation | undefined

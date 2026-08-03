@@ -1,5 +1,3 @@
-import type { Brand, Coalesce } from "#utils";
-
 /**
  * A common framework for displaying notifications to the client.
  * Submitted notifications are added to a queue, and up to {@link Notifications.MAX_ACTIVE} notifications are
@@ -49,35 +47,38 @@ declare class Notifications {
    * @returns The ID of the notification (positive integer)
    * @remarks `type` and `options` use parameter defaults so `null` causes an error
    */
-  notify<T extends Notifications.Type | undefined = undefined>(
-    message: string | Error,
+  notify<T extends Notifications.Type = "info">(
+    message: string,
     type?: T,
     options?: Notifications.NotifyOptions,
-  ): Notifications.Notification<Coalesce<T, "info">>;
+  ): Readonly<Notifications.Notification<T>>;
 
   /**
    * Display a notification with the "info" type
    * @param message - The content of the notification message
    * @param options - Notification options passed to the notify function
-   * @returns The registered notification
+   * @returns The ID of the notification (positive integer)
+   * @remarks `options` use parameter defaults so `null` causes an error
    */
-  info(message: string | Error, options?: Notifications.NotifyOptions): Notifications.Notification<"info">;
+  info(message: string, options?: Notifications.NotifyOptions): Readonly<Notifications.Notification<"info">>;
 
   /**
    * Display a notification with the "warning" type
    * @param message - The content of the notification message
    * @param options - Notification options passed to the notify function
-   * @returns The registered notification
+   * @returns The ID of the notification (positive integer)
+   * @remarks `options` use parameter defaults so `null` causes an error
    */
-  warn(message: string | Error, options?: Notifications.NotifyOptions): Notifications.Notification<"warning">;
+  warn(message: string, options?: Notifications.NotifyOptions): Readonly<Notifications.Notification<"warning">>;
 
   /**
    * Display a notification with the "error" type
    * @param message - The content of the notification message
    * @param options - Notification options passed to the notify function
-   * @returns The registered notification
+   * @returns The ID of the notification (positive integer)
+   * @remarks `options` use parameter defaults so `null` causes an error
    */
-  error(message: string | Error, options?: Notifications.NotifyOptions): Notifications.Notification<"error">;
+  error(message: string, options?: Notifications.NotifyOptions): Readonly<Notifications.Notification<"error">>;
 
   /**
    * Display a notification with the "success" type.
@@ -85,34 +86,27 @@ declare class Notifications {
    * @param options - Notification options passed to the notify function
    * @returns The registered notification
    */
-  success(message: string | Error, options?: Notifications.NotifyOptions): Notifications.Notification<"success">;
+  success(message: string, options?: Notifications.NotifyOptions): Readonly<Notifications.Notification<"success">>;
 
   /**
    * Update the progress of the notification.
    * @param notification - A Notification or ID to update
    * @param update       - An incremental progress update
    */
-  update(notification: Notifications.Notification | Notifications.ID, update: Notifications.UpdateOptions): void;
+  update(notification: Notifications.Notification | number, update: Notifications.UpdateOptions): void;
 
   /**
    * Remove the notification linked to the ID.
    * @param id - The Notification or ID to remove
    */
-  remove(id: Notifications.Notification | Notifications.ID): void;
-
-  /**
-   * Does the notification linked to the ID exist?.
-   * @param notification - The Notification or ID to remove
-   * @remarks Foundry writing "The Notification or ID to remove" is likely unintentional.
-   */
-  has(id: Notifications.Notification | Notifications.ID): boolean;
+  remove(id: Notifications.Notification | number): void;
 
   /**
    * Clear all notifications.
    */
   clear(): void;
 
-  #Notifications: true;
+  #private: true;
 }
 
 declare abstract class AnyNotifications extends Notifications {
@@ -125,105 +119,89 @@ declare namespace Notifications {
 
   type Type = "info" | "warning" | "error" | "success";
 
-  type ID = Brand<number, "Notifications.ID">;
-
   interface Notification<T extends Type = Type> {
-    id: Notifications.ID;
+    id: number;
     type: T;
     timestamp: number;
     message: string;
-
-    /**
-     * @remarks Only set when the original `message` is an `Error`.
-     */
-    error?: Error | undefined;
-
     permanent: boolean;
     console: boolean;
     active: boolean;
     progress: boolean;
     pct: number;
-
-    /**
-     * @remarks Set when the notification is currently being rendered. When the notification is
-     * removed {@linkcode HTMLLIElement.remove | HTMLLIElement#remove} is called.
-     */
-    element?: HTMLLIElement | undefined;
-
-    /**
-     * @remarks Foundry claims this is required but always sets it in practice.
-     */
-    remove: () => void;
-
-    /**
-     * @remarks Foundry claims this is required but always sets it in practice.
-     */
-    update: (update: Notifications.UpdateOptions) => void;
+    element?: HTMLLIElement;
+    remove?: () => void;
+    update?: (pct: number) => void;
   }
 
   interface FormatOptions {
     /**
      * Whether to escape the values of `format`
      * @defaultValue `true`
+     * @remarks `null` equivalent to `false`
      */
-    escape?: boolean | undefined;
+    escape?: boolean | null | undefined;
 
     /**
      * Whether to clean the provided message string as untrusted user input.
      * No cleaning is applied if `format` is passed and `escape` is true or `localize` is true and `format` is not passed.
      * @defaultValue `true`
+     * @remarks `null` equivalent to `false`
      */
-    clean?: boolean | undefined;
+    clean?: boolean | null | undefined;
 
     /**
      * A mapping of formatting strings passed to Localization#format
      */
-    format?: Record<string, string> | undefined;
+    format?: Record<string, string> | null | undefined;
   }
 
   interface NotifyOptions extends FormatOptions {
     /**
      * Should the notification be permanently displayed until dismissed
      * @defaultValue `false`
+     * @remarks Overridden as `true` if `progress` is true. `null` equivalent to `false`
      */
-    permanent?: boolean | undefined;
+    permanent?: boolean | null | undefined;
 
     /**
      * Does this Notification include a progress bar?
      * @defaultValue `false`
+     * @remarks `null` equivalent to `false`
      */
-    progress?: boolean | undefined;
+    progress?: boolean | null | undefined;
 
     /**
      * Whether to localize the message content before displaying it
      * @defaultValue `false`
      */
-    localize?: boolean | undefined;
+    localize?: boolean;
 
     /**
      * Whether to log the message to the console
      * @defaultValue `true`
+     * @remarks `null` equivalent to `false`
      */
-    console?: boolean | undefined;
+    console?: boolean | null | undefined;
   }
 
   interface UpdateOptions extends FormatOptions {
     /**
      * An update to the string message
      */
-    message?: string | undefined;
+    message?: string | null | undefined;
 
     /**
      * Localize updates to presented progress text
      * @defaultValue `false`
+     * @remarks `null` equivalent to `false`
      */
-    localize?: boolean | undefined;
+    localize?: boolean | null | undefined;
 
     /**
      * An update to the completion percentage
-     * @remarks Only allows numbers in the range `[0, 1]`
      */
-    pct?: number | undefined;
+    pct?: number | null | undefined;
   }
 }
 

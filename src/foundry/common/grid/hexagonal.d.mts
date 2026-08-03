@@ -1,7 +1,8 @@
-import type { InexactPartial } from "#utils";
-import type { BaseGrid, GridHex } from "#common/grid/_module.d.mts";
+import type BaseGrid from "./base.d.mts";
 import type { Canvas } from "#client/canvas/_module.d.mts";
 import type { Token } from "#client/canvas/placeables/_module.d.mts";
+
+import type { InexactPartial } from "#utils";
 
 declare class HexagonalGrid extends BaseGrid {
   /**
@@ -16,71 +17,37 @@ declare class HexagonalGrid extends BaseGrid {
     | typeof CONST.GRID_TYPES.HEXEVENR
     | typeof CONST.GRID_TYPES.HEXODDR;
 
-  // fake type override
-  override get isGridless(): false;
-
-  // fake type override
-  override get isHexagonal(): true;
-
-  // fake type override
-  override get isSquare(): false;
-
-  /**
-   * Is this grid column-based (flat-topped) or row-based (pointy-topped)?
-   * @privateRemarks Defined at construction, not in the class body. Foundry marks `@readonly` but does nothing to enforce that at runtime.
-   */
+  /** Is this grid column-based (flat-topped) or row-based (pointy-topped)yy? */
   columns: boolean;
 
-  /**
-   * Is this grid even or odd?
-   * @privateRemarks Defined at construction, not in the class body. Foundry marks `@readonly` but does nothing to enforce that at runtime.
-   */
+  /** Is this grid even or odd? */
   even: boolean;
 
-  /**
-   * The rule for diagonal measurement (see {@linkcode CONST.GRID_DIAGONALS}).
-   * @privateRemarks Defined at construction, not in the class body. Foundry marks `@readonly` but does nothing to enforce that at runtime.
-   */
-  diagonals: CONST.GRID_DIAGONALS;
+  getOffset(coords: HexagonalGrid.Coordinates): HexagonalGrid.Offset;
 
-  override getOffset(coords: HexagonalGrid.Coordinates3D): BaseGrid.Offset3D;
-  override getOffset(coords: HexagonalGrid.Coordinates2D): BaseGrid.Offset2D;
+  getOffsetRange(bounds: Canvas.Rectangle): HexagonalGrid.OffsetRange;
 
-  override getOffsetRange(bounds: Canvas.Rectangle): BaseGrid.OffsetRange;
+  getAdjacentOffsets(coords: HexagonalGrid.Coordinates): HexagonalGrid.Offset[];
 
-  override getAdjacentOffsets(coords: HexagonalGrid.Coordinates3D): BaseGrid.Offset3D[];
-  override getAdjacentOffsets(coords: HexagonalGrid.Coordinates2D): BaseGrid.Offset2D[];
+  testAdjacency(coords1: HexagonalGrid.Coordinates, coords2: HexagonalGrid.Coordinates): boolean;
 
-  override testAdjacency(coords1: HexagonalGrid.Coordinates3D, coords2: HexagonalGrid.Coordinates3D): boolean;
-  override testAdjacency(coords1: HexagonalGrid.Coordinates2D, coords2: HexagonalGrid.Coordinates2D): boolean;
+  getShiftedOffset(coords: HexagonalGrid.Coordinates, direction: number): HexagonalGrid.Offset;
 
-  override getShiftedOffset(
-    coords: HexagonalGrid.Coordinates3D,
-    direction: CONST.MOVEMENT_DIRECTIONS,
-  ): BaseGrid.Offset3D;
-  override getShiftedOffset(
-    coords: HexagonalGrid.Coordinates2D,
-    direction: CONST.MOVEMENT_DIRECTIONS,
-  ): BaseGrid.Offset2D;
-
-  override getShiftedPoint(point: Canvas.ElevatedPoint, direction: CONST.MOVEMENT_DIRECTIONS): Canvas.ElevatedPoint;
-  override getShiftedPoint(point: Canvas.Point, direction: CONST.MOVEMENT_DIRECTIONS): Canvas.Point;
+  getShiftedPoint(point: Canvas.Point, direction: number): Canvas.Point;
 
   /**
    * Returns the cube coordinates of the grid space corresponding to the given coordinates.
    * @param coords - The coordinates
    * @returns The cube coordinates
    */
-  getCube(coords: HexagonalGrid.Coordinates3D): HexagonalGrid.Cube3D;
-  getCube(coords: HexagonalGrid.Coordinates2D): HexagonalGrid.Cube2D;
+  getCube(coords: HexagonalGrid.Coordinates): HexagonalGrid.Cube;
 
   /**
    * Returns the cube coordinates of grid spaces adjacent to the one corresponding to the given coordinates.
    * @param coords - The coordinates
    * @returns The adjacent cube coordinates
    */
-  getAdjacentCubes(coords: HexagonalGrid.Coordinates3D): HexagonalGrid.Cube3D[];
-  getAdjacentCubes(coords: HexagonalGrid.Coordinates2D): HexagonalGrid.Cube2D[];
+  getAdjacentCubes(coords: HexagonalGrid.Coordinates): HexagonalGrid.Cube[];
 
   /**
    * Returns the cube coordinates of the grid space corresponding to the given coordinates
@@ -89,23 +56,22 @@ declare class HexagonalGrid extends BaseGrid {
    * @param direction - The direction (see {@linkcode CONST.MOVEMENT_DIRECTIONS})
    * @returns The cube coordinates
    */
-  getShiftedCube(coords: HexagonalGrid.Coordinates3D, direction: CONST.MOVEMENT_DIRECTIONS): HexagonalGrid.Cube3D;
-  getShiftedCube(coords: HexagonalGrid.Coordinates2D, direction: CONST.MOVEMENT_DIRECTIONS): HexagonalGrid.Cube2D;
+  getShiftedCube(coords: HexagonalGrid.Coordinates, direction: number): HexagonalGrid.Cube;
 
-  override getTopLeftPoint(coords: HexagonalGrid.Coordinates3D): Canvas.ElevatedPoint;
-  override getTopLeftPoint(coords: HexagonalGrid.Coordinates2D): Canvas.Point;
+  getTopLeftPoint(coords: HexagonalGrid.Coordinates): Canvas.Point;
 
-  override getCenterPoint(coords: HexagonalGrid.Coordinates3D): Canvas.ElevatedPoint;
-  override getCenterPoint(coords: HexagonalGrid.Coordinates2D): Canvas.Point;
+  getCenterPoint(coords: HexagonalGrid.Coordinates): Canvas.Point;
 
-  override getShape(): Canvas.Point[];
+  getShape(): Canvas.Point[];
 
-  override getVertices(coords: HexagonalGrid.Coordinates2D): Canvas.Point[];
+  getVertices(coords: HexagonalGrid.Coordinates): Canvas.Point[];
 
-  override getSnappedPoint(point: Canvas.ElevatedPoint, behavior: BaseGrid.SnappingBehavior): Canvas.ElevatedPoint;
-  override getSnappedPoint(point: Canvas.Point, behavior: BaseGrid.SnappingBehavior): Canvas.Point;
+  getSnappedPoint({ x, y }: Canvas.Point, behavior: HexagonalGrid.SnappingBehavior): Canvas.Point;
 
-  override calculateDimensions(sceneWidth: number, sceneHeight: number, padding: number): BaseGrid.Dimensions;
+  /** @privateRemarks This is added so that ts knows this class has a private method. */
+  #snapToCenter();
+
+  calculateDimensions(sceneWidth: number, sceneHeight: number, padding: number): HexagonalGrid.Dimensions;
 
   /**
    * Calculate the total size of the canvas with padding applied, as well as the top-left coordinates of the inner
@@ -115,95 +81,70 @@ declare class HexagonalGrid extends BaseGrid {
    * @param sceneWidth  - The width of the scene.
    * @param sceneHeight - The height of the scene.
    * @param padding     - The percentage of padding.
-   * @internal
    */
-  static _calculatePreV10Dimensions(
+  protected static _calculatePreV10Dimensions(
     columns: number,
     legacySize: number,
     sceneWidth: number,
     sceneHeight: number,
     padding: number,
-  ): BaseGrid.Dimensions;
+  ): HexagonalGrid.Dimensions;
 
-  // fake type override
-  override measurePath(
-    waypoints: BaseGrid.Waypoint<HexagonalGrid.Coordinates3D>[],
-    options?: BaseGrid.MeasurePathOptions<HexagonalGrid.Coordinates3D>,
-  ): BaseGrid.MeasurePathResult;
-  // fake type override
-  override measurePath(
-    waypoints: BaseGrid.Waypoint<HexagonalGrid.Coordinates2D>[],
-    options?: BaseGrid.MeasurePathOptions<HexagonalGrid.Coordinates2D>,
-  ): BaseGrid.MeasurePathResult;
-
-  protected override _measurePath(
-    waypoints: BaseGrid.Waypoint<HexagonalGrid.Coordinates3D>[],
-    options: BaseGrid.MeasurePathOptions<HexagonalGrid.Coordinates3D>,
-    result: BaseGrid.MeasurePathResult,
-  ): void;
-  protected override _measurePath(
-    waypoints: BaseGrid.Waypoint<HexagonalGrid.Coordinates2D>[],
-    options: BaseGrid.MeasurePathOptions<HexagonalGrid.Coordinates2D>,
-    result: BaseGrid.MeasurePathResult,
+  protected _measurePath(
+    waypoints: HexagonalGrid.MeasurePathWaypoint[],
+    options: InexactPartial<{ cost: HexagonalGrid.MeasurePathCostFunction }>,
+    result: HexagonalGrid.MeasurePathResult,
   ): void;
 
-  override getDirectPath(waypoints: HexagonalGrid.Coordinates3D[]): BaseGrid.Offset3D[];
-  override getDirectPath(waypoints: HexagonalGrid.Coordinates2D[]): BaseGrid.Offset2D[];
+  getDirectPath(waypoints: HexagonalGrid.Coordinates[]): HexagonalGrid.Offset[];
 
-  override getTranslatedPoint(point: Canvas.ElevatedPoint, direction: number, distance: number): Canvas.ElevatedPoint;
-  override getTranslatedPoint(point: Canvas.Point, direction: number, distance: number): Canvas.Point;
+  getTranslatedPoint(point: Canvas.Point, direction: number, distance: number): Canvas.Point;
 
-  override getCircle(center: Canvas.Point, radius: number): Canvas.Point[];
+  getCircle(center: Canvas.Point, radius: number): Canvas.Point[];
 
   /**
-   * Round the fractional cube coordinates (q, r, s) / (q, r, s, k).
-   * The k-coordinate is floored.
+   * Round the fractional cube coordinates (q, r, s).
    * @see {@link https://www.redblobgames.com/grids/hexagons/}
-   * @param cube - The fractional cube coordinates
+   * @param cube- The fractional cube coordinates
    * @returns The rounded integer cube coordinates
    */
-  static cubeRound(cube: HexagonalGrid.Cube3D): HexagonalGrid.Cube3D;
-  static cubeRound(cube: HexagonalGrid.Cube2D): HexagonalGrid.Cube2D;
+  static cubeRound(cube: HexagonalGrid.Cube): HexagonalGrid.Cube;
 
   /**
-   * Convert point coordinates (x, y) / (x, y, elevation) into cube coordinates (q, r, s) / (q, r, s, k).
-   * Inverse of {@linkcode HexagonalGrid.cubeToPoint | HexagonalGrid#cubeToPoint}.
+   * Convert point coordinates (x, y) into cube coordinates (q, r, s).
+   * Inverse of {@link HexagonalGrid.cubeToPoint | `HexagonalGrid#cubeToPoint`}.
    * @see {@link https://www.redblobgames.com/grids/hexagons/}
    * @param point - The point
    * @returns The (fractional) cube coordinates
    */
-  pointToCube(point: Canvas.ElevatedPoint): HexagonalGrid.Cube3D;
-  pointToCube(point: Canvas.Point): HexagonalGrid.Cube2D;
+  pointToCube(point: Canvas.Point): HexagonalGrid.Cube;
 
   /**
-   * Convert cube coordinates (q, r, s) / (q, r, s, k) into point coordinates (x, y) / (x, y, elevation).
-   * Inverse of {@linkcode HexagonalGrid.pointToCube | HexagonalGrid#pointToCube}.
+   * Convert cube coordinates (q, r, s) into point coordinates (x, y).
+   * Inverse of {@link HexagonalGrid.pointToCube | `HexagonalGrid#pointToCube`}.
    * @see {@link https://www.redblobgames.com/grids/hexagons/}
    * @param cube - The cube coordinates
    * @returns The point coordinates
    */
-  cubeToPoint(cube: HexagonalGrid.Cube3D): Canvas.ElevatedPoint;
-  cubeToPoint(cube: HexagonalGrid.Cube2D): Canvas.Point;
+  cubeToPoint(cube: HexagonalGrid.Cube): Canvas.Point;
 
   /**
-   * Convert offset coordinates (i, j) / (i, j, k) into integer cube coordinates (q, r, s) / (q, r, s, k).
-   * Inverse of {@linkcode HexagonalGrid.cubeToOffset | HexagonalGrid#cubeToOffset}.
+   * Convert offset coordinates (i, j) into integer cube coordinates (q, r, s).
+   * Inverse of {@link HexagonalGrid.cubeToOffset | `HexagonalGrid#cubeToOffset`}.
    * @see {@link https://www.redblobgames.com/grids/hexagons/}
    * @param offset - The offset coordinates
    * @returns The integer cube coordinates
    */
-  offsetToCube(offset: BaseGrid.Offset3D): HexagonalGrid.Cube3D;
-  offsetToCube(offset: BaseGrid.Offset2D): HexagonalGrid.Cube2D;
+  offsetToCube(offset: HexagonalGrid.Offset): HexagonalGrid.Cube;
 
   /**
-   * Convert integer cube coordinates (q, r, s) / (q, r, s, k) into offset coordinates (i, j) / (i, j, k).
-   * Inverse of {@linkcode HexagonalGrid.offsetToCube | HexagonalGrid#offsetToCube}.
+   * Convert integer cube coordinates (q, r, s) into offset coordinates (i, j).
+   * Inverse of {@link HexagonalGrid.offsetToCube | `HexagonalGrid#offsetToCube`}.
    * @see {@link https://www.redblobgames.com/grids/hexagons/}
    * @param cube - The cube coordinates
    * @returns The offset coordinates
    */
-  cubeToOffset(cube: HexagonalGrid.Cube3D): BaseGrid.Offset3D;
-  cubeToOffset(cube: HexagonalGrid.Cube2D): BaseGrid.Offset2D;
+  cubeToOffset(cube: HexagonalGrid.Cube): HexagonalGrid.Offset;
 
   /**
    * Measure the distance in hexagons between two cube coordinates.
@@ -212,7 +153,16 @@ declare class HexagonalGrid extends BaseGrid {
    * @param b - The second cube coordinates
    * @returns The distance between the two cube coordinates in hexagons
    */
-  static cubeDistance(a: HexagonalGrid.Cube2D, b: HexagonalGrid.Cube2D): number;
+  static cubeDistance(a: HexagonalGrid.Cube, b: HexagonalGrid.Cube): number;
+
+  /** Used by {@link HexagonalGrid.snapToCenter | `HexagonalGrid#snapToCenter`}. */
+  static #TEMP_POINT: Canvas.Point;
+
+  /**
+   * Used by {@link HexagonalGrid.snapToCenter | `HexagonalGrid#snapToCenter`}.
+   * Always an odd grid!
+   */
+  static #TEMP_GRID: HexagonalGrid;
 
   /* -------------------------------------------- */
   /*  Deprecations and Compatibility              */
@@ -220,31 +170,36 @@ declare class HexagonalGrid extends BaseGrid {
 
   /**
    * Special border polygons for different token sizes.
-   * @deprecated "`HexagonalGrid.POINTY_HEX_BORDERS` is deprecated without replacement." (since v12, until v14)
+   * @deprecated Since v12 until v14. No Replacement
    */
   static get POINTY_HEX_BORDERS(): Record<number, Canvas.PointTuple[]>;
 
   /**
+   * @deprecated Since v12 until v14. No Replacement
+   */
+  static #POINTY_HEX_BORDERS: Record<number, number[][]>;
+
+  /**
    * Special border polygons for different token sizes.
-   * @deprecated "`HexagonalGrid.FLAT_HEX_BORDERS` is deprecated without replacement." (since v12, until v14)
+   * @deprecated Since v12 until v14. No Replacement
    */
   static get FLAT_HEX_BORDERS(): Record<number, Canvas.PointTuple[]>;
 
   /**
    * A matrix of x and y offsets which is multiplied by the width/height vector to get pointy-top polygon coordinates
-   * @deprecated "`HexagonalGrid.pointyHexPoints` is deprecated without replacement." (since v12, until v14)
+   * @deprecated Since v12 until v14. No Replacement
    */
   static get pointyHexPoints(): Canvas.PointTuple[];
 
   /**
    * A matrix of x and y offsets which is multiplied by the width/height vector to get flat-top polygon coordinates
-   * @deprecated "`HexagonalGrid.flatHexPoints` is deprecated without replacement." (since v12, until v14)
+   * @deprecated Since v12 until v14. No Replacement
    */
   static get flatHexPoints(): Canvas.PointTuple[];
 
   /**
    * An array of the points which define a hexagon for this grid shape
-   * @deprecated "`HexagonalGrid#hexPoints` is deprecated without replacement." (since v12, until v14)
+   * @deprecated Since v12 until v14. No Replacement
    */
   get hexPoints(): Canvas.PointTuple[];
 
@@ -255,21 +210,18 @@ declare class HexagonalGrid extends BaseGrid {
    * @param w      - An optional polygon width
    * @param h      - An optional polygon height
    * @param points - An optional list of polygon points.
-   * @deprecated "`HexagonalGrid#getPolygon` is deprecated. You can get the shape of the hex with
-   * {@linkcode HexagonalGrid.getShape | HexagonalGrid#getShape} and the polygon with
-   * {@linkcode HexagonalGrid.getVertices | HexagonalGrid#getVertices}." (since v12, until v14)
+   * @deprecated Since v12 until v14. You can get the shape of the hex with {@link HexagonalGrid.getShape | `HexagonalGrid#getShape`}
+   *             and the polygon with {@link HexagonalGrid.getVertices | `HexagonalGrid#getVertices`}.
    */
   getPolygon(x: number, y: number, w?: number, h?: number, points?: Canvas.PointTuple[]): Canvas.PointTuple[];
 
   /**
-   * @deprecated "`HexagonalGrid#getBorderPolygon` is deprecated. If you need the shape of a Token, use
-   * {@linkcode Token.getShape | Token#getShape} instead." (since v12, until v14)
+   * @deprecated Since v12 until v14. If you need the shape of a Token, use {@link Token.getShape | `Token#getShape`} instead.
    */
   getBorderPolygon(w: number, h: number, p: number): Canvas.PointTuple[];
 
   /**
-   * @deprecated "`HexagonalGrid#getRect` is deprecated. If you need the size of a Token, use {@linkcode Token.getSize | Token#getSize}
-   * instead." (since v12, until v14)
+   * @deprecated Since v12 until v14. If you need the size of a Token, use {@link Token.getSize | `Token#getSize`} instead.
    */
   getRect(w: number, h: number): PIXI.Rectangle;
 
@@ -278,7 +230,7 @@ declare class HexagonalGrid extends BaseGrid {
    * @param x     - The X co-ordinate of the hexagon's top-left bounding box.
    * @param y     - The Y co-ordinate of the hexagon's top-left bounding box.
    * @param token - The token.
-   * @deprecated "`HexagonalGrid#_adjustSnapForTokenSize` is deprecated." (since v12, until v14)
+   * @deprecated Since v12 until v14. No Replacement
    */
   protected _adjustSnapForTokenSize(x: number, y: number, token: Token.Implementation): [x: number, y: number];
 
@@ -288,77 +240,21 @@ declare class HexagonalGrid extends BaseGrid {
    * topped hexagon equal to the grid size.
    * @param config - The grid configuration
    * @returns The width and height of a single hexagon, in pixels.
-   * @deprecated "`HexagonalGrid.computeDimensions` is deprecated without replacement." (since v12, until v14)
+   * @deprecated Since v12 until v14. No Replacement
    */
   static computeDimensions(config: HexagonalGrid.Configuration): { width: number; height: number };
 
   /**
    * Is this hex grid column-based (flat-topped), or row-based (pointy-topped)?
-   * @deprecated "`HexagonalGrid#columnar` is deprecated in favor of  {@linkcode HexagonalGrid.columns | HexagonalGrid#columns}."
-   * (since v12, until v14)
+   * @deprecated Since v12 until v14. Use {@link HexagonalGrid.columns | `HexagonalGrid#columns`} instead.
    */
   get columnar(): boolean;
 
   /**
    * Is this hex grid column-based (flat-topped), or row-based (pointy-topped)?
-   * @deprecated "`HexagonalGrid#columnar` is deprecated in favor of  {@linkcode HexagonalGrid.columns | HexagonalGrid#columns}."
-   * (since v12, until v14)
+   * @deprecated Since v12 until v14. Use {@link HexagonalGrid.columns | `HexagonalGrid#columns`} instead.
    */
   set columnar(value: boolean);
-
-  /**
-   * @deprecated "`HexagonalGrid#getCenter` is deprecated. Use {@linkcode HexagonalGrid.getCenterPoint | HexagonalGrid#getCenterPoint}
-   * instead." (since v12, until v14)
-   */
-  getCenter(x: number, y: number): Canvas.PointTuple;
-
-  /**
-   * @deprecated "`HexagonalGrid#getSnappedPosition` is deprecated. Use
-   * {@linkcode HexagonalGrid.getSnappedPoint | HexagonalGrid#getSnappedPoint} instead." (since v12, until v14)
-   */
-  getSnappedPosition(
-    x: number,
-    y: number,
-    interval?: number,
-    options?: { token?: Token.Implementation | undefined },
-  ): PIXI.IPointData;
-
-  /**
-   * @deprecated "`HexagonalGrid#getGridPositionFromPixels` is deprecated. This function is based on the 'brick wall' grid. For getting the
-   * offset coordinates of the hex containing the given point use {@linkcode HexagonalGrid.getOffset | HexagonalGrid#getOffset}."
-   * (since v12, until v14)
-   */
-  getGridPositionFromPixels(x: number, y: number): [row: number, col: number];
-
-  /**
-   * @deprecated "`HexagonalGrid#getPixelsFromGridPosition` is deprecated. This function is based on the 'brick wall' grid. For getting the
-   * top-left coordinates of the hex at the given offset coordinates use
-   * {@linkcode HexagonalGrid.getTopLeftPoint | HexagonalGrid#getTopLeftPoint}." (since v12, until v14))
-   */
-  getPixelsFromGridPosition(row: number, col: number): Canvas.PointTuple;
-
-  // shiftPosition deprecated override changes neither signature nor (erroneously) class name in deprecation warning. (since v12, until v14)
-
-  /**
-   * @deprecated "`HexagonalGrid#measureDistance` now returns the same result as
-   * {@linkcode foundry.canvas.layers.GridLayer.measureDistance | GridLayer#measureDistance} instead of the cube distance (breaking). Use
-   * {@linkcode HexagonalGrid.measurePath | HexagonalGrid#measurePath} instead to get the number of steps (cube distance) between the origin
-   * and target." (since v12, until v14)
-   */
-  measureDistance(origin: Canvas.Point, target: Canvas.Point, options?: object): number[];
-
-  /**
-   * @deprecated "`HexagonalGrid#measureDistances` is deprecated. Use {@linkcode HexagonalGrid.measurePath | HexagonalGrid#measurePath}
-   * instead, which returns grid distance (`gridSpaces: true`) and Euclidean distance (`gridSpaces: false`)." (since v12, until v14)
-   */
-  measureDistances(
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    segments: BaseGrid.Segment[],
-    options?: {
-      /** @defaultValue `false` */
-      gridSpaces?: boolean | undefined;
-    },
-  ): number[];
 
   /**
    * Implement special rules for determining the grid position of tokens of various sizes on a hex grid.
@@ -366,7 +262,7 @@ declare class HexagonalGrid extends BaseGrid {
    * @param col   - The column number.
    * @param token - The token.
    * @returns The adjusted row and column number.
-   * @deprecated "`HexagonalGrid#_adjustPositionForTokenSize` is deprecated." (since v12, until v14)
+   * @deprecated Since v12 until v14. No Replacement
    */
   protected _adjustPositionForTokenSize(row: number, col: number, token: Token.Implementation): [x: number, y: number];
 
@@ -374,7 +270,7 @@ declare class HexagonalGrid extends BaseGrid {
    * Compute the grid configuration from a provided type
    * @param type - The grid type
    * @param size - The grid size in pixels
-   * @deprecated "`HexagonalGrid.getConfig` is deprecated without replacement." (since v12, until v14)
+   * @deprecated Since v12 until v14. No Replacement
    */
   static getConfig(type: number, size: number): HexagonalGrid.Configuration;
 
@@ -384,10 +280,15 @@ declare class HexagonalGrid extends BaseGrid {
    * Source code available https://www.redblobgames.com/grids/hexagons/codegen/output/lib-functions.js
    * @param offset - The offset coordinate
    * @param config - The hex grid configuration
-   * @deprecated "`HexagonalGrid.offsetToCube` is deprecated. Use {@linkcode HexagonalGrid.offsetToCube | HexagonalGrid#offsetToCube}
-   * instead." (since v12, until v14)
+   * @deprecated Since v12 until v14. Use {@link HexagonalGrid.offsetToCube | `HexagonalGrid#offsetToCube`} instead.
    */
-  static offsetToCube(offset: { row: number; col: number }, config?: HexagonalGrid.Configuration): HexagonalGrid.Cube2D;
+  static offsetToCube(
+    offset: unknown,
+    config?: InexactPartial<{
+      columns: boolean;
+      even: boolean;
+    }>,
+  ): HexagonalGrid.Cube;
 
   /**
    * Convert a cube coordinate (q, r, s) into an offset coordinate (row, col).
@@ -396,10 +297,9 @@ declare class HexagonalGrid extends BaseGrid {
    * @param cube   - The cube coordinate
    * @param config - The hex grid configuration
    * @returns The offset coordinate
-   * @deprecated "`HexagonalGrid.cubeToOffset` is deprecated. Use {@linkcode HexagonalGrid.cubeToOffset | HexagonalGrid#cubeToOffset}
-   * instead." (since v12, until v14)
+   * @deprecated Since v12 until v14. Use {@link HexagonalGrid.cubeToOffset | `HexagonalGrid#cubeToOffset`} instead.
    */
-  static cubeToOffset(cube: HexagonalGrid.Cube2D, config?: HexagonalGrid.Configuration): { row: number; col: number };
+  static cubeToOffset(cube: unknown, config: HexagonalGrid.Configuration): HexagonalGrid.Offset;
 
   /**
    * Given a cursor position (x, y), obtain the cube coordinate hex (q, r, s) of the hex which contains it
@@ -407,35 +307,33 @@ declare class HexagonalGrid extends BaseGrid {
    * @param point  - The pixel point
    * @param config - The hex grid configuration
    * @returns The cube coordinate
-   * @deprecated "`HexagonalGrid.pixelToCube` is deprecated. Use {@linkcode HexagonalGrid.pointToCube | HexagonalGrid#pointToCube} instead.
+   * @deprecated Since v12 until v14. Use {@link HexagonalGrid.pointToCube | `HexagonalGrid#pointToCube`} instead.
    */
-  static pixelToCube(point: Canvas.Point, config: HexagonalGrid.Configuration): HexagonalGrid.Cube2D;
+  static pixelToCube(point: Canvas.Point, config: HexagonalGrid.Configuration): HexagonalGrid.Coordinates;
 
   /**
    * Compute the top-left pixel coordinate of a hexagon from its offset coordinate.
    * @param offset - The offset coordinate
    * @param config - The hex grid configuration
    * @returns The coordinate in pixels
-   * @deprecated "`HexagonalGrid.offsetToPixels` is deprecated. Use
-   * {@linkcode HexagonalGrid.getTopLeftPoint | HexagonalGrid#getTopLeftPoint} instead." (since v12, until v14)
+   * @deprecated Since v12 until v14. Use {@link HexagonalGrid.getTopLeftPoint | `HexagonalGrid#getTopLeftPoint`} instead.
    */
-  static offsetToPixels(offset: { row: number; col: number }, config: HexagonalGrid.Configuration): Canvas.Point;
+  static offsetToPixels(offset: unknown, config: HexagonalGrid.Configuration): Canvas.Point;
 
   /**
    * Compute the offset coordinate of a hexagon from a pixel coordinate contained within that hex.
    * @param point  - The pixel coordinate
    * @param config - The hex grid configuration
-   * @param method - Which Math rounding method to use (default: `"floor"`)
+   * @param method - Which Math rounding method to use
+   *                 (default: "floor")
    * @returns The offset coordinate
-   * @deprecated "`HexagonalGrid.pixelsToOffset` is deprecated without replacement. This function is based on the 'brick wall' grid. For
-   * getting the offset coordinates of the hex containing the given point use {@linkcode HexagonalGrid.getOffset | HexagonalGrid#getOffset}."
-   * (since v12, until v14)
+   * @deprecated Since v12 until v14. No Replacement
    */
   static pixelsToOffset(
     point: Canvas.Point,
     config: HexagonalGrid.Configuration,
     method?: keyof Math,
-  ): { row: number; col: number };
+  ): HexagonalGrid.Coordinates;
 
   /**
    * Compute the shortest path between two hexagons using the A-star algorithm.
@@ -443,40 +341,26 @@ declare class HexagonalGrid extends BaseGrid {
    * @param start - The starting hexagon
    * @param goal  - The objective hexagon
    * @returns The optimal path of hexagons to traverse
-   * @deprecated "`HexagonalGrid#getAStarPath` is deprecated without replacement." (since v12, until v14)
+   * @deprecated Since v12 until v14. No Replacement
    */
-  getAStarPath(
-    start: GridHex,
-    goal: GridHex,
-    options?: object,
-  ): { from: GridHex; to: GridHex; cost: number; path: GridHex[] };
-
-  #HexagonalGrid: true;
+  getAStarPath(start: unknown, goal: unknown): { cost: number; path: unknown[] };
 }
 
 declare namespace HexagonalGrid {
-  /** @internal */
-  interface _Configuration {
+  interface Configuration extends BaseGrid.Configuration {
     /**
-     * Is this grid column-based (flat-topped) or row-based (pointy-topped)?
-     * @defaultValue `false`
+     * Is this grid column-based (flat-topped) or row-based (pointy-topped)yy?
+     * Default: `false`
      */
     columns: boolean;
 
     /**
      * Is this grid even or odd?
-     * @defaultValue `false`
+     * Default: `false`
      */
     even: boolean;
   }
 
-  interface Configuration
-    extends InexactPartial<BaseGrid._Diagonals>, InexactPartial<_Configuration>, BaseGrid.Configuration {}
-
-  /**
-   * @deprecated Use either {@linkcode HexagonalGrid.Cube2D} or {@linkcode HexagonalGrid.Cube3D} as appropriate.
-   * This warning will be removed in v14.
-   */
   type Cube = Cube2D | Cube3D;
 
   /**
@@ -509,19 +393,12 @@ declare namespace HexagonalGrid {
     k: number;
   }
 
-  /** @deprecated Use {@linkcode BaseGrid.Offset2D} or {@linkcode BaseGrid.Offset3D} as appropriate. This warning will be removed in v14. */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
   type Offset = BaseGrid.Offset;
 
-  /** @deprecated Use {@linkcode BaseGrid.OffsetRange} instead. This type will be removed in v14. */
-  type OffsetRange = BaseGrid.OffsetRange;
+  interface OffsetRange extends BaseGrid.OffsetRange {}
 
-  /**
-   * @deprecated Use {@linkcode HexagonalGrid.Coordinates2D} or {@linkcode HexagonalGrid.Coordinates3D} as appropriate.
-   * This warning will be removed in v14.
-   */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  type Coordinates = BaseGrid.Coordinates | HexagonalGrid.Cube;
+  /** Cube coordinates in a hexagonal grid. q + r + s = 0. */
+  type Coordinates = BaseGrid.Coordinates | Cube;
 
   /**
    * 2D hexagonal cube coordinates, a 2D offset of a grid space, or a 2D point with pixel coordinates.
@@ -533,30 +410,19 @@ declare namespace HexagonalGrid {
    */
   type Coordinates3D = BaseGrid.Coordinates3D | Cube3D;
 
-  /** @deprecated Use {@linkcode BaseGrid.SnappingBehavior} instead. This warning will be removed in v14. */
-  type SnappingBehavior = BaseGrid.SnappingBehavior;
+  interface SnappingBehavior extends BaseGrid.SnappingBehavior {}
 
-  /**
-   * @deprecated Use {@linkcode BaseGrid.Waypoint}`<`{@linkcode HexagonalGrid.Coordinates2D}`>`/`<`{@linkcode HexagonalGrid.Coordinates3D}`>`
-   * instead as appropriate. This warning will be removed in v14.
-   */
-  type MeasurePathWaypoint = BaseGrid.Waypoint<HexagonalGrid.Coordinates2D | HexagonalGrid.Coordinates3D>;
+  type MeasurePathWaypoint = BaseGrid.MeasurePathWaypoint;
 
-  /** @deprecated Use {@linkcode BaseGrid.MeasurePathResultWaypoint} instead. This warning will be removed in v14. */
-  type MeasurePathResultWaypoint = BaseGrid.MeasurePathResultWaypoint;
+  interface MeasurePathResultWaypoint extends BaseGrid.MeasurePathResultWaypoint {}
 
-  /** @deprecated Use {@linkcode BaseGrid.MeasurePathResultSegment} instead. This warning will be removed in v14. */
-  type MeasurePathResultSegment = BaseGrid.MeasurePathResultSegment;
+  interface MeasurePathResultSegment extends BaseGrid.MeasurePathResultSegment {}
 
-  /** @deprecated Use {@linkcode BaseGrid.MeasurePathResult} instead. This warning will be removed in v14. */
-  type MeasurePathResult = BaseGrid.MeasurePathResult;
+  interface MeasurePathResult extends BaseGrid.MeasurePathResult {}
 
-  /** @deprecated Use {@linkcode BaseGrid.CostFunction} with an appropriate coordinate type instead. This warning will be removed in v14. */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
   type MeasurePathCostFunction = BaseGrid.MeasurePathCostFunction2D | BaseGrid.MeasurePathCostFunction3D;
 
-  /** @deprecated Use {@linkcode BaseGrid.Dimensions} instead. This warning will be removed in v14. */
-  type Dimensions = BaseGrid.Dimensions;
+  interface Dimensions extends BaseGrid.Dimensions {}
 }
 
 export default HexagonalGrid;

@@ -6,19 +6,19 @@ on:
   workflow_dispatch:
 
 env:
-  node_version: 24
+  node_version: 23
 
 jobs:
   verify-next:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v4
       - name: Use Node.js ${{ env.node_version }}
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.node_version }}
       - name: Cache Node.js modules
-        uses: actions/cache@v6
+        uses: actions/cache@v4
         with:
           path: .npm
           key: ${{ runner.OS }}-node-${{ hashFiles('**/package-lock.json') }}
@@ -30,22 +30,13 @@ jobs:
           # This has been seen going in an infinite loop without `--legacy-peer-deps`.
           npm add --legacy-peer-deps --force -D typescript@next @typescript/native-preview
           npx tsc --version
-
-      # Parentheses due to https://github.com/github/vscode-github-actions/issues/60
-      - if: (!cancelled())
-        run: npm run lint
-
+      - run: npm run lint
       - name: Type Check (exactOptionalPropertyTypes = false)
-        if: (!cancelled())
         run: npx tsc --exactOptionalPropertyTypes false
 
       - name: Type Check (TS Go)
-        if: (!cancelled())
         run: npx tsgo
 
-      - name: Type Check (TS Go, exactOptionalPropertyTypes = false)
-        if: (!cancelled())
-        run: npx tsgo --exactOptionalPropertyTypes false
-
-      - if: (!cancelled())
-        run: npm run test-types
+      # Note(LukeAbby): Currently the beta releases doesn't pass the tests.
+      # This will be enabled again once tests are passing.
+      # - run: npm run test

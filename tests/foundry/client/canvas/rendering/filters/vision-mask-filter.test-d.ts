@@ -1,6 +1,5 @@
 import { expectTypeOf } from "vitest";
-
-import VisionMaskFilter = foundry.canvas.rendering.filters.VisionMaskFilter;
+import { VisionMaskFilter } from "#client/canvas/rendering/filters/_module.mjs";
 
 const myVMF = VisionMaskFilter.create();
 expectTypeOf(myVMF).toEqualTypeOf<VisionMaskFilter>();

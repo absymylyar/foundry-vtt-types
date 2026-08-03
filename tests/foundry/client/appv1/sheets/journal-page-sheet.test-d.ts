@@ -10,16 +10,7 @@ expectTypeOf(journalPageSheet.object).toEqualTypeOf<JournalEntryPage.Implementat
 expectTypeOf(journalPageSheet.document).toEqualTypeOf<JournalEntryPage.Implementation>();
 expectTypeOf(JournalPageSheet.defaultOptions).toEqualTypeOf<JournalPageSheet.Options>();
 expectTypeOf(journalPageSheet.options).toEqualTypeOf<JournalPageSheet.Options>();
-expectTypeOf(journalPageSheet.getData()).toEqualTypeOf<MaybePromise<GetDataReturnType<JournalPageSheet.Data>>>();
+expectTypeOf(journalPageSheet.getData()).toEqualTypeOf<
+  MaybePromise<GetDataReturnType<JournalPageSheet.JournalPageSheetData>>
+>();
 expectTypeOf(journalPageSheet.render(true)).toEqualTypeOf<JournalPageSheet>();
-
-expectTypeOf(JournalPageSheet.isV2).toEqualTypeOf<boolean>();
-expectTypeOf(journalPageSheet.isV2).toEqualTypeOf<boolean>();
-
-// Subclasses can override the new protected hooks (the `override` keyword would error if signatures didn't match).
-class CustomJournalPageSheet extends JournalPageSheet {
-  protected override _closeView(): void {}
-  protected override _onAutosave(_html: string): void {}
-  protected override _onNewSteps(): void {}
-}
-void CustomJournalPageSheet;

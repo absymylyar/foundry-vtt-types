@@ -1,5 +1,5 @@
-import type { Identity, InexactPartial, InterfaceToObject } from "#utils";
-import type { RenderFlagsMixin, RenderFlags, RenderFlag } from "#client/canvas/interaction/_module.d.mts";
+import type { InterfaceToObject, NullishProps } from "#utils";
+import { RenderFlagsMixin, RenderFlags, RenderFlag } from "#client/canvas/interaction/_module.mjs";
 
 /**
  * A helper class which manages the refresh workflow for perception layers on the canvas.
@@ -7,10 +7,9 @@ import type { RenderFlagsMixin, RenderFlags, RenderFlag } from "#client/canvas/i
  * A singleton instance is available as {@link Canvas.perception | `Canvas#perception`}.
  */
 declare class PerceptionManager extends RenderFlagsMixin() {
-  static override RENDER_FLAGS: InterfaceToObject<PerceptionManager.RENDER_FLAGS>;
+  static RENDER_FLAGS: InterfaceToObject<PerceptionManager.RENDER_FLAGS>;
 
-  /** @defaultValue `"PERCEPTION"`*/
-  static override RENDER_FLAG_PRIORITY: RenderFlags.Priority;
+  static RENDER_FLAG_PRIORITY: "PERCEPTION";
 
   // Note: This isn't a "real" override but `renderFlags` is set corresponding to the
   // `RENDER_FLAGS` and so it has to be adjusted here.
@@ -30,24 +29,23 @@ declare class PerceptionManager extends RenderFlagsMixin() {
   initialize(): void;
 
   /**
-   * @deprecated "`PerceptionManager#refresh` is deprecated in favor of assigning granular \"refresh flags\"" (since v12, until v14)
+   * @deprecated since v12, will be removed in v14
+   * @remarks "PerceptionManager#refresh is deprecated in favor of assigning granular \"refresh flags\""
    */
   refresh(): void;
-
-  static #PerceptionManager: true;
 }
 
 declare namespace PerceptionManager {
   interface Any extends AnyPerceptionManager {}
-  interface AnyConstructor extends Identity<typeof AnyPerceptionManager> {}
+  type AnyConstructor = typeof AnyPerceptionManager;
 
-  interface PassableFlags extends InexactPartial<RenderFlags> {}
+  type PassableFlags = NullishProps<RenderFlags>;
 
   type RenderFlags = RenderFlagsMixin.ToBooleanFlags<RENDER_FLAGS>;
 
   interface RENDER_FLAGS {
     /**
-     * Recompute intersections between all registered edges. See {@linkcode foundry.canvas.geometry.edges.CanvasEdges.refresh | CanvasEdges#refresh}.
+     * Recompute intersections between all registered edges. See {@link CanvasEdges#refresh}.
      * @defaultValue `{}`
      */
     refreshEdges: RenderFlag<this, "refreshEdges">;
@@ -60,6 +58,9 @@ declare namespace PerceptionManager {
     initializeLighting: RenderFlag<this, "initializeLighting">;
 
     /** @defaultValue `{ propagate: ["refreshLighting", "refreshVision", "refreshEdges"] }` */
+    initializeDarknessSources: RenderFlag<this, "initializeDarknessSources">;
+
+    /** @defaultValue `{ propagate: ["refreshLighting", "refreshVision"] }` */
     initializeLightSources: RenderFlag<this, "initializeLightSources">;
 
     /**
@@ -75,13 +76,13 @@ declare namespace PerceptionManager {
     refreshLightSources: RenderFlag<this, "refreshLightSources">;
 
     /**
-     * Re-initialize the entire vision modes. See {@linkcode foundry.canvas.groups.CanvasVisibility.initializeVisionMode | CanvasVisibility#initializeVisionMode}.
+     * Re-initialize the entire vision modes. See {@link CanvasVisibility#initializeVisionMode}.
      * @defaultValue `{ propagate: ["refreshVisionSources", "refreshLighting", "refreshPrimary"] }`
      */
     initializeVisionModes: RenderFlag<this, "initializeVisionModes">;
 
     /**
-     * Re-initialize the entire vision configuration. See {@linkcode foundry.canvas.groups.CanvasVisibility.initializeSources | CanvasVisibility#initializeSources}.
+     * Re-initialize the entire vision configuration. See {@link CanvasVisibility#initializeSources}.
      * @defaultValue `{ propagate: ["initializeVisionModes", "refreshVision"] }`
      */
     initializeVision: RenderFlag<this, "initializeVision">;
@@ -99,7 +100,7 @@ declare namespace PerceptionManager {
     refreshVisionSources: RenderFlag<this, "refreshVisionSources">;
 
     /**
-     * Refresh the contents of the {@linkcode foundry.canvas.groups.PrimaryCanvasGroup | PrimaryCanvasGroup} mesh
+     * Refresh the contents of the PrimaryCanvasGroup mesh
      * @defaultValue `{}`
      */
     refreshPrimary: RenderFlag<this, "refreshPrimary">;
@@ -117,7 +118,7 @@ declare namespace PerceptionManager {
     refreshOcclusionMask: RenderFlag<this, "refreshOcclusionMask">;
 
     /**
-     * Re-initialize the entire ambient sound configuration. See {@linkcode foundry.canvas.layers.SoundsLayer.initializeSources | SoundsLayer#initializeSources}.
+     * Re-initialize the entire ambient sound configuration. See {@link SoundsLayer#initializeSources}.
      * @defaultValue `{ propagate: ["refreshSounds"] }`
      */
     initializeSounds: RenderFlag<this, "initializeSounds">;
@@ -135,22 +136,23 @@ declare namespace PerceptionManager {
     soundFadeDuration: RenderFlag<this, "soundFadeDuration">;
 
     /**
-     * @defaultValue `{ propagate: ["refreshOcclusion"], alias: true }`
-     * @deprecated "The `refreshTiles` flag is deprecated in favor of `refreshOcclusion`" (since v12, until v14)
+     * @defaultValue `{ propagate: ["refreshOcclusion"] }`
+     * @deprecated since v12, will be removed in v14
      */
     refreshTiles: RenderFlag<this, "refreshTiles">;
 
     /**
-     * @defaultValue `{ propagate: ["initializeLighting", "initializeVision"], alias: true }`
-     * @deprecated "The `identifyInteriorWalls` flag is now obsolete and has no replacement." (since v12, until v14)
+     * @defaultValue `{ propagate: ["initializeLighting", "initializeVision"] }`
+     * @deprecated since v12, will be removed in v14
      */
     identifyInteriorWalls: RenderFlag<this, "identifyInteriorWalls">;
 
     /**
-     * @defaultValue `{ propagate: ["refreshLightSources"] }`
-     * @deprecated "The `initializeDarknessSources` flag is now obsolete. `initializeLightSources` flag must be used instead." (since v13, until v15)
+     * @defaultValue `{ propagate: ["refreshVision"] }`
+     * @deprecated since v11, will be removed in v13
+     * @remarks In v12 the flag remains, but the static method it would have triggered was removed prematurely (was listed as until v13 in v11)
      */
-    initializeDarknessSources: RenderFlag<this, "initializeDarknessSources">;
+    forceUpdateFog: RenderFlag<this, "forceUpdateFog">;
   }
 }
 

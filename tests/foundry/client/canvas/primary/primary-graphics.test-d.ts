@@ -1,37 +1,17 @@
-import { describe, expectTypeOf, test } from "vitest";
-
-import PrimaryGraphics = foundry.canvas.primary.PrimaryGraphics;
-import Token = foundry.canvas.placeables.Token;
+import { expectTypeOf } from "vitest";
+import { PrimaryGraphics } from "#client/canvas/primary/_module.mjs";
+import type { Token } from "#client/canvas/placeables/_module.d.mts";
 
 declare const someToken: Token.Implementation;
-declare const smoothGraphicsGeometry: PIXI.smooth.SmoothGraphicsGeometry;
-declare const nullish: null | undefined;
+declare const someGG: PIXI.GraphicsGeometry;
 
-describe("PrimaryGraphics tests", () => {
-  test("Construction", () => {
-    new PrimaryGraphics();
-    new PrimaryGraphics(smoothGraphicsGeometry);
-    new PrimaryGraphics({
-      geometry: undefined,
-      name: nullish,
-      object: nullish,
-    });
-    new PrimaryGraphics({
-      object: someToken,
-      name: "bob",
-      geometry: smoothGraphicsGeometry,
-    });
-  });
-
-  const myPG = new PrimaryGraphics({
-    object: someToken,
-    name: "bob",
-    geometry: smoothGraphicsGeometry,
-  });
-
-  test("Miscellaneous", () => {
-    expectTypeOf(myPG["_calculateCanvasBounds"]()).toBeVoid();
-    expectTypeOf(myPG.updateCanvasTransform()).toBeVoid();
-    expectTypeOf(myPG.containsCanvasPoint({ x: 500, y: 500 })).toEqualTypeOf<boolean>();
-  });
+let myPG = new PrimaryGraphics(someGG);
+myPG = new PrimaryGraphics(null);
+myPG = new PrimaryGraphics({
+  object: someToken,
+  name: "bob",
+  geometry: undefined,
 });
+
+expectTypeOf(myPG.containsCanvasPoint({ x: 500, y: 500 })).toEqualTypeOf<boolean>();
+expectTypeOf(myPG.cullable).toEqualTypeOf<boolean>();

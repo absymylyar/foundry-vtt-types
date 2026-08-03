@@ -1,8 +1,9 @@
-import type { MaybeArray } from "#utils";
-import type { DataModel, Document } from "#common/abstract/_module.d.mts";
-import type { SchemaField } from "#common/data/fields.d.mts";
-import type { fields } from "#client/data/_module.d.mts";
-import type { CompendiumCollection } from "#client/documents/collections/_module.d.mts";
+import type { AnyMutableObject } from "#utils";
+import type DataModel from "../abstract/data.d.mts";
+import type Document from "../abstract/document.mts";
+import type { DataField, SchemaField } from "../data/fields.d.mts";
+import type * as fields from "../data/fields.d.mts";
+import type { LogCompatibilityWarningOptions } from "../utils/logging.d.mts";
 
 /**
  * The Adventure Document.
@@ -20,10 +21,10 @@ declare abstract class BaseAdventure extends Document<"Adventure", BaseAdventure
    * order to use documents on both the client (i.e. where all your code runs) and behind the scenes
    * on the server to manage document validation and storage.
    *
-   * You should use {@linkcode Adventure.implementation | new Adventure.implementation(...)} instead which will give you
+   * You should use {@link Adventure.implementation | `new Adventure.implementation(...)`} instead which will give you
    * a system specific implementation of `Adventure`.
    */
-  constructor(data: BaseAdventure.CreateData, context?: BaseAdventure.ConstructionContext);
+  constructor(data: Adventure.CreateData, context?: Adventure.ConstructionContext);
 
   /**
    * @defaultValue
@@ -38,7 +39,7 @@ declare abstract class BaseAdventure extends Document<"Adventure", BaseAdventure
    * })
    * ```
    */
-  static override metadata: BaseAdventure.Metadata;
+  static override metadata: Adventure.Metadata;
 
   static override defineSchema(): BaseAdventure.Schema;
 
@@ -46,7 +47,7 @@ declare abstract class BaseAdventure extends Document<"Adventure", BaseAdventure
   static override LOCALIZATION_PREFIXES: string[];
 
   /**
-   * An array of the fields which provide imported content from the BaseAdventure.
+   * An array of the fields which provide imported content from the Adventure.
    */
   static get contentFields(): BaseAdventure.ContentFields;
 
@@ -67,169 +68,218 @@ declare abstract class BaseAdventure extends Document<"Adventure", BaseAdventure
 
   /* Document overrides */
 
+  // Same as Document for now
+  protected static override _initializationOrder(): Generator<[string, DataField.Any], void, undefined>;
+
+  override readonly parentCollection: Adventure.ParentCollectionName | null;
+
+  override readonly pack: string | null;
+
   static override get implementation(): Adventure.ImplementationClass;
 
   static override get baseDocument(): typeof BaseAdventure;
 
-  static override get collectionName(): BaseAdventure.ParentCollectionName;
+  static override get collectionName(): Adventure.ParentCollectionName;
 
-  static override get documentName(): BaseAdventure.Name;
+  static override get documentName(): Adventure.Name;
 
   static override get TYPES(): CONST.BASE_DOCUMENT_TYPE[];
 
-  static override get hasTypeData(): false;
+  static override get hasTypeData(): undefined;
 
-  static override readonly hierarchy: BaseAdventure.Hierarchy;
+  static override get hierarchy(): Adventure.Hierarchy;
 
-  override parent: BaseAdventure.Parent;
+  override parent: Adventure.Parent;
 
-  override " fvtt_types_internal_document_parent": BaseAdventure.Parent;
-
-  static override canUserCreate(user: User.Implementation): boolean;
-
-  override getUserLevel(user?: User.Implementation): CONST.DOCUMENT_OWNERSHIP_LEVELS;
-
-  override testUserPermission(
-    user: User.Implementation,
-    permission: Document.ActionPermission,
-    options?: Document.TestUserPermissionOptions,
-  ): boolean;
-
-  override canUserModify<Action extends Document.Database.OperationAction>(
-    user: User.Implementation,
-    action: Action,
-    data?: Document.CanUserModifyData<"Adventure", Action>,
-  ): boolean;
-
-  static override createDocuments(
-    data: BaseAdventure.CreateInput[],
-    operation?: BaseAdventure.Database.CreateDocumentsOperation,
-  ): Promise<Adventure.Stored[]>;
+  static override createDocuments<Temporary extends boolean | undefined = undefined>(
+    data: Array<Adventure.Implementation | Adventure.CreateData> | undefined,
+    operation?: Document.Database.CreateOperation<Adventure.Database.Create<Temporary>>,
+  ): Promise<Array<Document.TemporaryIf<Adventure.Implementation, Temporary>>>;
 
   static override updateDocuments(
-    updates: BaseAdventure.UpdateInput[],
-    operation?: BaseAdventure.Database.UpdateManyDocumentsOperation,
-  ): Promise<Adventure.Stored[]>;
+    updates: Adventure.UpdateData[] | undefined,
+    operation?: Document.Database.UpdateDocumentsOperation<Adventure.Database.Update>,
+  ): Promise<Adventure.Implementation[]>;
 
   static override deleteDocuments(
-    ids: readonly string[],
-    operation?: BaseAdventure.Database.DeleteManyDocumentsOperation,
-  ): Promise<Adventure.Stored[]>;
+    ids: readonly string[] | undefined,
+    operation?: Document.Database.DeleteDocumentsOperation<Adventure.Database.Delete>,
+  ): Promise<Adventure.Implementation[]>;
 
-  static override create<Data extends MaybeArray<BaseAdventure.CreateInput>>(
-    data: Data,
-    operation?: BaseAdventure.Database.CreateDocumentsOperation,
-  ): Promise<BaseAdventure.CreateReturn<Data>>;
+  static override create<Temporary extends boolean | undefined = undefined>(
+    data: Adventure.CreateData | Adventure.CreateData[],
+    operation?: Adventure.Database.CreateOperation<Temporary>,
+  ): Promise<Document.TemporaryIf<Adventure.Implementation, Temporary> | undefined>;
 
   override update(
-    data: BaseAdventure.UpdateInput,
-    operation?: BaseAdventure.Database.UpdateOneDocumentOperation,
+    data: Adventure.UpdateData | undefined,
+    operation?: Adventure.Database.UpdateOperation,
   ): Promise<this | undefined>;
 
-  override delete(operation?: BaseAdventure.Database.DeleteOneDocumentOperation): Promise<this | undefined>;
+  override delete(operation?: Adventure.Database.DeleteOperation): Promise<this | undefined>;
 
-  // Since `Adventure`s only exist in compendia, this can only return an index entry (if a `pack` is passed in `operation`) or `null`
-  static override get(
-    documentId: string,
-    operation?: BaseAdventure.Database.GetDocumentsOperation,
-  ): CompendiumCollection.IndexEntry<"Adventure"> | null;
+  static override get(documentId: string, options?: Adventure.Database.GetOptions): Adventure.Implementation | null;
 
-  // `Adventure`s have no embedded collections, so this always returns `null`.
   static override getCollectionName(name: string): null;
 
-  override getFlag<Scope extends BaseAdventure.Flags.Scope, Key extends BaseAdventure.Flags.Key<Scope>>(
+  // Same as Document for now
+  override traverseEmbeddedDocuments(
+    _parentPath?: string,
+  ): Generator<[string, Document.AnyChild<this>], void, undefined>;
+
+  override getFlag<Scope extends Adventure.Flags.Scope, Key extends Adventure.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): BaseAdventure.Flags.Get<Scope, Key>;
+  ): Document.GetFlag<Adventure.Name, Scope, Key>;
 
   override setFlag<
-    Scope extends BaseAdventure.Flags.Scope,
-    Key extends BaseAdventure.Flags.Key<Scope>,
-    Value extends BaseAdventure.Flags.Get<Scope, Key>,
-  >(scope: Scope, key: Key, value: Value): Promise<this | undefined>;
+    Scope extends Adventure.Flags.Scope,
+    Key extends Adventure.Flags.Key<Scope>,
+    Value extends Document.GetFlag<Adventure.Name, Scope, Key>,
+  >(scope: Scope, key: Key, value: Value): Promise<this>;
 
-  override unsetFlag<Scope extends BaseAdventure.Flags.Scope, Key extends BaseAdventure.Flags.Key<Scope>>(
+  override unsetFlag<Scope extends Adventure.Flags.Scope, Key extends Adventure.Flags.Key<Scope>>(
     scope: Scope,
     key: Key,
-  ): Promise<this | undefined>;
+  ): Promise<this>;
 
   protected override _preCreate(
-    data: BaseAdventure.CreateData,
-    options: BaseAdventure.Database.PreCreateOptions,
-    user: User.Stored,
+    data: Adventure.CreateData,
+    options: Adventure.Database.PreCreateOptions,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected override _onCreate(
-    data: BaseAdventure.CreateData,
-    options: BaseAdventure.Database.OnCreateOptions,
+    data: Adventure.CreateData,
+    options: Adventure.Database.OnCreateOperation,
     userId: string,
   ): void;
 
   protected static override _preCreateOperation(
     documents: Adventure.Implementation[],
-    operation: BaseAdventure.Database.PreCreateOperation,
-    user: User.Stored,
+    operation: Document.Database.PreCreateOperationStatic<Adventure.Database.Create>,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected static override _onCreateOperation(
-    documents: Adventure.Stored[],
-    operation: BaseAdventure.Database.OnCreateOperation,
-    user: User.Stored,
+    documents: Adventure.Implementation[],
+    operation: Adventure.Database.Create,
+    user: User.Implementation,
   ): Promise<void>;
 
   protected override _preUpdate(
-    changed: BaseAdventure.UpdateData,
-    options: BaseAdventure.Database.PreUpdateOptions,
-    user: User.Stored,
+    changed: Adventure.UpdateData,
+    options: Adventure.Database.PreUpdateOptions,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected override _onUpdate(
-    changed: BaseAdventure.UpdateData,
-    options: BaseAdventure.Database.OnUpdateOptions,
+    changed: Adventure.UpdateData,
+    options: Adventure.Database.OnUpdateOperation,
     userId: string,
   ): void;
 
   protected static override _preUpdateOperation(
-    documents: Adventure.Stored[],
-    operation: BaseAdventure.Database.PreUpdateOperation,
-    user: User.Stored,
+    documents: Adventure.Implementation[],
+    operation: Adventure.Database.Update,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected static override _onUpdateOperation(
-    documents: Adventure.Stored[],
-    operation: BaseAdventure.Database.OnUpdateOperation,
-    user: User.Stored,
+    documents: Adventure.Implementation[],
+    operation: Adventure.Database.Update,
+    user: User.Implementation,
   ): Promise<void>;
 
   protected override _preDelete(
-    options: BaseAdventure.Database.PreDeleteOptions,
-    user: User.Stored,
+    options: Adventure.Database.PreDeleteOptions,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
-  protected override _onDelete(options: BaseAdventure.Database.OnDeleteOptions, userId: string): void;
+  protected override _onDelete(options: Adventure.Database.OnDeleteOperation, userId: string): void;
 
   protected static override _preDeleteOperation(
-    documents: Adventure.Stored[],
-    operation: BaseAdventure.Database.PreDeleteOperation,
-    user: User.Stored,
+    documents: Adventure.Implementation[],
+    operation: Adventure.Database.Delete,
+    user: User.Implementation,
   ): Promise<boolean | void>;
 
   protected static override _onDeleteOperation(
-    documents: Adventure.Stored[],
-    operation: BaseAdventure.Database.OnDeleteOperation,
-    user: User.Stored,
+    documents: Adventure.Implementation[],
+    operation: Adventure.Database.Delete,
+    user: User.Implementation,
+  ): Promise<void>;
+
+  // These data field things have been ticketed but will probably go into backlog hell for a while.
+  // We'll end up copy and pasting without modification for now I think. It makes it a tiny bit easier to update though.
+
+  // options: not null (parameter default only in _addDataFieldShim)
+  protected static override _addDataFieldShims(
+    data: AnyMutableObject,
+    shims: Record<string, string>,
+    options?: Document.DataFieldShimOptions,
+  ): void;
+
+  // options: not null (parameter default only)
+  protected static override _addDataFieldShim(
+    data: AnyMutableObject,
+    oldKey: string,
+    newKey: string,
+    options?: Document.DataFieldShimOptions,
+  ): void;
+
+  protected static override _addDataFieldMigration(
+    data: AnyMutableObject,
+    oldKey: string,
+    newKey: string,
+    apply?: ((data: AnyMutableObject) => unknown) | null,
+  ): boolean;
+
+  // options: not null (destructured where forwarded)
+  protected static override _logDataFieldMigration(
+    oldKey: string,
+    newKey: string,
+    options?: LogCompatibilityWarningOptions,
+  ): void;
+
+  /**
+   * @deprecated since v12, will be removed in v14
+   * @remarks "The `Document._onCreateDocuments` static method is deprecated in favor of {@link Document._onCreateOperation | `Document._onCreateOperation`}"
+   */
+  protected static override _onCreateDocuments(
+    documents: Adventure.Implementation[],
+    context: Document.ModificationContext<Adventure.Parent>,
+  ): Promise<void>;
+
+  /**
+   * @deprecated since v12, will be removed in v14
+   * @remarks "The `Document._onUpdateDocuments` static method is deprecated in favor of {@link Document._onUpdateOperation | `Document._onUpdateOperation`}"
+   */
+  protected static override _onUpdateDocuments(
+    documents: Adventure.Implementation[],
+    context: Document.ModificationContext<Adventure.Parent>,
+  ): Promise<void>;
+
+  /**
+   * @deprecated since v12, will be removed in v14
+   * @remarks "The `Document._onDeleteDocuments` static method is deprecated in favor of {@link Document._onDeleteOperation | `Document._onDeleteOperation`}"
+   */
+  protected static override _onDeleteDocuments(
+    documents: Adventure.Implementation[],
+    context: Document.ModificationContext<Adventure.Parent>,
   ): Promise<void>;
 
   /* DataModel overrides */
 
-  static override _schema: SchemaField<BaseAdventure.Schema>;
+  protected static override _schema: SchemaField<Adventure.Schema>;
 
-  static override get schema(): SchemaField<BaseAdventure.Schema>;
+  static override get schema(): SchemaField<Adventure.Schema>;
 
-  static override validateJoint(data: BaseAdventure.Source): void;
+  static override validateJoint(data: Adventure.Source): void;
 
+  // options: not null (parameter default only, destructured in super)
   static override fromSource(
-    source: BaseAdventure.CreateData,
+    source: Adventure.CreateData,
     context?: DataModel.FromSourceOptions,
   ): Adventure.Implementation;
 
@@ -239,32 +289,27 @@ declare abstract class BaseAdventure extends Document<"Adventure", BaseAdventure
 export default BaseAdventure;
 
 declare namespace BaseAdventure {
-  // All types really live in the full document and are mirrored here for convenience
   export import Name = Adventure.Name;
   export import ConstructionContext = Adventure.ConstructionContext;
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
   export import ConstructorArgs = Adventure.ConstructorArgs;
   export import Hierarchy = Adventure.Hierarchy;
   export import Metadata = Adventure.Metadata;
   export import Parent = Adventure.Parent;
   export import Descendant = Adventure.Descendant;
   export import DescendantClass = Adventure.DescendantClass;
+  export import Pack = Adventure.Pack;
   export import Embedded = Adventure.Embedded;
   export import ParentCollectionName = Adventure.ParentCollectionName;
   export import CollectionClass = Adventure.CollectionClass;
   export import Collection = Adventure.Collection;
   export import Invalid = Adventure.Invalid;
+  export import Stored = Adventure.Stored;
   export import Source = Adventure.Source;
   export import CreateData = Adventure.CreateData;
-  export import CreateInput = Adventure.CreateInput;
-  export import CreateReturn = Adventure.CreateReturn;
   export import InitializedData = Adventure.InitializedData;
   export import UpdateData = Adventure.UpdateData;
-  export import UpdateInput = Adventure.UpdateInput;
   export import Schema = Adventure.Schema;
-  export import Database = Adventure.Database;
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  export import TemporaryIf = Adventure.TemporaryIf;
+  export import DatabaseOperation = Adventure.Database;
   export import Flags = Adventure.Flags;
 
   namespace Internal {

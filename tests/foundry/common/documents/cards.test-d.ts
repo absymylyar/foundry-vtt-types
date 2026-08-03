@@ -3,20 +3,14 @@ import { expectTypeOf } from "vitest";
 import EmbeddedCollection = foundry.abstract.EmbeddedCollection;
 
 // This exists to make the class non-abstract.
-class TestBaseCards extends foundry.documents.BaseCards {
-  get compendium() {
-    return this.inCompendium
-      ? (game.packs!.get(this.pack!) as foundry.documents.collections.CompendiumCollection.ForDocument<"Cards">)
-      : null;
-  }
-}
+class TestBaseCards extends foundry.documents.BaseCards {}
 
 // @ts-expect-error data argument is non-optional
 new TestBaseCards();
 
-const baseCards = new TestBaseCards({ type: "deck", name: "Test Cards" });
+const baseCards = new TestBaseCards();
 
-expectTypeOf(baseCards.cards).toEqualTypeOf<EmbeddedCollection<Card.Stored, Cards.Implementation>>();
+expectTypeOf(baseCards.cards).toEqualTypeOf<EmbeddedCollection<Card.Implementation, Cards.Implementation>>();
 
 const card = baseCards._source.cards[0]!;
 expectTypeOf(card._id).toEqualTypeOf<Card.Source["_id"]>();
@@ -78,12 +72,12 @@ expectTypeOf(card.faces).toEqualTypeOf<Card.FaceData[]>();
 // if (baseCards._source.type === "french") {
 //   expectTypeOf(baseCards._source.coolUse).toEqualTypeOf<"throwing cards">();
 
-//   // @ts-expect-error "possibleInjuries" is not a property of FrenchDeckDataSourceData.
+//   // @ts-expect-error - "possibleInjuries" is not a property of FrenchDeckDataSourceData.
 //   baseCards._source.possibleInjuries;
 // } else {
 //   expectTypeOf(baseCards._source.mostUsedGame).toEqualTypeOf<"Skat">();
 
-//   // @ts-expect-error "mostUsedBy" is not a property of GermanDeckDataSourceData.
+//   // @ts-expect-error - "mostUsedBy" is not a property of GermanDeckDataSourceData.
 //   baseCards._source.mostUsedBy;
 // }
 

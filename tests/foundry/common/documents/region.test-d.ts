@@ -1,27 +1,22 @@
 import { expectTypeOf } from "vitest";
-import type { InterfaceToObject } from "fvtt-types/utils";
-
+import type { FixedInstanceType, InterfaceToObject, RemoveIndexSignatures, ValueOf } from "fvtt-types/utils";
+import type EmbeddedCollection from "../../../../src/foundry/common/abstract/embedded-collection.d.mts";
 import BaseRegion = foundry.documents.BaseRegion;
 import Document = foundry.abstract.Document;
-import EmbeddedCollection = foundry.abstract.EmbeddedCollection;
+import type { BaseShapeData } from "../../../../src/foundry/common/data/data.d.mts";
+import type { Region } from "#client/canvas/placeables/_module.d.mts";
 
-class TestBaseRegion extends BaseRegion {
-  get compendium() {
-    return this.inCompendium
-      ? (game.packs!.get(this.pack!) as foundry.documents.collections.CompendiumCollection.ForDocument<"Region">)
-      : null;
-  }
-}
+class TestRegion extends BaseRegion {}
 
 declare const someScriptBehavior: RegionBehavior.OfType<"executeScript">;
 
 // @ts-expect-error Region construction requires a `name`
-new TestBaseRegion();
+new TestRegion();
 
 // @ts-expect-error Region construction requires a `name`
-new TestBaseRegion({});
+new TestRegion({});
 
-new TestBaseRegion({
+new TestRegion({
   _id: "XXXXXSomeIDXXXXX",
   name: "Some Region",
   color: "#ABEFCD",
@@ -52,7 +47,7 @@ new TestBaseRegion({
   },
 });
 
-new TestBaseRegion({
+new TestRegion({
   _id: null,
   name: "Some Region",
   color: null,
@@ -67,12 +62,12 @@ new TestBaseRegion({
   flags: null,
 });
 
-new TestBaseRegion({
+new TestRegion({
   name: "Some Region",
   elevation: null,
 });
 
-new TestBaseRegion({
+new TestRegion({
   _id: undefined,
   name: "Some Region",
   color: undefined,
@@ -87,30 +82,26 @@ new TestBaseRegion({
   flags: undefined,
 });
 
-const myRegion = new TestBaseRegion({
+const myRegion = new TestRegion({
   name: "Some Region",
   elevation: undefined,
 });
 
-expectTypeOf(myRegion).toEqualTypeOf<TestBaseRegion>();
+expectTypeOf(myRegion).toEqualTypeOf<BaseRegion>();
 
 expectTypeOf(myRegion._id).toEqualTypeOf<string | null>();
 expectTypeOf(myRegion.name).toBeString();
 expectTypeOf(myRegion.color).toEqualTypeOf<Color>();
-expectTypeOf(myRegion.shapes).toEqualTypeOf<
-  Array<
-    // TODO(LukeAbby): Arguably these merges shouldn't be being done as they're already a class instance.
-    | ({ type: "rectangle" } & foundry.data.RectangleShapeData)
-    | ({ type: "circle" } & foundry.data.CircleShapeData)
-    | ({ type: "ellipse" } & foundry.data.EllipseShapeData)
-    | ({ type: "polygon" } & foundry.data.PolygonShapeData)
-  >
->();
+
+// TODO: why is this wrong
+expectTypeOf(myRegion.shapes).toEqualTypeOf<FixedInstanceType<ValueOf<RemoveIndexSignatures<BaseShapeData.Types>>>>();
+
 expectTypeOf(myRegion.elevation.bottom).toEqualTypeOf<number | null>();
 expectTypeOf(myRegion.elevation.top).toEqualTypeOf<number | null>();
 
 expectTypeOf(myRegion.behaviors).toEqualTypeOf<
-  EmbeddedCollection<RegionBehavior.Stored, RegionDocument.Implementation>
+  // TODO: why is this is resolving as EmbeddedCollection<any, ...
+  EmbeddedCollection<typeof foundry.documents.BaseRegionBehavior, Region.Implementation>
 >();
 
 expectTypeOf(myRegion.visibility).toEqualTypeOf<CONST.REGION_VISIBILITY | null>();

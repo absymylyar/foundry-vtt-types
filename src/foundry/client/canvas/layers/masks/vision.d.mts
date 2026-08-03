@@ -59,6 +59,14 @@ declare class CanvasVisionMask extends CachedContainer {
    * @returns The detached vision container.
    */
   detachVision(): CanvasVisionMask.CanvasVisionContainer;
+
+  /**
+   * @deprecated since v11, will be removed in v13
+   * @remarks "CanvasVisionMask#filter has been renamed to blurFilter."
+   */
+  get filter(): this["blurFilter"];
+
+  set filter(f: AlphaBlurFilter);
 }
 
 declare namespace CanvasVisionMask {
@@ -67,18 +75,18 @@ declare namespace CanvasVisionMask {
 
   /**
    * The sight part of {@linkcode CanvasVisionContainer}.
-   * The blend mode is {@linkcode PIXI.BLEND_MODES.MAX_COLOR | MAX_COLOR}.
+   * The blend mode is MAX_COLOR.
    */
   interface CanvasVisionContainerSight extends PIXI.LegacyGraphics {
     /**
      * FOV that should not be committed to fog exploration.
-     * @remarks `blendMode` set to {@linkcode PIXI.BLEND_MODES.MAX_COLOR}
+     * @remarks `blendMode` set to `PIXI.BLEND_MODES.MAX_COLOR`
      */
     preview: PIXI.LegacyGraphics;
   }
 
   interface GlobalLightContainer extends PIXI.Container {
-    /** @remarks `blendMode` set to {@linkcode PIXI.BLEND_MODES.MAX_COLOR} */
+    /** @remarks `blendMode` set to `PIXI.BLEND_MODES.MAX_COLOR` */
     source: PIXI.LegacyGraphics;
 
     meshes: PIXI.Container;
@@ -90,24 +98,22 @@ declare namespace CanvasVisionMask {
 
   /**
    * The light part of {@linkcode CanvasVisionContainer}.
-   * The blend mode is {@linkcode PIXI.BLEND_MODES.MAX_COLOR | MAX_COLOR}.
+   * The blend mode is MAX_COLOR.
    */
   interface CanvasVisionContainerLight extends PIXI.LegacyGraphics {
     /**
      * FOV that should not be committed to fog exploration.
-     * @remarks `blendMode` set to {@linkcode PIXI.BLEND_MODES.MAX_COLOR}
+     * @remarks `blendMode` set to `PIXI.BLEND_MODES.MAX_COLOR`
      */
     preview: PIXI.LegacyGraphics;
 
     /**
      * The sprite with the texture of FOV of cached light sources.
-     * @remarks `blendMode` set to {@linkcode PIXI.BLEND_MODES.MAX_COLOR}
+     * @remarks `blendMode` set to `PIXI.BLEND_MODES.MAX_COLOR`
      */
     cached: SpriteMesh;
 
-    /**
-     * The light perception polygons of vision sources and the FOV of vision sources that provide vision.
-     */
+    /** The light perception polygons of vision sources and the FOV of vision sources that provide vision. */
     mask: LightMaskGraphics;
 
     /**
@@ -117,30 +123,32 @@ declare namespace CanvasVisionMask {
 
     /**
      * The light sources
-     * @remarks `blendMode` set to {@linkcode PIXI.BLEND_MODES.MAX_COLOR}
+     * @remarks `blendMode` set to `PIXI.BLEND_MODES.MAX_COLOR`
      */
     sources: PIXI.LegacyGraphics;
 
     /**
-     * @deprecated "`CanvasVisibility#vision#fov#lights` is deprecated without replacement." (since v12, until v14)
-     * @privateRemarks Returns `CanvasVisibility##cachedLights`
+     * @deprecated since v12, until 14
+     * @remarks "CanvasVisibility#vision#fov#lights is deprecated without replacement."
      */
-    get lights(): PIXI.LegacyGraphics;
+    readonly lights: PIXI.LegacyGraphics;
 
     /**
-     * @deprecated "`CanvasVisibility#vision#fov#lightsSprite` is deprecated in favor of {@linkcode CanvasVisionContainerLight.cached | CanvasVisibility#vision#light#cached}." (since v12, until v14)
+     * @deprecated since v12, until 14
+     * @remarks "CanvasVisibility#vision#fov#lightsSprite is deprecated in favor of CanvasVisibility#vision#light#cached."
      */
-    get lightsSprite(): this["cached"];
+    readonly lightsSprite: SpriteMesh;
 
     /**
-     * @deprecated "`CanvasVisibility#vision#fov#tokens` is deprecated in favor of {@linkcode CanvasVisionContainer.light | CanvasVisibility#vision#light}." (since v12, until v14)
+     * @deprecated since v12, until 14
+     * @remarks "CanvasVisibility#vision#fov#tokens is deprecated in favor of CanvasVisibility#vision#light."d
      */
-    get tokens(): this;
+    readonly tokens: this;
   }
 
   /**
    * The sight part of {@linkcode CanvasVisionContainer}.
-   * The blend mode is {@linkcode PIXI.BLEND_MODES.ERASE | ERASE}.
+   * The blend mode is ERASE.
    */
   interface CanvasVisionContainerDarkness extends PIXI.LegacyGraphics {
     /** Darkness source erasing fog of war. */
@@ -150,8 +158,9 @@ declare namespace CanvasVisionMask {
   /** The currently visible areas. */
   interface CanvasVisionContainer extends PIXI.Container {
     /**
-     * A void filter necessary when committing fog on a texture for dynamic illumination; disabled by default, used only when writing on textures
-     * @remarks `blendMode` set to {@linkcode PIXI.BLEND_MODES.MAX_COLOR}
+     * @remarks A void filter necessary when committing fog on a texture for dynamic illumination; disabled by default
+     *
+     * `blendMode` set to `PIXI.BLEND_MODES.MAX_COLOR`
      */
     containmentFilter: VoidFilter;
 
@@ -160,30 +169,33 @@ declare namespace CanvasVisionMask {
 
     /**
      * Areas visible because of FOV of vision sources.
-     * @remarks `blendMode` set to {@linkcode PIXI.BLEND_MODES.MAX_COLOR}
+     * @remarks `blendMode` set to `PIXI.BLEND_MODES.MAX_COLOR`
      */
     sight: CanvasVisionContainerSight;
 
     /**
      * Areas erased by darkness sources.
-     * @remarks `blendMode` set to {@linkcode PIXI.BLEND_MODES.ERASE}
+     * @remarks `blendMode` set to `PIXI.BLEND_MODES.ERASE`
      */
     darkness: CanvasVisionContainerDarkness;
 
     /**
-     * @deprecated "`CanvasVisibility#vision#base` is deprecated in favor of {@linkcode CanvasVisionContainerLight.preview | CanvasVisibility#vision#light#preview}." (since v12, until v14)
+     * @deprecated since v12, until 14
+     * @remarks "CanvasVisibility#vision#base is deprecated in favor of CanvasVisibility#vision#light#preview."
      */
-    get base(): this["light"]["preview"];
+    readonly base: CanvasVisionContainerLight["preview"];
 
     /**
-     * @deprecated "`CanvasVisibility#vision#fov` is deprecated in favor of {@linkcode CanvasVisionContainer.light | CanvasVisibility#vision#light}." (since v12, until v14)
+     * @deprecated since v12, until 14
+     * @remarks "CanvasVisibility#vision#fov is deprecated in favor of CanvasVisibility#vision#light."
      */
-    get fov(): this["light"];
+    readonly fov: CanvasVisionContainerLight;
 
     /**
-     * @deprecated "`CanvasVisibility#vision#los` is deprecated in favor of {@linkcode CanvasVisionContainerLight.mask | CanvasVisibility#vision#light#mask}." (since v12, until v14)
+     * @deprecated since v12, until 14
+     * @remarks "CanvasVisibility#vision#los is deprecated in favor of CanvasVisibility#vision#light#mask."
      */
-    get los(): this["light"]["mask"];
+    readonly los: CanvasVisionContainerLight["mask"];
   }
 }
 

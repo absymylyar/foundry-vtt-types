@@ -206,9 +206,6 @@ declare abstract class RenderedEffectSource<
    * Generic time-based animation used for Rendered Point Sources.
    * @param dt      - Delta time.
    * @param options - Options which affect the time animation
-   * @remarks A valid {@linkcode RenderedEffectSource.AnimationFunction}.
-   *
-   * `dt` is unused by core as of 13.346
    */
   animateTime(dt: number, options?: RenderedEffectSource.AnimationFunctionOptions): void;
 
@@ -245,15 +242,16 @@ declare namespace RenderedEffectSource {
     /**
      * A color applied to the rendered effect
      * @defaultValue `null`
-     * @remarks If `null`, Foundry will use the associated shader's `.defaultUniforms.color`
-     * @privateRemarks Foundry types as `number`, but it gets passed to `Color.from()`
+     * @remarks Foundry types as `number`, but it gets passed to `Color.from()`
+     *
+     * If `null`, Foundry will use the associated shader's `.defaultUniforms.color`
      */
     color: Color.Source | null;
 
     /**
      * An integer seed to synchronize (or de-synchronize) animations
      * @defaultValue `null`
-     * @remarks This will remain null in {@linkcode RenderedEffectSource.data | #data} if not specified, which will lead to using `Math.floor(Math.random() * 100000)` at runtime
+     * @remarks This will remain null in `#data` if not specified, which will lead to using `Math.floor(Math.random() * 100000)` at runtime
      *
      * If specified, this will take precedence over {@linkcode RenderedEffectSource.AnimationConfig.seed | RenderedEffectSource#animation.seed}
      */
@@ -269,16 +267,11 @@ declare namespace RenderedEffectSource {
   /**
    * @param dt      - Delta time
    * @param options - Additional options which modify the animation
-   * @remarks A function to be added to the {@link PIXI.Ticker | canvas.app.ticker}
-   *
-   * @privateRemarks As of 13.346 there is one non-Source usage of this in core: {@linkcode foundry.canvas.perception.VisionMode.animate | VisionMode#animate} attempts to call
-   * {@linkcode RenderedEffectSource.animateTime | RenderedEffectSource#animateTime} with `this` set to `VisionMode`, but that's invalid (see
-   * {@link https://github.com/foundryvtt/foundryvtt/issues/13227}), so it is not included in the `this` here.
    */
-  type AnimationFunction = (this: RenderedEffectSource.Any, dt: number, options?: AnimationFunctionOptions) => void;
+  type AnimationFunction = (this: RenderedEffectSource, dt: number, options?: AnimationFunctionOptions) => void;
 
   /** @internal */
-  interface _AnimationFunctionOptions {
+  type _AnimationFunctionOptions = InexactPartial<{
     /**
      * The animation speed, from 0 to 10
      * @defaultValue `5`
@@ -296,13 +289,13 @@ declare namespace RenderedEffectSource {
      * @defaultValue `false`
      */
     reverse: boolean;
-  }
+  }>;
 
   /**
    * Shared options for the {@linkcode RenderedEffectSource.AnimationFunction | AnimationFunction}s
    * provided by {@linkcode RenderedEffectSource} and subclasses
    */
-  interface AnimationFunctionOptions extends InexactPartial<_AnimationFunctionOptions> {}
+  interface AnimationFunctionOptions extends _AnimationFunctionOptions {}
 
   /**
    * Properties *every* {@linkcode CONFIG.Canvas.lightAnimations}/{@linkcode CONFIG.Canvas.darknessAnimations | darknessAnimations} entry requires
@@ -325,7 +318,7 @@ declare namespace RenderedEffectSource {
   }
 
   /** @internal */
-  interface _Seed {
+  type _Seed = InexactPartial<{
     /**
      * The animation seed
      * @defaultValue `Math.floor(Math.random() * 100000)`
@@ -333,7 +326,7 @@ declare namespace RenderedEffectSource {
      * specifies this, but it would be respected if set.
      */
     seed: number;
-  }
+  }>;
 
   /**
    * Shaders to override the defaults for each rendering layer this effect affects.
@@ -373,19 +366,19 @@ declare namespace RenderedEffectSource {
   }
 
   /** @internal */
-  interface _AnimationConfig
-    extends
-      InexactPartial<_AnimationConfigBase>,
-      InexactPartial<_AnimationConfigLightingShaders>,
-      InexactPartial<_AnimationConfigDarknessShaders>,
-      InexactPartial<_Seed>,
-      InexactPartial<LightData.AnimationData> {
-    /**
-     * The animation time
-     * @remarks Always computed. Set on the stored config by {@linkcode RenderedEffectSource.animateTime | RenderedEffectSource#animateTime}
-     */
-    time?: number | undefined;
-  }
+  type _AnimationConfig = InexactPartial<
+    _AnimationConfigBase &
+      _AnimationConfigLightingShaders &
+      _AnimationConfigDarknessShaders &
+      _Seed &
+      LightData.AnimationData & {
+        /**
+         * The animation time
+         * @remarks Always computed. Set on the stored config by {@linkcode RenderedEffectSource.animateTime | RenderedEffectSource#animateTime}
+         */
+        time?: number;
+      }
+  >;
 
   /**
    * @remarks The type for {@linkcode RenderedEffectSource.animation | RenderedEffectSource#animation} and

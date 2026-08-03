@@ -1,13 +1,13 @@
 import type { Brand, Identity } from "#utils";
-import { Graphics as _Graphics } from "pixi.js";
-
 import * as _PIXI from "pixi.js";
 
 // Note(LukeAbby): The `smooth.d.mts` and `smooth.d.mts` files exist to make it DRY to selectively tweak PIXI sub-namespaces.
 // Each of them write `export * from "..."` and then selectively shadow or augment the exports.
 
+// eslint-disable-next-line import-x/extensions
 import * as _smooth from "./smooth.mjs";
 
+// eslint-disable-next-line import-x/extensions
 import * as _particles from "./particles.mjs";
 
 export * from "pixi.js";
@@ -1039,21 +1039,11 @@ declare module "@pixi/events" {
      * @see {@link https://developer.mozilla.org/docs/Web/API/PointerEvent/azimuthAngle}
      */
     azimuthAngle: number;
-
-    /**
-     * The persistentDeviceId read-only property of the PointerEvent interface is a unique identifier
-     * for the pointing device generating the PointerEvent. This provides a secure, reliable way to
-     * identify multiple pointing devices (such as pens) interacting with the screen simultaneously.
-     *
-     * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/PointerEvent/persistentDeviceId}
-     */
-    persistentDeviceId: number;
   }
 }
 
 declare module "pixi.js" {
-  export interface LegacyGraphics extends _Graphics {}
-  export class LegacyGraphics extends _Graphics {}
+  export import LegacyGraphics = _PIXI.Graphics;
 
   export enum BLEND_MODES {
     /**
@@ -1094,10 +1084,6 @@ declare module "pixi.js" {
      */
     PERCEPTION = 2,
   }
-}
-
-declare module "@pixi/utils" {
-  function detectVideoAlphaMode(): Promise<PIXI.ALPHA_MODES>;
 }
 
 declare abstract class AnyPIXIBatchGeometry extends PIXI.BatchGeometry {

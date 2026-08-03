@@ -1,11 +1,9 @@
 import { expectTypeOf } from "vitest";
-
-import CanvasBackgroundAlterationEffects = foundry.canvas.layers.CanvasBackgroundAlterationEffects;
-import CanvasLayer = foundry.canvas.layers.CanvasLayer;
+import { CanvasBackgroundAlterationEffects, CanvasLayer } from "#client/canvas/layers/_module.mjs";
 
 const layer = new CanvasBackgroundAlterationEffects();
 
-expectTypeOf(layer.options.baseClass).toEqualTypeOf<CanvasLayer.AnyConstructor>();
+expectTypeOf(layer.options.baseClass).toEqualTypeOf<typeof CanvasLayer>();
 expectTypeOf(layer.vision).toEqualTypeOf<PIXI.Container>();
 expectTypeOf(layer.visionPreferred).toEqualTypeOf<PIXI.Container>();
 expectTypeOf(layer.lighting).toEqualTypeOf<PIXI.Container>();

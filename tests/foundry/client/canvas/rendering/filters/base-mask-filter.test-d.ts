@@ -1,6 +1,5 @@
 import { expectTypeOf } from "vitest";
-
-import AbstractBaseMaskFilter = foundry.canvas.rendering.filters.AbstractBaseMaskFilter;
+import { AbstractBaseMaskFilter } from "#client/canvas/rendering/filters/_module.mjs";
 
 expectTypeOf(AbstractBaseMaskFilter.vertexShader).toEqualTypeOf<string>();
 

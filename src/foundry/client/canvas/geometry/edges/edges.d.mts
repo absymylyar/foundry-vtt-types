@@ -41,7 +41,7 @@ declare namespace CanvasEdges {
   interface AnyConstructor extends Identity<typeof AnyCanvasEdges> {}
 
   /** @internal */
-  interface _GetEdgesOptions {
+  type _GetEdgesOptions = InexactPartial<{
     /**
      * Should inner bounds be added?
      * @defaultValue `false`
@@ -58,9 +58,9 @@ declare namespace CanvasEdges {
      * Collision function to test edge inclusion.
      */
     collisionTest: Quadtree.CollisionTestFunction<Edge>;
-  }
+  }>;
 
-  interface GetEdgesOptions extends InexactPartial<_GetEdgesOptions> {}
+  interface GetEdgesOptions extends _GetEdgesOptions {}
 }
 
 export default CanvasEdges;

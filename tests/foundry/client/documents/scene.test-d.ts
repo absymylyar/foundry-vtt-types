@@ -1,12 +1,11 @@
 import { expectTypeOf } from "vitest";
 
 import ImageHelper = foundry.helpers.media.ImageHelper;
-import Notifications = foundry.applications.ui.Notifications;
 
-// @ts-expect-error A Scene requires name.
+// @ts-expect-error - A Scene requires name.
 new Scene.implementation();
 
-// @ts-expect-error A Scene requires name.
+// @ts-expect-error - A Scene requires name.
 new Scene.implementation({});
 const scene = new Scene.implementation({ name: "My scene" });
 
@@ -14,13 +13,13 @@ expectTypeOf(scene).toEqualTypeOf<Scene.Implementation>();
 expectTypeOf(scene.grid).toEqualTypeOf<foundry.grid.BaseGrid>();
 expectTypeOf(scene.dimensions).toEqualTypeOf<Scene.Dimensions>();
 expectTypeOf(scene.active).toEqualTypeOf<boolean>();
-expectTypeOf(scene.background.src).toEqualTypeOf<string | null>();
+expectTypeOf(scene.background.src).toEqualTypeOf<string | null | undefined>();
 expectTypeOf(scene.isView).toEqualTypeOf<boolean>();
-expectTypeOf(scene.journal).toEqualTypeOf<JournalEntry.Stored | null>();
-expectTypeOf(scene.playlist).toEqualTypeOf<Playlist.Stored | null>();
+expectTypeOf(scene.journal).toEqualTypeOf<JournalEntry.Implementation | null>();
+expectTypeOf(scene.playlist).toEqualTypeOf<Playlist.Implementation | null>();
 expectTypeOf(scene.playlistSound).toEqualTypeOf<string | null>();
 expectTypeOf(scene.activate()).toEqualTypeOf<Promise<Scene.Implementation | undefined>>();
-expectTypeOf(scene.view()).toEqualTypeOf<Promise<typeof scene | Notifications.Notification<"warning">>>();
+expectTypeOf(scene.view()).toEqualTypeOf<Promise<typeof scene | number>>();
 expectTypeOf(scene.clone()).toEqualTypeOf<Scene.Implementation>();
 expectTypeOf(scene.prepareBaseData()).toEqualTypeOf<void>();
 expectTypeOf(scene.createThumbnail()).toEqualTypeOf<Promise<ImageHelper.ThumbnailReturn>>();
@@ -54,13 +53,7 @@ class MySceneDocumentSubclass extends Scene {
       case "tokens":
         expectTypeOf(options.animate).toEqualTypeOf<boolean | undefined>();
         for (const d of changes) {
-          expectTypeOf(d.name).toEqualTypeOf<
-            | foundry.data.operators.ForcedDeletion
-            | foundry.data.operators.ForcedReplacement<string | null | undefined>
-            | string
-            | null
-            | undefined
-          >();
+          expectTypeOf(d.name).toEqualTypeOf<string | null | undefined>();
         }
         break;
       // @ts-expect-error "foobar" is not a valid collection

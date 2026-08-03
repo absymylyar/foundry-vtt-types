@@ -1,18 +1,17 @@
 import { expectTypeOf } from "vitest";
 
-import Application = foundry.appv1.api.Application;
-import DocumentSheetV2 = foundry.applications.api.DocumentSheetV2;
+import FormApplication = foundry.appv1.api.FormApplication;
 
-// @ts-expect-error A Playlist requires name.
+// @ts-expect-error - A Playlist requires name.
 new Playlist.implementation();
 
-// @ts-expect-error A Playlist requires name.
+// @ts-expect-error - A Playlist requires name.
 new Playlist.implementation({});
 
 const playlist = new Playlist.implementation({ name: "Some Playlist" });
 expectTypeOf(playlist).toEqualTypeOf<Playlist.Implementation>();
 
-declare const playlistSound: PlaylistSound.Stored;
+const playlistSound = new PlaylistSound.implementation({ name: "Some PlaylistSound" });
 
 expectTypeOf(playlist.playbackOrder).toEqualTypeOf<string[]>();
 expectTypeOf(playlist.visible).toEqualTypeOf<boolean>();
@@ -25,4 +24,4 @@ expectTypeOf(playlist.stopAll()).toEqualTypeOf<Promise<Playlist.Implementation |
 expectTypeOf(playlist.cycleMode()).toEqualTypeOf<Promise<Playlist.Implementation | undefined>>();
 expectTypeOf(playlist.toAnchor()).toEqualTypeOf<HTMLAnchorElement>();
 
-expectTypeOf(playlist.sheet).toEqualTypeOf<Application.Any | DocumentSheetV2.Any | null>();
+expectTypeOf(playlist.sheet).toEqualTypeOf<FormApplication.Any | foundry.applications.api.ApplicationV2.Any | null>();

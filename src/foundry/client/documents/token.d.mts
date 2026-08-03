@@ -1,36 +1,15 @@
-import type {
-  AnyArray,
-  AnyObject,
-  DeepReadonly,
-  EmptyObject,
-  InexactPartial,
-  IntentionalPartial,
-  InterfaceToObject,
-  MaybeArray,
-  Merge,
-} from "#utils";
+import type { AnyArray, AnyObject, DeepReadonly, InexactPartial, InterfaceToObject, Merge, NullishProps } from "#utils";
+import type { documents } from "#client/client.d.mts";
+import type Document from "#common/abstract/document.d.mts";
+import type { DataSchema, SchemaField } from "#common/data/fields.d.mts";
 import type { ActorDeltaField } from "#common/documents/token.d.mts";
-import type { LightData, TextureData, fields } from "#common/data/_module.d.mts";
-import type { DataModel, DatabaseBackend, Document, EmbeddedCollection } from "#common/abstract/_module.d.mts";
-import type { BaseActor, BaseActorDelta, BaseRegion, BaseToken, BaseUser } from "#common/documents/_module.d.mts";
+import type BaseToken from "#common/documents/token.d.mts";
+import type { LightData, TextureData } from "#common/data/data.mjs";
 import type { VisionMode } from "#client/canvas/perception/_module.d.mts";
-import type { TerrainData } from "#client/data/terrain-data.d.mts";
-import type { DialogV2 } from "#client/applications/api/_module.d.mts";
-import type { Canvas } from "#client/canvas/_module.d.mts";
-import type { Token } from "#client/canvas/placeables/_module.d.mts";
-import type { BaseGrid, HexagonalGrid } from "#common/grid/_module.d.mts";
+import type DataModel from "#common/abstract/data.mjs";
+import type { TerrainData } from "#client/data/terrain-data.mjs";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type ClientDatabaseBackend from "#client/data/client-backend.d.mts";
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type ClientDocumentMixin from "#client/documents/abstract/client-document.d.mts";
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type TokenLayer from "#client/canvas/layers/tokens.d.mts";
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Only used for links.
-import type { AllHooks } from "#client/hooks.d.mts";
+import fields = foundry.data.fields;
 
 declare namespace TokenDocument {
   /**
@@ -39,7 +18,7 @@ declare namespace TokenDocument {
   type Name = "Token";
 
   /**
-   * The context used to create a `TokenDocument`.
+   * The context used to create a `Token`.
    */
   interface ConstructionContext extends Document.ConstructionContext<Parent> {}
 
@@ -49,14 +28,14 @@ declare namespace TokenDocument {
   type Hierarchy = Readonly<Document.HierarchyOf<Schema>>;
 
   /**
-   * The implementation of the `TokenDocument` document instance configured through
-   * {@linkcode CONFIG.Token.documentClass} in Foundry and {@linkcode DocumentClassConfig} in fvtt-types.
+   * The implementation of the `TokenDocument` document instance configured through `CONFIG.Token.documentClass` in Foundry and
+   * {@linkcode DocumentClassConfig} or {@link ConfiguredTokenDocument | `fvtt-types/configuration/ConfiguredTokenDocument`} in fvtt-types.
    */
   type Implementation = Document.ImplementationFor<Name>;
 
   /**
-   * The implementation of the `TokenDocument` document configured through
-   * {@linkcode CONFIG.Token.documentClass} in Foundry and {@linkcode DocumentClassConfig} in fvtt-types.
+   * The implementation of the `TokenDocument` document configured through `CONFIG.Token.documentClass` in Foundry and
+   * {@linkcode DocumentClassConfig} in fvtt-types.
    */
   type ImplementationClass = Document.ImplementationClassFor<Name>;
 
@@ -64,19 +43,20 @@ declare namespace TokenDocument {
    * A document's metadata is special information about the document ranging anywhere from its name,
    * whether it's indexed, or to the permissions a user has over it.
    */
-  interface Metadata extends Merge<
-    Document.Metadata.Default,
-    Readonly<{
-      name: "Token";
-      collection: "tokens";
-      label: "DOCUMENT.Token";
-      labelPlural: "DOCUMENT.Tokens";
-      isEmbedded: true;
-      embedded: TokenDocument.Metadata.Embedded;
-      permissions: TokenDocument.Metadata.Permissions;
-      schemaVersion: "13.341";
-    }>
-  > {}
+  interface Metadata
+    extends Merge<
+      Document.Metadata.Default,
+      Readonly<{
+        name: "Token";
+        collection: "tokens";
+        label: string;
+        labelPlural: string;
+        isEmbedded: true;
+        embedded: TokenDocument.Metadata.Embedded;
+        permissions: TokenDocument.Metadata.Permissions;
+        schemaVersion: string;
+      }>
+    > {}
 
   namespace Metadata {
     /**
@@ -110,12 +90,6 @@ declare namespace TokenDocument {
    * A document's direct descendants are documents that are contained directly within its schema.
    * This is a union of all such instances, or never if the document doesn't have any descendants.
    */
-  type DirectDescendantName = "ActorDelta";
-
-  /**
-   * A document's direct descendants are documents that are contained directly within its schema.
-   * This is a union of all such instances, or never if the document doesn't have any descendants.
-   */
   type DirectDescendant = ActorDelta.Stored;
 
   /**
@@ -138,14 +112,20 @@ declare namespace TokenDocument {
   type DescendantClass = DirectDescendantClass | ActorDelta.DescendantClass;
 
   /**
+   * Types of `CompendiumCollection` this document might be contained in.
+   * Note that `this.pack` will always return a string; this is the type for `game.packs.get(this.pack)`
+   *
+   * Will be `never` if cannot be contained in a `CompendiumCollection`.
+   */
+  type Pack = never;
+
+  /**
    * An embedded document is a document contained in another.
    * For example an `Item` can be contained by an `Actor` which means `Item` can be embedded in `Actor`.
    *
    * If this is `never` it is because there are no embeddable documents (or there's a bug!).
-   *
-   * @privateRemarks This is always the same as `DirectDescendant` and is provided as a convenient alias for users. It is not deprecated.
    */
-  type Embedded = DirectDescendant;
+  type Embedded = Document.ImplementationFor<Embedded.Name>;
 
   namespace Embedded {
     /**
@@ -157,10 +137,12 @@ declare namespace TokenDocument {
     type Name = keyof Metadata.Embedded;
 
     /**
-     * A valid name to refer to a collection embedded in this document.
-     * @remarks Functionally identical to `keyof `{@linkcode Metadata.Embedded}` | ValueOf<Metadata.Embedded>`
+     * Gets the collection name for an embedded document.
      */
-    type CollectionName = Document.Embedded.CollectionName<Metadata.Embedded>;
+    type CollectionNameOf<CollectionName extends Embedded.CollectionName> = Document.Embedded.CollectionNameFor<
+      Metadata.Embedded,
+      CollectionName
+    >;
 
     /**
      * Gets the collection document for an embedded document.
@@ -180,37 +162,17 @@ declare namespace TokenDocument {
     >;
 
     /**
-     * The return type for {@linkcode TokenDocument.getCollectionName | TokenDocument#getCollectionName}. If the
-     * passed name is not a known valid embedded document type/collection name for `TokenDocument`, returns `null`.
+     * A valid name to refer to a collection embedded in this document. For example an `Actor`
+     * has the key `"items"` which contains `Item` instance which would make both `"Item" | "Items"`
+     * valid keys (amongst others).
      */
-    type GetCollectionNameReturn<Name extends string> = Name extends CollectionName
-      ? Document.Embedded._CollectionNameForName<Metadata.Embedded, Name>
-      : null;
-
-    /**
-     * The return type for {@linkcode TokenDocument.getEmbeddedDocument | TokenDocument#getEmbeddedDocument}.
-     * See {@linkcode EmbeddedCollection.GetReturn}.
-     */
-    type GetReturn<
-      EmbeddedName extends CollectionName,
-      Options extends EmbeddedCollection.GetOptions | undefined,
-    > = EmbeddedCollection.GetReturn<DocumentFor<EmbeddedName>, Options>;
-
-    /**
-     * @deprecated This type has been made internal. If you are actively using it for some reason, please let us know.
-     * This type will be removed in v15.
-     */
-    type CollectionNameOf<Name extends Embedded.CollectionName> = Document.Embedded._CollectionNameForName<
-      Metadata.Embedded,
-      Name
-    >;
+    type CollectionName = Document.Embedded.CollectionName<Metadata.Embedded>;
   }
 
   /**
    * The name of the world or embedded collection this document can find itself in.
    * For example an `Item` is always going to be inside a collection with a key of `items`.
-   * This is a fixed string per document type and is primarily useful for the descendant Document operation methods, e.g
-   * {@linkcode ClientDocumentMixin.AnyMixed._preCreateDescendantDocuments | ClientDocument._preCreateDescendantDocuments}.
+   * This is a fixed string per document type and is primarily useful for {@link ClientDocumentMixin | `Descendant Document Events`}.
    */
   type ParentCollectionName = Metadata["collection"];
 
@@ -228,7 +190,7 @@ declare namespace TokenDocument {
    * An instance of `TokenDocument` that comes from the database but failed validation meaning that
    * its `system` and `_source` could theoretically be anything.
    */
-  type Invalid = Document.Internal.Invalid<Implementation>;
+  interface Invalid extends Document.Internal.Invalid<TokenDocument.Implementation> {}
 
   /**
    * An instance of `TokenDocument` that comes from the database.
@@ -236,77 +198,52 @@ declare namespace TokenDocument {
   type Stored = Document.Internal.Stored<TokenDocument.Implementation>;
 
   /**
-   * The data put in {@linkcode TokenDocument._source | TokenDocument#_source}. This data is what was
+   * The data put in {@link TokenDocument._source | `TokenDocument#_source`}. This data is what was
    * persisted to the database and therefore it must be valid JSON.
    *
-   * For example a {@linkcode fields.SetField | SetField} is persisted to the database as an array
+   * For example a {@link fields.SetField | `SetField`} is persisted to the database as an array
    * but initialized as a {@linkcode Set}.
    */
   interface Source extends fields.SchemaField.SourceData<Schema> {}
 
   /**
    * The data necessary to create a document. Used in places like {@linkcode TokenDocument.create}
-   * and {@linkcode TokenDocument | new TokenDocument(...)}.
+   * and {@link TokenDocument | `new TokenDocument(...)`}.
    *
-   * For example a {@linkcode fields.SetField | SetField} can accept any {@linkcode Iterable}
+   * For example a {@link fields.SetField | `SetField`} can accept any {@linkcode Iterable}
    * with the right values. This means you can pass a `Set` instance, an array of values,
    * a generator, or any other iterable.
    */
   interface CreateData extends fields.SchemaField.CreateData<Schema> {}
 
   /**
-   * Used in the {@linkcode TokenDocument.create} and {@linkcode TokenDocument.createDocuments} signatures, and
-   * {@linkcode TokenDocument.Database.CreateOperation} and its derivative interfaces.
-   */
-  type CreateInput = CreateData | Implementation;
-
-  /**
-   * The helper type for the return of {@linkcode TokenDocument.create}, returning (a single | an array of) (temporary | stored)
-   * `TokenDocument`s.
-   *
-   * `| undefined` is included in the non-array branch because if a `.create` call with non-array data is cancelled by the `preCreate`
-   * method or hook, `shift`ing the return of `.createDocuments` produces `undefined`
-   */
-  type CreateReturn<Data extends MaybeArray<CreateInput>> =
-    Data extends Array<CreateInput> ? TokenDocument.Stored[] : TokenDocument.Stored | undefined;
-
-  /**
-   * The data after a {@linkcode Document} has been initialized, for example
-   * {@linkcode TokenDocument.name | TokenDocument#name}.
+   * The data after a {@link foundry.abstract.Document | `Document`} has been initialized, for example
+   * {@link TokenDocument.name | `TokenDocument#name`}.
    *
    * This is data transformed from {@linkcode TokenDocument.Source} and turned into more
-   * convenient runtime data structures. For example a {@linkcode fields.SetField | SetField} is
+   * convenient runtime data structures. For example a {@link fields.SetField | `SetField`} is
    * persisted to the database as an array of values but at runtime it is a `Set` instance.
    */
   interface InitializedData extends fields.SchemaField.InitializedData<Schema> {}
 
   /**
-   * The data used to update a document, for example {@linkcode TokenDocument.update | TokenDocument#update}.
-   * It is a distinct type from {@linkcode TokenDocument.CreateData | DeepPartial<TokenDocument.CreateData>} because
+   * The data used to update a document, for example {@link TokenDocument.update | `TokenDocument#update`}.
+   * It is a distinct type from {@link TokenDocument.CreateData | `DeepPartial<TokenDocument.CreateData>`} because
    * it has different rules for `null` and `undefined`.
    */
   interface UpdateData extends fields.SchemaField.UpdateData<Schema> {}
 
   /**
-   * Used in the {@linkcode TokenDocument.update | TokenDocument#update} and
-   * {@linkcode TokenDocument.updateDocuments} signatures, and {@linkcode TokenDocument.Database.UpdateOperation}
-   * and its derivative interfaces.
-   */
-  type UpdateInput = UpdateData | Implementation;
-
-  /**
-   * Schema definition shared by {@linkcode foundry.data.PrototypeToken | PrototypeToken}.
+   * Schema definition shared by {@link foundry.data.PrototypeToken | `PrototypeToken`}.
    * Foundry technically implements this through deletion, but it's easier for us to do by extension as there are field
    * option overrides (e.g `textSearch` on `name`) that cause type issues otherwise.
    */
-  interface SharedProtoSchema extends fields.DataSchema {
-    // `name` omitted here because, while it is not in the list of omitted fields for `PrototypeToken`,
-    // it's `textSearch: true` in the base schema, but overridden to `false` in `PrototypeToken`.
+  interface SharedProtoSchema extends DataSchema {
+    // `name` omitted here because, while it is not in the list of omitted fields for `PrototypeToken`, it's `textSearch: true` in the base schema, but overridden to `false` in `PrototypeToken`
 
     /**
-     * The display mode of the Token nameplate, from {@linkcode CONST.TOKEN_DISPLAY_MODES}
-     * @defaultValue {@linkcode CONST.TOKEN_DISPLAY_MODES.NONE}
-     * @privateRemarks When updating, also update {@linkcode foundry.data.PrototypeTokenOverrides.ActorSubTypeSchema.displayName}.
+     * The display mode of the Token nameplate, from CONST.TOKEN_DISPLAY_MODES
+     * @defaultValue `CONST.TOKEN_DISPLAY_MODES.NONE`
      */
     displayName: fields.NumberField<
       {
@@ -326,6 +263,12 @@ declare namespace TokenDocument {
      * @defaultValue `false`
      */
     actorLink: fields.BooleanField;
+
+    randomImg: fields.BooleanField;
+
+    appendNumber: fields.BooleanField;
+
+    prependAdjective: fields.BooleanField;
 
     /**
      * The width of the Token in grid units
@@ -356,7 +299,6 @@ declare namespace TokenDocument {
     /**
      * Prevent the Token image from visually rotating?
      * @defaultValue `false`
-     * @privateRemarks When updating, also update {@linkcode foundry.data.PrototypeTokenOverrides.ActorSubTypeSchema.lockRotation}.
      */
     lockRotation: fields.BooleanField;
 
@@ -375,7 +317,6 @@ declare namespace TokenDocument {
     /**
      * A displayed Token disposition from CONST.TOKEN_DISPOSITIONS
      * @defaultValue `CONST.TOKEN_DISPOSITIONS.HOSTILE` (`-1`)
-     * @privateRemarks When updating, also update {@linkcode foundry.data.PrototypeTokenOverrides.ActorSubTypeSchema.disposition}.
      */
     disposition: fields.NumberField<
       {
@@ -393,7 +334,6 @@ declare namespace TokenDocument {
     /**
      * The display mode of Token resource bars, from CONST.TOKEN_DISPLAY_MODES
      * @defaultValue `CONST.TOKEN_DISPLAY_MODES.NONE`
-     * @privateRemarks When updating, also update {@linkcode foundry.data.PrototypeTokenOverrides.ActorSubTypeSchema.displayBars}.
      */
     displayBars: fields.NumberField<
       {
@@ -601,7 +541,26 @@ declare namespace TokenDocument {
       }>;
     }>;
 
-    turnMarker: fields.SchemaField<TurnMarkerSchema>;
+    turnMarker: fields.SchemaField<{
+      mode: fields.NumberField<
+        {
+          required: true;
+          choices: CONST.TOKEN_TURN_MARKER_MODES[];
+          initial: typeof CONST.TOKEN_TURN_MARKER_MODES.DEFAULT;
+          validationError: "must be a value in CONST.TOKEN_TURN_MARKER_MODES";
+        },
+        // FIXME: Without these overrides, the branded type from `choices` is not respected, and the field types as `number`
+        CONST.TOKEN_TURN_MARKER_MODES | null | undefined,
+        CONST.TOKEN_TURN_MARKER_MODES,
+        CONST.TOKEN_TURN_MARKER_MODES
+      >;
+
+      animation: fields.StringField<{ required: true; blank: false; nullable: true }>;
+
+      src: fields.FilePathField<{ categories: ["IMAGE", "VIDEO"] }>;
+
+      disposition: fields.BooleanField;
+    }>;
 
     movementAction: fields.StringField<{
       required: true;
@@ -618,32 +577,7 @@ declare namespace TokenDocument {
     flags: fields.DocumentFlagsField<Name, InterfaceToObject<CoreFlags>>;
   }
 
-  interface TurnMarkerSchema extends fields.DataSchema {
-    /** @privateRemarks When updating, also update {@linkcode foundry.data.PrototypeTokenOverrides.TurnMarkerSchema.mode}. */
-    mode: fields.NumberField<
-      {
-        required: true;
-        choices: CONST.TOKEN_TURN_MARKER_MODES[];
-        initial: typeof CONST.TOKEN_TURN_MARKER_MODES.DEFAULT;
-        validationError: "must be a value in CONST.TOKEN_TURN_MARKER_MODES";
-      },
-      // FIXME: Without these overrides, the branded type from `choices` is not respected, and the field types as `number`
-      CONST.TOKEN_TURN_MARKER_MODES | null | undefined,
-      CONST.TOKEN_TURN_MARKER_MODES,
-      CONST.TOKEN_TURN_MARKER_MODES
-    >;
-
-    /** @privateRemarks When updating, also update {@linkcode foundry.data.PrototypeTokenOverrides.TurnMarkerSchema.animation}. */
-    animation: fields.StringField<{ required: true; blank: false; nullable: true }>;
-
-    /** @privateRemarks When updating, also update {@linkcode foundry.data.PrototypeTokenOverrides.TurnMarkerSchema.src}. */
-    src: fields.FilePathField<{ categories: ["IMAGE", "VIDEO"] }>;
-
-    /** @privateRemarks When updating, also update {@linkcode foundry.data.PrototypeTokenOverrides.TurnMarkerSchema.disposition}. */
-    disposition: fields.BooleanField;
-  }
-
-  interface DetectionModeSchema extends fields.DataSchema {
+  interface DetectionModeSchema extends DataSchema {
     /**
      * The id of the detection mode, a key from CONFIG.Canvas.detectionModes
      * @defaultValue `""`
@@ -663,9 +597,9 @@ declare namespace TokenDocument {
     range: fields.NumberField<{ required: true; min: 0; step: 0.01 }>;
   }
 
-  interface DetectionModeData extends fields.SchemaField.InitializedData<DetectionModeSchema> {}
+  interface DetectionModeData extends SchemaField.InitializedData<DetectionModeSchema> {}
 
-  interface MeasuredMovementWaypointSchema extends fields.DataSchema {
+  interface MeasuredMovementWaypointSchema extends DataSchema {
     /**
      * The top-left x-coordinate in pixels (integer).
      * @defaultValue `undefined`
@@ -755,7 +689,10 @@ declare namespace TokenDocument {
      * The ID of the user that moved the token to from the previous to this waypoint.
      * @defaultValue `undefined`
      */
-    userId: fields.ForeignDocumentField<typeof BaseUser, { idOnly: true; required: true; initial: undefined }>;
+    userId: fields.ForeignDocumentField<
+      typeof documents.BaseUser,
+      { idOnly: true; required: true; initial: undefined }
+    >;
 
     /**
      * The ID of the movement from the previous to this waypoint.
@@ -775,72 +712,20 @@ declare namespace TokenDocument {
     cost: fields.NumberField<{ required: true; nullable: false; min: 0; initial: undefined }>;
   }
 
-  interface MeasuredMovementWaypoint extends fields.SchemaField.InitializedData<MeasuredMovementWaypointSchema> {}
+  interface MeasuredMovementWaypoint extends SchemaField.InitializedData<MeasuredMovementWaypointSchema> {}
 
-  /**
-   * @remarks The interface for passing to {@linkcode TokenDocument.measureMovementPath | TokenDocument#measureMovementPath}, which pulls
-   * the enumerated properties out of any passed waypoints, with defaults for all of them.
-   */
-  interface MeasureMovementPathWaypoint extends InexactPartial<
-    Pick<
-      MeasuredMovementWaypoint,
-      "x" | "y" | "elevation" | "width" | "height" | "shape" | "action" | "terrain" | "cost"
-    >
-  > {}
-
-  /**
-   * @remarks TSGo doesn't properly merge the JSDoc yet, but assuming it eventually will, this is the most-DRY way to write this.
-   * @internal
-   */
-  interface _GetCompleteMovementPathWaypoint extends Omit<MeasuredMovementWaypoint, "userId" | "movementId" | "cost"> {
-    /** @defaultValue The previous or source x-coordinate. */
-    x: MeasuredMovementWaypoint["x"];
-
-    /** @defaultValue The previous or source y-coordinate. */
-    y: MeasuredMovementWaypoint["y"];
-
-    /** @defaultValue The previous or source elevation. */
-    elevation: MeasuredMovementWaypoint["elevation"];
-
-    /** @defaultValue The previous or source width. */
-    width: MeasuredMovementWaypoint["width"];
-
-    /** @defaultValue The previous or source height. */
-    height: MeasuredMovementWaypoint["height"];
-
-    /** @defaultValue The previous or source shape. */
-    shape: MeasuredMovementWaypoint["shape"];
-
-    /** @defaultValue The previous or prepared movement action. */
-    action: MeasuredMovementWaypoint["action"];
-
-    /** @defaultValue `null` */
-    terrain: MeasuredMovementWaypoint["terrain"];
-
-    /** @defaultValue `false` */
-    snapped: MeasuredMovementWaypoint["snapped"];
-
-    /** @defaultValue `false` */
-    explicit: MeasuredMovementWaypoint["explicit"];
-
-    /** @defaultValue `false` */
-    checkpoint: MeasuredMovementWaypoint["checkpoint"];
-
-    /** @defaultValue `false` */
-    intermediate: MeasuredMovementWaypoint["intermediate"];
-  }
-
-  interface GetCompleteMovementPathWaypoint extends InexactPartial<_GetCompleteMovementPathWaypoint> {}
+  interface GetCompleteMovementPathWaypoint
+    extends InexactPartial<Omit<MeasuredMovementWaypoint, "userId" | "movementId" | "cost">> {}
 
   interface CompleteMovementWaypoint extends Omit<MeasuredMovementWaypoint, "userId" | "movementId" | "cost"> {}
 
   /**
-   * The schema for {@linkcode TokenDocument}. This is the source of truth for how a `TokenDocument` document
+   * The schema for {@linkcode TokenDocument}. This is the source of truth for how an TokenDocument document
    * must be structured.
    *
    * Foundry uses this schema to validate the structure of the {@linkcode TokenDocument}. For example
-   * a {@linkcode fields.StringField | StringField} will enforce that the value is a string. More
-   * complex fields like {@linkcode fields.SetField | SetField} goes through various conversions
+   * a {@link fields.StringField | `StringField`} will enforce that the value is a string. More
+   * complex fields like {@link fields.SetField | `SetField`} goes through various conversions
    * starting as an array in the database, initialized as a set, and allows updates with any
    * iterable.
    */
@@ -861,13 +746,13 @@ declare namespace TokenDocument {
      * The _id of an Actor document which this Token represents
      * @defaultValue `null`
      */
-    actorId: fields.ForeignDocumentField<typeof BaseActor, { idOnly: true }>;
+    actorId: fields.ForeignDocumentField<typeof documents.BaseActor, { idOnly: true }>;
 
     /**
      * The ActorDelta embedded document which stores the differences between this
      * token and the base actor it represents.
      */
-    delta: ActorDeltaField<typeof BaseActorDelta>;
+    delta: ActorDeltaField<typeof documents.BaseActorDelta>;
 
     /**
      * The shape of the Token
@@ -913,681 +798,157 @@ declare namespace TokenDocument {
     hidden: fields.BooleanField;
 
     /**
-     * @remarks `TokenDocument##preUpdateMovement` disallows changes to this property when the accompanying operation object doesn't have
-     * {@linkcode TokenDocument.Database.UpdateOperation.isUndo | isUndo} set `true`.
-     * @internal
+     * @remarks Foundry marked `@internal`
      */
     _movementHistory: fields.ArrayField<fields.SchemaField<MeasuredMovementWaypointSchema>>;
 
-    /** @internal */
-    _regions: fields.ArrayField<fields.ForeignDocumentField<typeof BaseRegion, { idOnly: true }>>;
+    /**
+     * @remarks Foundry marked `@internal`
+     */
+    _regions: fields.ArrayField<fields.ForeignDocumentField<typeof documents.BaseRegion, { idOnly: true }>>;
   }
 
   namespace Database {
-    /* ***********************************************
-     *                GET OPERATIONS                 *
-     *************************************************/
+    /** Options passed along in Get operations for TokenDocuments */
+    interface Get extends foundry.abstract.types.DatabaseGetOperation<TokenDocument.Parent> {}
 
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.GetOperation | GetOperation} interface for
-     * `TokenDocument` documents. Valid for passing to
-     * {@linkcode ClientDatabaseBackend._getDocuments | ClientDatabaseBackend#_getDocuments}.
-     *
-     * The {@linkcode GetDocumentsOperation} and {@linkcode BackendGetOperation} interfaces derive from this one.
-     */
-    interface GetOperation extends DatabaseBackend.GetOperation<TokenDocument.Parent> {}
+    /** Options passed along in Create operations for TokenDocuments */
+    interface Create<Temporary extends boolean | undefined = boolean | undefined>
+      extends foundry.abstract.types.DatabaseCreateOperation<
+        TokenDocument.CreateData,
+        TokenDocument.Parent,
+        Temporary
+      > {}
 
-    /**
-     * The interface for passing to {@linkcode TokenDocument.get}.
-     * @see {@linkcode Document.Database.GetDocumentsOperation}
-     */
-    interface GetDocumentsOperation extends Document.Database.GetDocumentsOperation<GetOperation> {}
+    /** Options passed along in Delete operations for TokenDocuments */
+    interface Delete extends foundry.abstract.types.DatabaseDeleteOperation<TokenDocument.Parent> {}
 
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.get | DatabaseBackend#get} for `TokenDocument` documents.
-     * @see {@linkcode Document.Database.BackendGetOperation}
-     */
-    interface BackendGetOperation extends Document.Database.BackendGetOperation<GetOperation> {}
-
-    /* ***********************************************
-     *              CREATE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.CreateOperation | DatabaseCreateOperation}
-     * interface for `TokenDocument` documents.
-     *
-     * See {@linkcode DatabaseBackend.CreateOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode TokenDocument.create}. The new name for that
-     * interface is {@linkcode CreateDocumentsOperation}.
-     */
-    interface CreateOperation
-      extends
-        DatabaseBackend.CreateOperation<TokenDocument.CreateInput, TokenDocument.Parent>,
-        DatabaseBackend._CommonCanvasDocumentCreateProperties {}
-
-    /**
-     * The interface for passing to {@linkcode TokenDocument.create} or {@linkcode TokenDocument.createDocuments}.
-     * @see {@linkcode Document.Database.CreateDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface CreateDocumentsOperation extends Document.Database.CreateDocumentsOperation<CreateOperation> {}
-
-    /**
-     * The interface for passing to the {@linkcode Document.createEmbeddedDocuments | #createEmbeddedDocuments} method of any Documents that
-     * can contain `TokenDocument` documents. (see {@linkcode TokenDocument.Parent})
-     * @see {@linkcode Document.Database.CreateEmbeddedOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface CreateEmbeddedOperation extends Document.Database.CreateEmbeddedOperation<CreateOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.create | DatabaseBackend#create} for `TokenDocument` documents.
-     * @see {@linkcode Document.Database.BackendCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendCreateOperation extends Document.Database.BackendCreateOperation<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TokenDocument._preCreate | TokenDocument#_preCreate} and
-     * {@link Hooks.PreCreateDocument | the `preCreateTokenDocument` hook}.
-     * @see {@linkcode Document.Database.PreCreateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreCreateOptions extends Document.Database.PreCreateOptions<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TokenDocument._preCreateOperation}.
-     * @see {@linkcode Document.Database.PreCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreCreateOperation extends Document.Database.PreCreateOperation<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TokenDocument._onCreate | TokenDocument#_onCreate} and
-     * {@link Hooks.CreateDocument | the `createTokenDocument` hook}.
-     * @see {@linkcode Document.Database.OnCreateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnCreateOptions extends Document.Database.OnCreateOptions<CreateOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TokenDocument._onCreateOperation} and `TokenDocument`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnCreateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode CreateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.CreateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnCreateOperation extends Document.Database.OnCreateOperation<CreateOperation> {}
-
-    /* ***********************************************
-     *              UPDATE OPERATIONS                *
-     *************************************************/
-
-    /** @internal */
-    interface _PostWorkflow {
-      _postWorkflow?: {
-        promise: Promise<void>;
-        resolve: () => void;
-      };
-    }
-
-    /**
-     * @remarks The interface for {@linkcode TokenDocument.Database.UpdateOperation._movement} before it gets sent to the server, i.e while
-     * it is still `deepFreeze`n.
-     *
-     * @privateRemarks This being a naive intersection is acceptable because nobody should ever have to pass a literal of this part of the
-     * type; at worst, user code will want to mutate a specific `_movement[movementId]` object's properties.
-     */
-    type _MovementPreServer = Record<string, TokenDocument.PreUpdateMovement> & _PostWorkflow;
-
-    /**
-     * @remarks The interface for {@linkcode TokenDocument.Database.UpdateOperation._movement} after it gets sent back by the server, and is
-     * no longer frozen to any depth.
-     *
-     * @privateRemarks This being a naive intersection is acceptable because nobody should ever have to pass a literal of this part of the
-     * type; at worst, user code will want to mutate a specific `_movement[movementId]` object's properties.
-     */
-    type _MovementPostServer = Record<string, TokenDocument.MovementOperation> & _PostWorkflow;
-
-    /**
-     * @remarks The interface for {@linkcode TokenDocument.Database.UpdateOperation._movementArguments}. It's probably considered
-     * internal-to-foundry, but isn't marked as such beyond the `_` prefix. Not internal to us.
-     */
-    interface _MovementArguments extends InexactPartial<Pick<MovementData, "chain">> {
-      result: boolean;
-      movementId?: string | undefined;
-      unrecorded?: MeasuredMovementWaypoint[] | null;
-    }
-
-    /**
-     * @remarks An entry under {@linkcode TokenDocument.Database._PreServerUpdateOperation.movement}
-     */
-    interface MovementEntry extends InexactPartial<TokenDocument._MoveOptions> {
-      waypoints?: TokenDocument.MovementWaypoint[] | undefined;
-    }
-
-    /**
-     * @remarks Keys are `TokenDocument` IDs
-     */
-    interface Movement extends Record<string, MovementEntry> {}
-
-    /**
-     * Properties that can only appear to user code *before* the operation is sent to the server,
-     * or that need different types before and after.
-     * @internal
-     */
-    interface _PreServerUpdateOperation {
-      movement?: Movement | undefined;
-
-      /**
-       * @remarks A record of `movementId` keys and mostly-frozen {@linkcode TokenDocument.MovementOperation} values.
-       * See {@linkcode TokenDocument.Database._MovementEntry}.
-       */
-      _movement?: TokenDocument.Database._MovementPreServer | undefined;
-
-      /**
-       * @remarks Used by some parts of the token movement machinery. Can be seen in the client-side parts of operations made by
-       * {@linkcode TokenDocument.move | TokenDocument#move}, {@linkcode TokenDocument.revertRecordedMovement | #revertRecordedMovement},
-       * and `##continueMovement`, but is deleted in `##preUpdateOperationMovement` before being sent to the server.
-       */
-      _movementArguments?: TokenDocument.Database._MovementArguments;
-
-      /**
-       * @deprecated "`DatabaseUpdateOperation#teleport` has been deprecated. Override {@linkcode TokenDocument._onUpdateMovement | TokenDocument#_onUpdateMovement}
-       * or hook {@linkcode AllHooks.moveToken | moveToken} to handle movement." (since v13, until v15)
-       * @remarks Deleted before being sent to the server in `TokenDocument.#preUpdateMovementOperation`.
-       */
-      teleport?: boolean;
-
-      /**
-       * @deprecated "`DatabaseUpdateOperation#forced` has been deprecated. Override {@linkcode TokenDocument._onUpdateMovement | TokenDocument#_onUpdateMovement}
-       * or hook {@linkcode AllHooks.moveToken | moveToken} to handle movement." (since v13, until v15)
-       * @remarks Deleted before being sent to the server in `TokenDocument.#preUpdateMovementOperation`.
-       */
-      forced?: boolean;
-    }
-
-    /**
-     * Properties that can only appear to user code *after* the operation is returned by the server,
-     * or that need different types before and after.
-     * @internal
-     */
-    interface _PostServerUpdateOperation {
-      /**
-       * @remarks Added/updated by the server's `TokenDocument#_preUpdate` if a token will be changing which Region(s) it is counted as
-       * inside of. Keys are Token IDs, values are arrays of Region IDs.
-       */
-      _priorRegions?: Record<string, string[]>;
-
-      /**
-       * @remarks A record of `movementId` keys and {@linkcode TokenDocument.MovementOperation} values.
-       */
-      _movement?: TokenDocument.Database._MovementPostServer;
-    }
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.UpdateOperation | DatabaseUpdateOperation}
-     * interface for `TokenDocument` documents.
-     *
-     * See {@linkcode DatabaseBackend.UpdateOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode TokenDocument.update | TokenDocument#update}.
-     * The new name for that interface is {@linkcode UpdateOneDocumentOperation}.
-     */
-    interface UpdateOperation
-      extends
-        DatabaseBackend.UpdateOperation<TokenDocument.UpdateInput, TokenDocument.Parent>,
-        DatabaseBackend._CommonCanvasDocumentUpdateProperties {
-      /**
-       * @remarks Passing `false` both prevents the current operation from animating and stops existing animations, via
-       * {@linkcode TokenDocument._onUpdate | TokenDocument#_onUpdate} calling `TokenDocument##onUpdateAnimation`.
-       */
-      animate?: boolean;
-
-      /**
-       * @remarks Options for the animation of changes in this update. See `Token##onUpdateAnimation`.
-       */
-      animation?: Token.AnimateOptions;
-
-      /**
-       * @remarks Unless this is explicitly `false`, position updates that put a token outside the viewport will cause the camera to pan
-       * to that token's center. See `Token##panCanvas`.
-       */
-      pan?: boolean;
-
-      /**
-       * @remarks If a token's {@linkcode TokenDocument.actorId | actorId} is being updated,
-       * {@linkcode TokenDocument._preUpdate | TokenDocument#_preUpdate} sets this property, and
-       * {@linkcode TokenDocument._onUpdate | TokenDocument#_onUpdate} tidies the previous actor's apps and dependent tokens.
-       *
-       * **NOTE**: Since the sequence described above mutates the one operation object, even for updates with more than one token affected,
-       * batching together two or more updates changing away *from* different `actorIds` can leave some erroneous references in one or more
-       * of the actors belonging to those IDs.
-       */
+    /** Options passed along in Update operations for TokenDocuments */
+    interface Update
+      extends foundry.abstract.types.DatabaseUpdateOperation<TokenDocument.UpdateData, TokenDocument.Parent> {
       previousActorId?: string | null;
-
-      /**
-       * @remarks If passed, `TokenDocument##preUpdateMovement` will use this value in place of the
-       * {@linkcode TokenDocument.Database.MovementEntry.method | method} of the specific Token's `movement` entry.
-       */
-      method?: TokenDocument.MovementMethod;
-
-      /**
-       * @remarks Only passed in updates made by `TokenDocument##stopMovement`. Value is the relevant
-       * {@linkcode TokenDocument.MovementData.id}. Such updates will have an empty changes object.
-       */
-      _stopMovement?: string;
-
-      /**
-       * @remarks Only passed in updates made by `TokenDocument##pauseMovement`, Value is the relevant
-       * {@linkcode TokenDocument.MovementData.id}. Such updates will have an empty changes object.
-       */
-      _pauseMovement?: boolean;
-
-      /**
-       * @remarks Only passed in updates made by {@linkcode TokenDocument.resumeMovement | TokenDocument#resumeMovement}, is a tuple of the
-       * relevant {@linkcode TokenDocument.MovementData.id} and the key being used to reference the pause being resumed, that was originally
-       * passed to {@linkcode TokenDocument.pauseMovement | TokenDocument#pauseMovement}. Such updates will have an empty changes object.
-       */
-      _resumeMovement?: [movementId: string, pauseKey: string];
-
-      /**
-       * @remarks Is this operation clearing the movement history of the Tokens involved?
-       *
-       * Set `true` in update calls made in {@linkcode Combat.clearMovementHistories | Combat#clearMovementHistories},
-       * {@linkcode Scene.clearMovementHistories | Scene#clearMovementHistories}, and
-       * {@linkcode TokenDocument.clearMovementHistory | TokenDocument#clearMovementHistory}; Checked in
-       * {@linkcode TokenLayer.storeHistory | TokenLayer#storeHistory} and `TokenDocument##preUpdateMovement` and `##onUpdateMovement`.
-       */
-      _clearMovementHistory?: boolean;
-
-      /** @deprecated Removed in v13. This warning will be removed in v14. */
-      _priorPosition?: never;
+      animate?: boolean;
+      _priorRegions?: Record<string, string[]>;
+      _priorPosition?: Record<string, { x: number; y: number; elevation: number }>;
+      teleport?: boolean;
+      forced?: boolean;
+      // TODO: Type this accurately when going over the Token placeable
+      animation: AnyObject;
     }
 
-    /**
-     * The interface for passing to {@linkcode TokenDocument.update | TokenDocument#update}.
-     * @see {@linkcode Document.Database.UpdateOneDocumentOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface UpdateOneDocumentOperation
-      extends
-        Document.Database.UpdateOneDocumentOperation<UpdateOperation>,
-        TokenDocument.Database._PreServerUpdateOperation {}
+    /** Operation for {@linkcode TokenDocument.createDocuments} */
+    interface CreateDocumentsOperation<Temporary extends boolean | undefined>
+      extends Document.Database.CreateOperation<TokenDocument.Database.Create<Temporary>> {}
+
+    /** Operation for {@linkcode TokenDocument.updateDocuments} */
+    interface UpdateDocumentsOperation
+      extends Document.Database.UpdateDocumentsOperation<TokenDocument.Database.Update> {}
+
+    /** Operation for {@linkcode TokenDocument.deleteDocuments} */
+    interface DeleteDocumentsOperation
+      extends Document.Database.DeleteDocumentsOperation<TokenDocument.Database.Delete> {}
+
+    /** Operation for {@linkcode TokenDocument.create} */
+    interface CreateOperation<Temporary extends boolean | undefined>
+      extends Document.Database.CreateOperation<TokenDocument.Database.Create<Temporary>> {}
+
+    /** Operation for {@link TokenDocument.update | `TokenDocument#update`} */
+    interface UpdateOperation extends Document.Database.UpdateOperation<Update> {}
+
+    interface DeleteOperation extends Document.Database.DeleteOperation<Delete> {}
+
+    /** Options for {@linkcode TokenDocument.get} */
+    interface GetOptions extends Document.Database.GetOptions {}
+
+    /** Options for {@link TokenDocument._preCreate | `TokenDocument#_preCreate`} */
+    interface PreCreateOptions extends Document.Database.PreCreateOptions<Create> {}
+
+    /** Options for {@link TokenDocument._onCreate | `TokenDocument#_onCreate`} */
+    interface OnCreateOptions extends Document.Database.CreateOptions<Create> {}
+
+    /** Operation for {@linkcode TokenDocument._preCreateOperation} */
+    interface PreCreateOperation extends Document.Database.PreCreateOperationStatic<TokenDocument.Database.Create> {}
+
+    /** Operation for {@link TokenDocument._onCreateOperation | `TokenDocument#_onCreateOperation`} */
+    interface OnCreateOperation extends TokenDocument.Database.Create {}
+
+    /** Options for {@link TokenDocument._preUpdate | `TokenDocument#_preUpdate`} */
+    interface PreUpdateOptions extends Document.Database.PreUpdateOptions<Update> {}
+
+    /** Options for {@link TokenDocument._onUpdate | `TokenDocument#_onUpdate`} */
+    interface OnUpdateOptions extends Document.Database.UpdateOptions<Update> {}
+
+    /** Operation for {@linkcode TokenDocument._preUpdateOperation} */
+    interface PreUpdateOperation extends TokenDocument.Database.Update {}
+
+    /** Operation for {@link TokenDocument._onUpdateOperation | `TokenDocument._preUpdateOperation`} */
+    interface OnUpdateOperation extends TokenDocument.Database.Update {}
+
+    /** Options for {@link TokenDocument._preDelete | `TokenDocument#_preDelete`} */
+    interface PreDeleteOptions extends Document.Database.PreDeleteOperationInstance<Delete> {}
+
+    /** Options for {@link TokenDocument._onDelete | `TokenDocument#_onDelete`} */
+    interface OnDeleteOptions extends Document.Database.DeleteOptions<Delete> {}
+
+    /** Options for {@link TokenDocument._preDeleteOperation | `TokenDocument#_preDeleteOperation`} */
+    interface PreDeleteOperation extends TokenDocument.Database.Delete {}
+
+    /** Options for {@link TokenDocument._onDeleteOperation | `TokenDocument#_onDeleteOperation`} */
+    interface OnDeleteOperation extends TokenDocument.Database.Delete {}
+
+    /** Context for {@linkcode TokenDocument._onDeleteOperation} */
+    interface OnDeleteDocumentsContext extends Document.ModificationContext<TokenDocument.Parent> {}
+
+    /** Context for {@linkcode TokenDocument._onCreateDocuments} */
+    interface OnCreateDocumentsContext extends Document.ModificationContext<TokenDocument.Parent> {}
+
+    /** Context for {@linkcode TokenDocument._onUpdateDocuments} */
+    interface OnUpdateDocumentsContext extends Document.ModificationContext<TokenDocument.Parent> {}
 
     /**
-     * The interface for passing to the {@linkcode Document.updateEmbeddedDocuments | #updateEmbeddedDocuments} method of any Documents that
-     * can contain `TokenDocument` documents (see {@linkcode TokenDocument.Parent}). This interface is just an alias
-     * for {@linkcode UpdateOneDocumentOperation}, as the same keys are provided by the method in both cases.
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
+     * Options for {@link TokenDocument._preCreateDescendantDocuments | `TokenDocument#_preCreateDescendantDocuments`}
+     * and {@link TokenDocument._onCreateDescendantDocuments | `TokenDocument#_onCreateDescendantDocuments`}
      */
-    interface UpdateEmbeddedOperation
-      extends UpdateOneDocumentOperation, TokenDocument.Database._PreServerUpdateOperation {}
+    interface CreateOptions extends Document.Database.CreateOptions<TokenDocument.Database.Create> {}
 
     /**
-     * The interface for passing to {@linkcode TokenDocument.updateDocuments}.
-     * @see {@linkcode Document.Database.UpdateManyDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
+     * Options for {@link TokenDocument._preUpdateDescendantDocuments | `TokenDocument#_preUpdateDescendantDocuments`}
+     * and {@link TokenDocument._onUpdateDescendantDocuments | `TokenDocument#_onUpdateDescendantDocuments`}
      */
-    interface UpdateManyDocumentsOperation
-      extends
-        Document.Database.UpdateManyDocumentsOperation<UpdateOperation>,
-        TokenDocument.Database._PreServerUpdateOperation {}
+    interface UpdateOptions extends Document.Database.UpdateOptions<TokenDocument.Database.Update> {}
 
     /**
-     * The interface for passing to {@linkcode DatabaseBackend.update | DatabaseBackend#update} for `TokenDocument` documents.
-     * @see {@linkcode Document.Database.BackendUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
+     * Options for {@link TokenDocument._preDeleteDescendantDocuments | `TokenDocument#_preDeleteDescendantDocuments`}
+     * and {@link TokenDocument._onDeleteDescendantDocuments | `TokenDocument#_onDeleteDescendantDocuments`}
      */
-    interface BackendUpdateOperation
-      extends
-        Document.Database.BackendUpdateOperation<UpdateOperation>,
-        TokenDocument.Database._PreServerUpdateOperation {}
+    interface DeleteOptions extends Document.Database.DeleteOptions<TokenDocument.Database.Delete> {}
 
     /**
-     * The interface passed to {@linkcode TokenDocument._preUpdate | TokenDocument#_preUpdate} and
-     * {@link Hooks.PreUpdateDocument | the `preUpdateTokenDocument` hook}.
-     * @see {@linkcode Document.Database.PreUpdateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
+     * Create options for {@linkcode TokenDocument.createDialog}.
      */
-    interface PreUpdateOptions
-      extends Document.Database.PreUpdateOptions<UpdateOperation>, TokenDocument.Database._PreServerUpdateOperation {}
-
-    /**
-     * The interface passed to {@linkcode TokenDocument._preUpdateOperation}.
-     * @see {@linkcode Document.Database.PreUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreUpdateOperation
-      extends Document.Database.PreUpdateOperation<UpdateOperation>, TokenDocument.Database._PreServerUpdateOperation {}
-
-    /**
-     * The interface passed to {@linkcode TokenDocument._onUpdate | TokenDocument#_onUpdate} and
-     * {@link Hooks.UpdateDocument | the `updateTokenDocument` hook}.
-     * @see {@linkcode Document.Database.OnUpdateOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnUpdateOptions
-      extends
-        Omit<Document.Database.OnUpdateOptions<UpdateOperation>, "_movementArguments">,
-        TokenDocument.Database._PostServerUpdateOperation {}
-
-    /**
-     * The interface passed to {@linkcode TokenDocument._onUpdateOperation} and `TokenDocument`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnUpdateOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode UpdateOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.UpdateOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     * @remarks `forced` and `teleport` are added back to this object as deprecation shims by
-     * {@linkcode TokenDocument._addTeleportAndForcedShims}.
-     */
-    interface OnUpdateOperation
-      extends
-        Omit<Document.Database.OnUpdateOperation<UpdateOperation>, "_movementArguments">,
-        TokenDocument.Database._PostServerUpdateOperation,
-        Readonly<Pick<_PreServerUpdateOperation, "forced" | "teleport">> {}
-
-    /* ***********************************************
-     *              DELETE OPERATIONS                *
-     *************************************************/
-
-    /**
-     * A base (no property omission or optionality changes) {@linkcode DatabaseBackend.DeleteOperation | DatabaseDeleteOperation}
-     * interface for `TokenDocument` documents.
-     *
-     * See {@linkcode DatabaseBackend.DeleteOperation} for more information on this family of interfaces.
-     *
-     * @remarks This interface was previously typed for passing to {@linkcode TokenDocument.delete | TokenDocument#delete}.
-     * The new name for that interface is {@linkcode DeleteOneDocumentOperation}.
-     */
-    interface DeleteOperation extends DatabaseBackend.DeleteOperation<TokenDocument.Parent> {}
-
-    /**
-     * The interface for passing to {@linkcode TokenDocument.delete | TokenDocument#delete}.
-     * @see {@linkcode Document.Database.DeleteOneDocumentOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteOneDocumentOperation extends Document.Database.DeleteOneDocumentOperation<DeleteOperation> {}
-
-    /**
-     * The interface for passing to the {@linkcode Document.deleteEmbeddedDocuments | #deleteEmbeddedDocuments} method of any Documents that
-     * can contain `TokenDocument` documents (see {@linkcode TokenDocument.Parent}). This interface is just an alias
-     * for {@linkcode DeleteOneDocumentOperation}, as the same keys are provided by the method in both cases.
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteEmbeddedOperation extends DeleteOneDocumentOperation {}
-
-    /**
-     * The interface for passing to {@linkcode TokenDocument.deleteDocuments}.
-     * @see {@linkcode Document.Database.DeleteManyDocumentsOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface DeleteManyDocumentsOperation extends Document.Database.DeleteManyDocumentsOperation<DeleteOperation> {}
-
-    /**
-     * The interface for passing to {@linkcode DatabaseBackend.delete | DatabaseBackend#delete} for `TokenDocument` documents.
-     * @see {@linkcode Document.Database.BackendDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface BackendDeleteOperation extends Document.Database.BackendDeleteOperation<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TokenDocument._preDelete | TokenDocument#_preDelete} and
-     * {@link Hooks.PreDeleteDocument | the `preDeleteTokenDocument` hook}.
-     * @see {@linkcode Document.Database.PreDeleteOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreDeleteOptions extends Document.Database.PreDeleteOptions<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TokenDocument._preDeleteOperation}.
-     * @see {@linkcode Document.Database.PreDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface PreDeleteOperation extends Document.Database.PreDeleteOperation<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TokenDocument._onDelete | TokenDocument#_onDelete} and
-     * {@link Hooks.DeleteDocument | the `deleteTokenDocument` hook}.
-     * @see {@linkcode Document.Database.OnDeleteOptions}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnDeleteOptions extends Document.Database.OnDeleteOptions<DeleteOperation> {}
-
-    /**
-     * The interface passed to {@linkcode TokenDocument._onDeleteOperation} and `TokenDocument`-related collections'
-     * `#_onModifyContents` methods.
-     * @see {@linkcode Document.Database.OnDeleteOperation}
-     *
-     * ---
-     *
-     * **Declaration Merging Warning**
-     *
-     * It is very likely incorrect to merge into this interface instead of the base {@linkcode DeleteOperation} for this Document or the
-     * root {@linkcode DatabaseBackend.DeleteOperation} for all documents, for reasons outlined in the latter's remarks. If you have a valid
-     * use case for doing so, please let us know.
-     */
-    interface OnDeleteOperation extends Document.Database.OnDeleteOperation<DeleteOperation> {}
-
-    namespace Internal {
-      interface OperationNameMap {
-        GetDocumentsOperation: TokenDocument.Database.GetDocumentsOperation;
-        BackendGetOperation: TokenDocument.Database.BackendGetOperation;
-        GetOperation: TokenDocument.Database.GetOperation;
-
-        CreateDocumentsOperation: TokenDocument.Database.CreateDocumentsOperation;
-        CreateEmbeddedOperation: TokenDocument.Database.CreateEmbeddedOperation;
-        BackendCreateOperation: TokenDocument.Database.BackendCreateOperation;
-        CreateOperation: TokenDocument.Database.CreateOperation;
-        PreCreateOptions: TokenDocument.Database.PreCreateOptions;
-        PreCreateOperation: TokenDocument.Database.PreCreateOperation;
-        OnCreateOptions: TokenDocument.Database.OnCreateOptions;
-        OnCreateOperation: TokenDocument.Database.OnCreateOperation;
-
-        UpdateOneDocumentOperation: TokenDocument.Database.UpdateOneDocumentOperation;
-        UpdateEmbeddedOperation: TokenDocument.Database.UpdateEmbeddedOperation;
-        UpdateManyDocumentsOperation: TokenDocument.Database.UpdateManyDocumentsOperation;
-        BackendUpdateOperation: TokenDocument.Database.BackendUpdateOperation;
-        UpdateOperation: TokenDocument.Database.UpdateOperation;
-        PreUpdateOptions: TokenDocument.Database.PreUpdateOptions;
-        PreUpdateOperation: TokenDocument.Database.PreUpdateOperation;
-        OnUpdateOptions: TokenDocument.Database.OnUpdateOptions;
-        OnUpdateOperation: TokenDocument.Database.OnUpdateOperation;
-
-        DeleteOneDocumentOperation: TokenDocument.Database.DeleteOneDocumentOperation;
-        DeleteEmbeddedOperation: TokenDocument.Database.DeleteEmbeddedOperation;
-        DeleteManyDocumentsOperation: TokenDocument.Database.DeleteManyDocumentsOperation;
-        BackendDeleteOperation: TokenDocument.Database.BackendDeleteOperation;
-        DeleteOperation: TokenDocument.Database.DeleteOperation;
-        PreDeleteOptions: TokenDocument.Database.PreDeleteOptions;
-        PreDeleteOperation: TokenDocument.Database.PreDeleteOperation;
-        OnDeleteOptions: TokenDocument.Database.OnDeleteOptions;
-        OnDeleteOperation: TokenDocument.Database.OnDeleteOperation;
-      }
-    }
+    interface DialogCreateOptions extends InexactPartial<Create> {}
   }
-
-  /**
-   * If `Temporary` is true then {@linkcode TokenDocument.Implementation}, otherwise {@linkcode TokenDocument.Stored}.
-   * @deprecated `Document.create`/`Documents` can no longer return temporary documents as of v14. This type will be removed in v15.
-   */
-  type TemporaryIf<Temporary extends boolean | undefined> =
-    true extends Extract<Temporary, true> ? TokenDocument.Implementation : TokenDocument.Stored;
 
   /**
    * The flags that are available for this document in the form `{ [scope: string]: { [key: string]: unknown } }`.
    */
-  interface Flags extends Document.Internal.ConfiguredFlagsForName<Name>, CoreFlags {}
+  interface Flags extends Document.ConfiguredFlagsForName<Name> {}
 
   namespace Flags {
     /**
      * The valid scopes for the flags on this document e.g. `"core"` or `"dnd5e"`.
      */
-    type Scope = Document.Internal.FlagKeyOf<Flags>;
+    type Scope = Document.FlagKeyOf<Flags>;
 
     /**
      * The valid keys for a certain scope for example if the scope is "core" then a valid key may be `"sheetLock"` or `"viewMode"`.
      */
-    type Key<Scope extends Flags.Scope> = Document.Internal.FlagKeyOf<Document.Internal.FlagGetKey<Flags, Scope>>;
+    type Key<Scope extends Flags.Scope> = Document.FlagKeyOf<Document.FlagGetKey<Flags, Scope>>;
 
     /**
      * Gets the type of a particular flag given a `Scope` and a `Key`.
      */
-    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.Internal.GetFlag<Flags, Scope, Key>;
+    type Get<Scope extends Flags.Scope, Key extends Flags.Key<Scope>> = Document.GetFlag<Name, Scope, Key>;
   }
 
   interface CoreFlags {
@@ -1600,114 +961,61 @@ declare namespace TokenDocument {
     };
   }
 
-  /* ***********************************************
-   *       CLIENT DOCUMENT TEMPLATE TYPES          *
-   *************************************************/
-
-  /** The interface {@linkcode TokenDocument.fromDropData} receives */
   interface DropData extends Document.Internal.DropData<Name> {}
+  interface DropDataOptions extends Document.DropDataOptions {}
 
-  /**
-   * @deprecated Foundry prior to v13 had a completely unused `options` parameter in the {@linkcode TokenDocument.fromDropData}
-   * signature that has since been removed. This type will be removed in v14.
-   */
-  type DropDataOptions = never;
+  interface DefaultNameContext extends Document.DefaultNameContext<Name, NonNullable<Parent>> {}
 
-  /**
-   * The interface for passing to {@linkcode TokenDocument.defaultName}
-   * @see {@linkcode Document.DefaultNameContext}
-   */
-  interface DefaultNameContext extends Document.DefaultNameContext<Name, Parent> {}
-
-  /**
-   * The interface for passing to {@linkcode TokenDocument.createDialog}'s first parameter
-   * @see {@linkcode Document.CreateDialogData}
-   */
   interface CreateDialogData extends Document.CreateDialogData<CreateData> {}
-
-  /**
-   * @deprecated This is for a deprecated signature, and will be removed in v15.
-   * The interface for passing to {@linkcode TokenDocument.createDialog}'s second parameter that still includes partial Dialog
-   * options, instead of being purely a {@linkcode Database.CreateDocumentsOperation | CreateDocumentsOperation}.
-   */
-  interface CreateDialogDeprecatedOptions
-    extends Database.CreateDocumentsOperation, Document._PartialDialogV1OptionsForCreateDialog {}
-
-  /**
-   * The interface for passing to {@linkcode TokenDocument.createDialog}'s third parameter
-   * @see {@linkcode Document.CreateDialogOptions}
-   */
   interface CreateDialogOptions extends Document.CreateDialogOptions<Name> {}
 
-  /**
-   * The return type for {@linkcode TokenDocument.createDialog}.
-   * @see {@linkcode Document.CreateDialogReturn}
-   */
-  type CreateDialogReturn<Config extends TokenDocument.CreateDialogOptions | undefined> = Document.CreateDialogReturn<
-    TokenDocument.Stored,
-    Config
-  >;
-
-  /**
-   * The return type for {@linkcode TokenDocument.deleteDialog | TokenDocument#deleteDialog}.
-   * @see {@linkcode Document.DeleteDialogReturn}
-   */
-  type DeleteDialogReturn<Config extends DialogV2.ConfirmConfig | undefined> = Document.DeleteDialogReturn<
-    TokenDocument.Stored,
-    Config
-  >;
-
   type PreCreateDescendantDocumentsArgs =
-    | Document.Internal.PreCreateDescendantDocumentsArgs<
+    | Document.PreCreateDescendantDocumentsArgs<
         TokenDocument.Stored,
-        TokenDocument.DirectDescendantName,
+        TokenDocument.DirectDescendant,
         TokenDocument.Metadata.Embedded
       >
     | ActorDelta.PreCreateDescendantDocumentsArgs;
 
   type OnCreateDescendantDocumentsArgs =
-    | Document.Internal.OnCreateDescendantDocumentsArgs<
+    | Document.OnCreateDescendantDocumentsArgs<
         TokenDocument.Stored,
-        TokenDocument.DirectDescendantName,
+        TokenDocument.DirectDescendant,
         TokenDocument.Metadata.Embedded
       >
     | ActorDelta.OnCreateDescendantDocumentsArgs;
 
   type PreUpdateDescendantDocumentsArgs =
-    | Document.Internal.PreUpdateDescendantDocumentsArgs<
+    | Document.PreUpdateDescendantDocumentsArgs<
         TokenDocument.Stored,
-        TokenDocument.DirectDescendantName,
+        TokenDocument.DirectDescendant,
         TokenDocument.Metadata.Embedded
       >
     | ActorDelta.PreUpdateDescendantDocumentsArgs;
 
   type OnUpdateDescendantDocumentsArgs =
-    | Document.Internal.OnUpdateDescendantDocumentsArgs<
+    | Document.OnUpdateDescendantDocumentsArgs<
         TokenDocument.Stored,
-        TokenDocument.DirectDescendantName,
+        TokenDocument.DirectDescendant,
         TokenDocument.Metadata.Embedded
       >
     | ActorDelta.OnUpdateDescendantDocumentsArgs;
 
   type PreDeleteDescendantDocumentsArgs =
-    | Document.Internal.PreDeleteDescendantDocumentsArgs<
+    | Document.PreDeleteDescendantDocumentsArgs<
         TokenDocument.Stored,
-        TokenDocument.DirectDescendantName,
+        TokenDocument.DirectDescendant,
         TokenDocument.Metadata.Embedded
       >
     | ActorDelta.PreDeleteDescendantDocumentsArgs;
 
   type OnDeleteDescendantDocumentsArgs =
-    | Document.Internal.OnDeleteDescendantDocumentsArgs<
+    | Document.OnDeleteDescendantDocumentsArgs<
         TokenDocument.Stored,
-        TokenDocument.DirectDescendantName,
+        TokenDocument.DirectDescendant,
         TokenDocument.Metadata.Embedded
       >
     | ActorDelta.OnDeleteDescendantDocumentsArgs;
-
-  /* ***********************************************
-   *            TOKEN-SPECIFIC TYPES               *
-   *************************************************/
 
   // The getBarAttribute monkeypatch is simply inside the data model definition at `src/foundry/common/data/data.d.mts`
 
@@ -1716,58 +1024,39 @@ declare namespace TokenDocument {
   }
 
   /** @internal */
-  interface _GetBarAttributeOptions {
+  type _GetBarAttributeOptions = NullishProps<{
     /**
      * An alternative attribute path to get instead of the default one
      * @defaultValue `this[barName]?.attribute`
-     * @remarks If the above default returns falsey, the {@linkcode TokenDocument.getBarAttribute | TokenDocument#getBarAttribute}
+     * @remarks If the above default returns falsey, the {@link TokenDocument.getBarAttribute | `TokenDocument#getBarAttribute`}
      * call returns `null`
      */
     alternative: string;
-  }
+  }>;
 
-  interface GetBarAttributeOptions extends InexactPartial<_GetBarAttributeOptions> {}
-
-  interface SingleAttributeBar {
-    type: "value";
-    attribute: string;
-    value: number;
-    editable: boolean;
-  }
-
-  interface ObjectAttributeBar {
-    type: "bar";
-    attribute: string;
-    value: number;
-    max: number;
-    editable: boolean;
-  }
+  interface GetBarAttributeOptions extends _GetBarAttributeOptions {}
 
   type GetBarAttributeReturn = SingleAttributeBar | ObjectAttributeBar | null;
 
-  /**
-   * Both {@linkcode TokenDocument.createCombatants} and {@linkcode TokenDocument.deleteCombatants} only take this one property.
-   * @internal
-   */
-  interface _CreateOrDeleteCombatantsOptions {
+  /** @internal */
+  type _CreateCombatantsOptions = NullishProps<{
     /**
      * A specific Combat instance which should be modified. If undefined,
      * the current active combat will be modified if one exists. Otherwise, a new
      * Combat encounter will be created if the requesting user is a Gamemaster.
-     * @defaultValue {@linkcode foundry.documents.collections.CombatEncounters.viewed | game.combats.viewed}
-     * @privateRemarks Requires `Stored` because it has embedded documents created on it
+     * @defaultValue `game.combats.viewed`
      */
-    combat: Combat.Stored;
-  }
+    combat: Combat.Implementation;
+  }>;
 
-  interface CreateCombatantsOptions extends InexactPartial<_CreateOrDeleteCombatantsOptions> {}
+  interface CreateCombatantsOptions extends _CreateCombatantsOptions {}
 
-  interface DeleteCombatantsOptions extends InexactPartial<_CreateOrDeleteCombatantsOptions> {}
+  interface DeleteCombatantsOptions extends _CreateCombatantsOptions {}
 
   type TrackedAttributesSubject =
     | DataModel.Any
     | DataModel.AnyConstructor
-    | fields.SchemaField.Any
+    | SchemaField.Any
     | Actor.SubType
     | AnyObject
     | AnyArray;
@@ -1786,25 +1075,23 @@ declare namespace TokenDocument {
     label: string;
   }
 
-  interface ToggleCombatantOptions extends InexactPartial<TokenDocument._CreateOrDeleteCombatantsOptions> {
+  interface ToggleCombatantOptions extends InexactPartial<TokenDocument.CreateCombatantsOptions> {
     /**
      * Require this token to be an active Combatant or to be removed.
      * Otherwise, the current combat state of the Token is toggled.
-     * @defaultValue {@linkcode TokenDocument.inCombat | !this.inCombat}
      */
     active: boolean;
   }
 
-  /**
-   * {@linkcode TokenDocument.getEmbeddedCollection | TokenDocument#getEmbeddedCollection} adds cases for these extra valid values if the
-   * token is unlinked. They are specifically enumerated, with no support for e.g passing `"actors"` in place of `"Actor"`, like you can
-   * with {@linkcode Document.getEmbeddedCollection | Document#getEmbeddedCollection}.
-   */
   type GetEmbeddedCollectionName = Embedded.CollectionName | "Actor" | "Item" | "ActiveEffect";
 
-  type GetEmbeddedCollectionResult<Name extends GetEmbeddedCollectionName> =
-    | (Name extends Document.Type ? foundry.utils.Collection<Document.ImplementationFor<Name>> : never)
-    | (Name extends Embedded.CollectionName ? Embedded.CollectionFor<Name> : never);
+  // TODO(LukeAbby): Simplified for now to prevent circularities. The correct implementation would
+  // be this:
+  // | (Name extends "Actor" ? globalThis.Collection<Actor.Implementation> : never)
+  // | (Name extends "Item" ? globalThis.Collection<Item.Implementation> : never)
+  // | (Name extends "ActiveEffect" ? globalThis.Collection<ActiveEffect.Implementation> : never)
+  // | (Name extends Embedded.CollectionName ? Embedded.CollectionFor<Name> : never);
+  type GetEmbeddedCollectionResult<_Name extends GetEmbeddedCollectionName> = Collection.Any;
 
   type MovementState = "completed" | "paused" | "pending" | "stopped";
 
@@ -1837,7 +1124,7 @@ declare namespace TokenDocument {
     height: number;
 
     /**
-     * The shape type (see {@linkcode CONST.TOKEN_SHAPES}).
+     * The shape type (see {@link CONST.TOKEN_SHAPES}).
      */
     shape: CONST.TOKEN_SHAPES;
   }
@@ -1848,25 +1135,18 @@ declare namespace TokenDocument {
 
   interface ShapelessDimensions extends Omit<Dimensions, "shape"> {}
 
-  interface GetSizeDimensions extends InexactPartial<ShapelessDimensions> {}
+  interface Dimensions2D extends InexactPartial<foundry.canvas.Canvas.Point & Dimensions> {}
 
-  interface Dimensions2D extends InexactPartial<Canvas.Point>, InexactPartial<Dimensions> {}
+  interface Dimensions3D extends InexactPartial<foundry.canvas.Canvas.ElevatedPoint & Dimensions> {}
 
-  interface Dimensions3D extends InexactPartial<Canvas.ElevatedPoint>, InexactPartial<Dimensions> {}
+  interface ResizeOptions extends InexactPartial<Omit<TokenDocument.Database.UpdateOperation, "updates">> {}
 
-  interface MovementWaypoint extends Omit<
-    MeasuredMovementWaypoint,
-    "terrain" | "intermediate" | "userId" | "movementId" | "cost"
-  > {}
+  interface MovementWaypoint
+    extends Omit<MeasuredMovementWaypoint, "terrain" | "intermediate" | "userId" | "movementId" | "cost"> {}
 
-  /** @remarks Used for passing to {@linkcode TokenDocument.move | TokenDocument#move}. */
-  interface PartialMovementWaypoint extends InexactPartial<MovementWaypoint> {}
-
-  interface MovementSegmentData extends Pick<
-    MeasuredMovementWaypoint,
-    "width" | "height" | "shape" | "action" | "terrain"
-  > {
-    actionConfig: CONFIG.Token.Movement.ActionConfig;
+  interface MovementSegmentData
+    extends Pick<MeasuredMovementWaypoint, "width" | "height" | "shape" | "action" | "terrain"> {
+    actionConfig: CONFIG.Token.MovementActionConfig;
     teleport: boolean;
   }
 
@@ -1927,6 +1207,33 @@ declare namespace TokenDocument {
      * The number of diagonals moved along the combined path
      */
     diagonals: number;
+  }
+
+  interface ConstrainMovementPathOptions {
+    /**
+     * Constrain a preview path?
+     * @defaultValue `false`
+     */
+    preview: boolean;
+
+    /**
+     * Ignore walls?
+     * @defaultValue `false`
+     */
+    ignoreWalls: boolean;
+
+    /**
+     * Ignore cost?
+     * @defaultValue `false`
+     */
+    ignoreCost: boolean;
+
+    /**
+     * Consider movement history? If true, uses the current movement history. If waypoints are passed, uses those as the history.
+     * @defaultValue `false`
+     * @remarks marked by foundry as readonly
+     */
+    history: boolean | TokenDocument.MeasuredMovementWaypoint[];
   }
 
   interface MovementContinuationHandle {
@@ -1991,86 +1298,104 @@ declare namespace TokenDocument {
     };
   }
 
-  interface ConstrainOptions extends Omit<Token.ConstrainMovementPathOptions, "preview" | "history"> {}
+  interface ConstrainOptions extends Omit<ConstrainMovementPathOptions, "preview" | "history"> {}
 
   interface MovementData {
-    /** The ID of the movement */
+    /**
+     * The ID of the movement
+     */
     id: string;
 
-    /** The chain of prior movement IDs that this movement is a continuation of */
+    /**
+     * The chain of prior movement IDs that this movement is a continuation of
+     */
     chain: string[];
 
-    /** The origin of movement */
+    /**
+     * The origin of movement
+     */
     origin: TokenDocument.Position;
 
-    /** The destination of movement */
+    /**
+     * The destination of movement
+     */
     destination: TokenDocument.Position;
 
-    /** The waypoints and measurements of the passed path */
+    /**
+     * The waypoints and measurements of the passed path
+     */
     passed: TokenDocument.MovementSectionData;
 
-    /** The waypoints and measurements of the pending path */
+    /**
+     * The waypoints and measurements of the pending path
+     */
     pending: TokenDocument.MovementSectionData;
 
-    /** The waypoints and measurements of the history path */
+    /**
+     * The waypoints and measurements of the history path
+     */
     history: TokenDocument.MovementHistoryData;
 
-    /** Was the movement constrained? */
+    /**
+     * Was the movement constrained?
+     */
     constrained: boolean;
 
-    /** Was the movement recorded in the movement history? */
+    /**
+     * Was the movement recorded in the movement history?
+     */
     recorded: boolean;
 
-    /** The method of movement */
+    /**
+     * The method of movement
+     */
     method: TokenDocument.MovementMethod;
 
-    /** The options to constrain movement */
+    /**
+     * The options to constrain movement
+     */
     constrainOptions: ConstrainOptions;
 
-    /** Automatically rotate the token in the direction of movement? */
+    /**
+     * Automatically rotate the token in the direction of movement?
+     */
     autoRotate: boolean;
 
-    /** Show the ruler during the movement animation of the token? */
+    /**
+     * Show the ruler during the movement animation of the token?
+     */
     showRuler: boolean;
 
-    /** The user that moved the token */
-    user: User.Stored;
+    /**
+     * The user that moved the token
+     */
+    user: User.Implementation;
 
-    /** The state of the movement */
+    /**
+     * The state of the movement
+     */
     state: TokenDocument.MovementState;
 
-    /** The update options of the movement operation */
-    updateOptions: Database.UpdateOneDocumentOperation;
+    /**
+     * The update options of the movement operation
+     */
+    updateOptions: Database.UpdateOperation;
   }
 
-  /**
-   * Used by both {@linkcode MoveOptions} and {@linkcode Database._PreServerUpdateOperation.movement}.
-   * @internal
-   */
-  interface _MoveOptions extends Pick<MovementData, "method" | "autoRotate" | "showRuler" | "constrainOptions"> {}
+  interface MoveOptions extends Database.UpdateOperation {
+    method: MovementMethod;
+    autoRotate: boolean;
+    showRuler: boolean;
+    constrainOptions: ConstrainOptions;
+  }
 
-  /**
-   * The interface for passing to {@linkcode TokenDocument.move | TokenDocument#move}.
-   * @remarks `movement` and `_movementArguments` are omitted because they're supplied
-   * to the `#update` call *after* spreading in this object.
-   */
-  interface MoveOptions
-    extends
-      Omit<Database.UpdateOneDocumentOperation, "movement" | "_movementArguments">,
-      InexactPartial<_MoveOptions> {}
-
-  /**
-   * We have no information from the `TokenDocument` about whether the grid is hex or not, or whether the path provided is 2D or 3D.
-   */
-  type MovementCostFunction =
-    | BaseGrid.CostFunction<BaseGrid.Coordinates2D, MovementSegmentData>
-    | BaseGrid.CostFunction<HexagonalGrid.Coordinates2D, MovementSegmentData>
-    | BaseGrid.CostFunction<BaseGrid.Coordinates3D, MovementSegmentData>
-    | BaseGrid.CostFunction<HexagonalGrid.Coordinates3D, MovementSegmentData>;
+  interface MovementCostFunction extends Omit<foundry.grid.BaseGrid.MeasurePathCostFunction3D, "segment"> {
+    segment: MovementSegmentData;
+  }
 
   interface MovementCostAggregatorResult {
-    from: BaseGrid.Offset3D;
-    to: BaseGrid.Offset3D;
+    from: foundry.grid.BaseGrid.Offset3D;
+    to: foundry.grid.BaseGrid.Offset3D;
     cost: number;
   }
 
@@ -2093,30 +1418,22 @@ declare namespace TokenDocument {
     segment: MovementSegmentData,
   ) => number;
 
-  /** @internal */
-  interface _MeasureMovementPathOptions {
-    /**
-     * The function that returns the cost for a given move between grid spaces
-     * (default is the distance traveled along the direct path)
-     */
-    cost: MovementCostFunction;
+  interface MeasureMovementPathOptions
+    extends InexactPartial<{
+      /**
+       * The function that returns the cost for a given move between grid spaces
+       * (default is the distance travelled along the direct path)
+       */
+      cost: MovementCostFunction;
 
-    /**
-     * The cost aggregator.
-     * @defaultValue {@linkcode CONFIG.Token.movement.costAggregator}
-     */
-    aggregator: MovementCostAggregator;
-  }
-
-  interface MeasureMovementPathOptions extends InexactPartial<_MeasureMovementPathOptions> {}
+      /**
+       * The cost aggregator.
+       * @defaultValue `CONFIG.Token.movement.costAggregator`
+       */
+      aggregator: MovementCostAggregator;
+    }> {}
 
   interface MovementOperation extends Omit<MovementData, "user" | "state" | "updateOptions"> {}
-
-  interface ActualMovementOperation extends Pick<MovementOperation, "autoRotate" | "showRuler" | "constrainOptions"> {}
-
-  type PauseMovementReturn<Key extends string | undefined> =
-    | (Key extends string ? Promise<boolean> : () => Promise<boolean>)
-    | null;
 
   /**
    * The hexagonal offsets of a Token.
@@ -2125,106 +1442,39 @@ declare namespace TokenDocument {
     /**
      * The occupied offsets in an even grid in the 0th row/column
      */
-    even: BaseGrid.Offset2D[];
+    even: foundry.grid.BaseGrid.Offset2D[];
 
     /**
      * The occupied offsets in an odd grid in the 0th row/column
      */
-    odd: BaseGrid.Offset2D[];
+    odd: foundry.grid.BaseGrid.Offset2D[];
 
     /**
-     * The anchor in normalized coordinates
+     * The anchor in normalized coordiantes
      */
-    anchor: Canvas.Point;
+    anchor: foundry.canvas.Canvas.Point;
   }
 
-  /**
-   * @remarks This is the type for entries in {@linkcode TokenDocument.Database._PreServerUpdateOperation._movement}, as well as the first
-   * argument of {@linkcode TokenDocument._preUpdateMovement | TokenDocument#_preUpdateMovement}
-   */
-  interface PreUpdateMovement
-    extends
-      DeepReadonly<Omit<MovementOperation, "autoRotate" | "showRuler">>,
+  interface PreMovementOptions
+    extends DeepReadonly<Omit<MovementOperation, "autoRotate" | "showRuler">>,
       Pick<MovementOperation, "autoRotate" | "showRuler"> {}
 
-  interface SegmentizeMovementWaypoint extends InexactPartial<
-    Pick<
-      MeasuredMovementWaypoint,
-      "x" | "y" | "elevation" | "width" | "height" | "shape" | "action" | "terrain" | "snapped"
-    >
-  > {}
-
-  /**
-   * Sometimes {@linkcode TokenDocument._onUpdateBaseActor | #_onUpdateBaseActor} gets passed {@linkcode Actor.Database.OnUpdateOptions},
-   * sometimes an empty object.
-   */
-  interface OnUpdateBaseActorOptions extends IntentionalPartial<Actor.Database.OnUpdateOptions> {}
-
-  /**
-   * @remarks The type for the `operation` argument of {@linkcode TokenDocument._onRelatedUpdate | TokenDocument#_onRelatedUpdate}.
-   *
-   * The method, in core, is called in four places:
-   * {@linkcode TokenDocument._onCreateDescendantDocuments | TokenDocument#_onCreateDescendantDocuments},
-   * {@linkcode TokenDocument._onUpdateDescendantDocuments | TokenDocument#_onUpdateDescendantDocuments},
-   * and {@linkcode TokenDocument._onDeleteDescendantDocuments | TokenDocument#_onDeleteDescendantDocuments},
-   * which reliably forward {@linkcode ActorDelta.CreateData}, {@linkcode ActorDelta.UpdateData}, and
-   * an empty object literal, respectively, and
-   * {@linkcode TokenDocument._onUpdateBaseActor | TokenDocument#_onUpdateBaseActor}, which in core is only called from
-   * {@linkcode Actor._updateDependentTokens | Actor#_updateDependentTokens}, which can be called so that it forwards either an
-   * {@linkcode Actor.UpdateData} via {@linkcode Actor._onUpdate | Actor#_onUpdate}, or as little as an empty object via
-   * {@linkcode Actor._onEmbeddedDocumentChange | Actor#_onEmbeddedDocumentChange}; unlike with {@linkcode OnRelatedUpdateOperation},
-   * we already have {@linkcode EmptyObject} in the union, so nothing needs to be additionally partialed.
-   */
-  type OnRelatedUpdateData = ActorDelta.CreateData[] | ActorDelta.UpdateData[] | EmptyObject | Actor.UpdateData;
-
-  /**
-   * @remarks The type for the `operation` argument of {@linkcode TokenDocument._onRelatedUpdate | TokenDocument#_onRelatedUpdate}.
-   *
-   * The method, in core, is called in four places:
-   * {@linkcode TokenDocument._onCreateDescendantDocuments | TokenDocument#_onCreateDescendantDocuments},
-   * {@linkcode TokenDocument._onUpdateDescendantDocuments | TokenDocument#_onUpdateDescendantDocuments},
-   * and {@linkcode TokenDocument._onDeleteDescendantDocuments | TokenDocument#_onDeleteDescendantDocuments},
-   * which reliably forward {@linkcode ActorDelta.Database.OnCreateOptions}, {@linkcode ActorDelta.Database.OnUpdateOptions}, and
-   * {@linkcode ActorDelta.Database.OnDeleteOptions}, respectively, and
-   * {@linkcode TokenDocument._onUpdateBaseActor | TokenDocument#_onUpdateBaseActor}, which in core is only called from
-   * {@linkcode Actor._updateDependentTokens | Actor#_updateDependentTokens}, which can be called so that it forwards either an
-   * {@linkcode Actor.Database.OnUpdateOptions} via {@linkcode Actor._onUpdate | Actor#_onUpdate}, or as little as an empty object via
-   * {@linkcode Actor._onEmbeddedDocumentChange | Actor#_onEmbeddedDocumentChange}; the latter is covered by just `IntentionalPartial`ing
-   * the actor `OnUpdateOptions`, as it's only the `Actor` path that can be empty.
-   *
-   * Foundry types this as just {@linkcode DatabaseBackend.DatabaseOperation | Partial<DatabaseOperation>}
-   */
-  type OnRelatedUpdateOperation =
-    | IntentionalPartial<Actor.Database.OnUpdateOptions>
-    | ActorDelta.Database.OnCreateOptions
-    | ActorDelta.Database.OnUpdateOptions
-    | ActorDelta.Database.OnDeleteOptions;
-
-  /**
-   * @deprecated This interface has been renamed, use {@linkcode TokenDocument.PreUpdateMovement} instead.
-   * This warning will be removed in v14.
-   */
-  type PreMovementOptions = PreUpdateMovement;
-
-  /**
-   * @deprecated This type is no longer required, use {@linkcode TokenDocument.Database.UpdateOneDocumentOperation} directly instead.
-   * This type will be removed in v14.
-   */
-  type ResizeOptions = TokenDocument.Database.UpdateOneDocumentOperation;
+  interface SegmentizeMovementWaypoint
+    extends InexactPartial<
+      Pick<
+        MeasuredMovementWaypoint,
+        "x" | "y" | "elevation" | "width" | "height" | "shape" | "action" | "terrain" | "snapped"
+      >
+    > {}
 
   /**
    * The arguments to construct the document.
    *
-   * @deprecated Writing the signature directly has helped reduce circularities and therefore is
-   * now recommended. This type will be removed in v14.
+   * @deprecated - Writing the signature directly has helped reduce circularities and therefore is
+   * now recommended.
    */
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   type ConstructorArgs = Document.ConstructorParameters<CreateData, Parent>;
-
-  /**
-   * @deprecated Replaced by {@linkcode Token.ConstrainMovementPathOptions}.
-   */
-  type ConstrainMovementPathOptions = Token.ConstrainMovementPathOptions;
 }
 
 /**
@@ -2281,7 +1531,7 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
   /**
    * A reference to the base, World-level Actor this token represents.
    */
-  get baseActor(): Actor.Stored | null;
+  get baseActor(): Actor.Implementation | null;
 
   /**
    * An indicator for whether or not the current User has full control over this Token document.
@@ -2302,7 +1552,7 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
   /**
    * Return a reference to a Combatant that represents this Token, if one is present in the current encounter.
    */
-  get combatant(): Combatant.Stored | null;
+  get combatant(): Combatant.Implementation | null;
 
   /**
    * An indicator for whether or not this Token is currently involved in the active combat encounter.
@@ -2312,7 +1562,7 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
   /**
    * The movement history
    */
-  get movementHistory(): TokenDocument.MeasuredMovementWaypoint[];
+  get movementHistory(): TokenDocument.MeasuredMovementWaypoint;
 
   /**
    * Check if the document has a distinct subject texture (inferred or explicit).
@@ -2340,11 +1590,11 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
   /**
    * Infer the subject texture path to use for a token ring.
    */
-  protected _inferRingSubjectTexture(): string | null;
+  protected _inferRingSubjectTexture(): string;
 
   /**
    * Infer the movement action.
-   * The default implementation returns {@linkcode CONFIG.Token.movement.defaultAction}.
+   * The default implementation returns `CONFIG.Token.movement.defaultAction`.
    */
   protected _inferMovementAction(): string;
 
@@ -2356,7 +1606,7 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
 
   /**
    * A helper method to retrieve the underlying data behind one of the Token's attribute bars
-   * @param barName - The named bar to retrieve the attribute for
+   * @param barName     - The named bar to retrieve the attribute for
    * @returns The attribute displayed on the Token bar, if any
    */
   getBarAttribute(barName: string, options?: TokenDocument.GetBarAttributeOptions): TokenDocument.GetBarAttributeReturn;
@@ -2375,8 +1625,8 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
    * @returns A Promise that resolves to true if the Token was moved, otherwise resolves to false
    */
   move(
-    waypoints: MaybeArray<TokenDocument.PartialMovementWaypoint>,
-    options?: TokenDocument.MoveOptions,
+    waypoints: InexactPartial<TokenDocument.MovementWaypoint> | InexactPartial<TokenDocument.MovementWaypoint>[],
+    options?: InexactPartial<TokenDocument.MoveOptions>,
   ): Promise<boolean>;
 
   /**
@@ -2394,10 +1644,7 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
    * @param options    - Parameters of the update operation
    * @returns A Promise that resolves to true if the Token was resized, otherwise resolves to false
    */
-  resize(
-    dimensions?: TokenDocument.PartialDimensions,
-    options?: TokenDocument.Database.UpdateOneDocumentOperation,
-  ): Promise<boolean>;
+  resize(dimensions: TokenDocument.PartialDimensions, options?: TokenDocument.ResizeOptions): Promise<boolean>;
 
   /**
    * Stop the movement of this Token document. The movement cannot be continued after being stopped.
@@ -2407,23 +1654,29 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
   stopMovement(): boolean;
 
   /**
-   * This function is called on Token documents that are still being moved by a User that just disconnected.
-   * @internal
-   */
-  _stopMovementOnDisconnect(): void;
-
-  /**
    * Pause the movement of this Token document. The movement can be resumed after being paused.
-   *
    * Only the User that initiated the movement can pause it.
-   *
-   * Returns a promise that resolves to true if the movement was resumed by {@linkcode TokenDocument.resumeMovement | TokenDocument#resumeMovement}
-   * with the same key that was passed to this function.
-   *
+   * Returns a callback that can be used to resume the movement later.
    * Only after all callbacks and keys have been called the movement of the Token is resumed.
-   *
    * If the callback is called within the update operation workflow, the movement is resumed after the workflow.
-   * @param key - The key to resume movement with {@linkcode TokenDocument.resumeMovement | TokenDocument#resumeMovement}
+   * @returns The callback to resume movement if the movement was or is paused,
+   *                                              otherwise null
+   * @example
+   * ```js
+   * // This is an Execute Script Region Behavior that makes the token invisible
+   * // On TOKEN_MOVE_IN...
+   * if ( !event.user.isSelf ) return;
+   * const resumeMovement = event.data.token.pauseMovement();
+   * event.data.token.toggleStatusEffect("invisible", {active: true});
+   * const resumed = await resumeMovement();
+   * ```
+   * Pause the movement of this Token document. The movement can be resumed after being paused.
+   * Only the User that initiated the movement can pause it.
+   * Returns a promise that resolves to true if the movement was resumed by
+   * {@link foundry.documents.TokenDocument.resumeMovement | `TokenDocument#resumeMovement`} with the same key that was passed to this function.
+   * Only after all callbacks and keys have been called the movement of the Token is resumed.
+   * If the callback is called within the update operation workflow, the movement is resumed after the workflow.
+   * @param key - The key to resume movement with {@link foundry.documents.TokenDocument.resumeMovement | `TokenDocument#resumeMovement`}
    * @returns The continuation promise if the movement was paused, otherwise null
    * @example
    * ```js
@@ -2433,22 +1686,19 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
    *   event.data.token.pauseMovement(this.parent.uuid);
    * }
    * if ( game.user.isActiveGM ) {
-   *   if ( event.data.token.rendered ) await event.data.token.object.movementAnimationPromise;
    *   const trapUuid; // The Region Behavior UUID of the trap
    *   const trapBehavior = await fromUuid(trapUuid);
    *   await trapBehavior.update({disabled: false});
    *   event.data.token.resumeMovement(event.data.movement.id, this.parent.uuid);
    * }
    * ```
-   * @remarks
-   * @throws If the key has already been used on this token for this movement.
    */
-  pauseMovement<Key extends string | undefined = undefined>(key?: Key): TokenDocument.PauseMovementReturn<Key>;
+  pauseMovement(key?: string): (() => Promise<boolean>) | Promise<boolean> | null;
 
   /**
-   * Resume the movement given its ID and the key that was passed to {@linkcode TokenDocument.pauseMovement | TokenDocument#pauseMovement}.
+   * Resume the movement given its ID and the key that was passed to {@link foundry.documents.TokenDocument.pauseMovement | `TokenDocument#pauseMovement`}.
    * @param movementId - The movement ID
-   * @param key        - The key that was passed to {@linkcode TokenDocument.pauseMovement | TokenDocument#pauseMovement}
+   * @param key        - The key that was passed to {@link foundry.documents.TokenDocument.pauseMovement | `TokenDocument#pauseMovement`}
    */
   resumeMovement(movementId: string, key: string): void;
 
@@ -2457,11 +1707,10 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
    * @param waypoints - The waypoints of movement
    * @param options   - Additional measurement options
    */
-  // TODO: Split into 2D/3D overloads?
   measureMovementPath(
-    waypoints: TokenDocument.MeasureMovementPathWaypoint[],
+    waypoints: TokenDocument.MeasuredMovementWaypoint[],
     options?: TokenDocument.MeasureMovementPathOptions,
-  ): BaseGrid.MeasurePathResult;
+  ): foundry.grid.BaseGrid.MeasurePathResult;
 
   /**
    * Get the path of movement with the intermediate steps of the direct path between waypoints.
@@ -2486,7 +1735,7 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
    * @returns An array of created Combatant documents
    */
   static createCombatants(
-    tokens: TokenDocument.Stored[],
+    tokens: TokenDocument.Implementation[],
     options?: TokenDocument.CreateCombatantsOptions,
   ): Promise<Combatant.Implementation[]>;
 
@@ -2497,7 +1746,7 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
    * @returns An array of deleted Combatant documents
    */
   static deleteCombatants(
-    tokens: TokenDocument.Stored[],
+    tokens: TokenDocument.Implementation[],
     options?: TokenDocument.DeleteCombatantsOptions,
   ): Promise<Combatant.Implementation[]>;
 
@@ -2508,76 +1757,25 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
    */
   updateVisionMode(
     visionMode: VisionMode.ConfiguredModes,
-    defaults?: boolean,
-  ): Promise<TokenDocument.Stored | undefined>;
+    defaults?: boolean | null,
+  ): Promise<TokenDocument.Implementation | undefined>;
 
   /**
-   * @remarks Foundry specifically overrides this method such that unlinked `TokenDocument` instances handle 3 extra cases:
-   * - Passing `"Actor"` returns {@linkcode TokenDocument.actors | this.actors}.
-   * - Passing `"Item"` returns {@linkcode Actor.items | this.actor.items}.
-   * - Passing `"ActiveEffect"` returns {@linkcode Actor.effects | this.actor.effects}.
+   * @remarks Foundry specifically overrides this method such that unlinked `TokenDocument` instances
+   * handles 3 extra cases:
+   * - Passing `"Actor"` returns `this.actors`.
+   * - Passing `"Item"` returns `this.actor.items`.
+   * - Passing `"ActiveEffect"` returns `this.actor.effects`.
    */
   override getEmbeddedCollection<EmbeddedName extends TokenDocument.GetEmbeddedCollectionName>(
     embeddedName: EmbeddedName,
   ): TokenDocument.GetEmbeddedCollectionResult<EmbeddedName>;
 
-  // For type simplicity the following real override(s) are commented out.
-  // These methods historically have been the source of a large amount of computation from tsc.
-
-  // These methods are more scattered in TokenDocument than most, they have been collected here for tidiness
-
-  // protected override _onCreate(
-  //   data: TokenDocument.CreateData,
-  //   options: TokenDocument.Database.OnCreateOptions,
-  //   userId: string,
-  // ): void;
-
-  // protected static override _preCreateOperation(
-  //   documents: TokenDocument.Implementation[],
-  //   operation: TokenDocument.Database.PreCreateOperation,
-  //   user: User.Stored,
-  // ): Promise<boolean | void>;
-
-  // protected static override _onCreateOperation(
-  //   documents: TokenDocument.Stored[],
-  //   operation: TokenDocument.Database.OnCreateOperation,
-  //   user: User.Stored,
-  // ): Promise<void>;
-
-  // protected override _preUpdate(
-  //   changed: TokenDocument.UpdateData,
-  //   options: TokenDocument.Database.PreUpdateOptions,
-  //   user: User.Stored,
-  // ): Promise<boolean | void>;
-
-  // protected override _onUpdate(
-  //   changed: TokenDocument.UpdateData,
-  //   options: TokenDocument.Database.OnUpdateOptions,
-  //   userId: string,
-  // ): void;
-
-  // protected static override _preUpdateOperation(
-  //   documents: TokenDocument.Stored[],
-  //   operation: TokenDocument.Database.PreUpdateOperation,
-  //   user: User.Stored,
-  // ): Promise<boolean | void>;
-
-  // protected static override _onUpdateOperation(
-  //   documents: TokenDocument.Stored[],
-  //   operation: TokenDocument.Database.OnUpdateOperation,
-  //   user: User.Stored,
-  // ): Promise<void>;
-
-  // protected override _onDelete(options: TokenDocument.Database.OnDeleteOptions, userId: string): void;
-
-  // protected static override _onDeleteOperation(
-  //   documents: TokenDocument.Stored[],
-  //   operation: TokenDocument.Database.OnDeleteOperation,
-  //   user: User.Stored,
-  // ): Promise<void>;
+  // _onCreate, _preUpdate, _onUpdate, _onDelete, _preCreateOperation, _preUpdateOperation, _onCreateOperation,
+  // _onUpdateOperation, _onDeleteOperation are all overridden but with no signature changes from their definition in BaseToken.
 
   /**
-   * Identify the Regions the Token currently is or is going to be in after the changes are applied.
+   *
    * @param changes - The changes that will be applied to this Token
    * @returns The Region IDs this Token is in after changes ar applied (sorted)
    * @internal
@@ -2591,11 +1789,11 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
    * @param movement  - The pending movement of this Token
    * @param operation - The update operation
    * @returns If false, the movement is prevented
-   * @remarks Definition in `TokenDocument` is a stub
+   * @remarks default implementation does nothing
    */
   protected _preUpdateMovement(
-    movement: TokenDocument.PreUpdateMovement,
-    operation: TokenDocument.Database.PreUpdateOptions,
+    movement: TokenDocument.PreMovementOptions,
+    operation: TokenDocument.Database.UpdateOperation,
   ): Promise<boolean | void>;
 
   /**
@@ -2603,16 +1801,12 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
    * @param movement  - The movement of this Token
    * @param operation - The update operation
    * @param user      - The User that requested the update operation
-   * @remarks Definition in `TokenDocument` is a stub
-   * @privateRemarks Foundry types `movement` as `DeepReadonly<TokenMovementOperation>`, which runtime testing has, bizarrely, been
-   * inconclusive in confirming. The operation `_movement` entries *are* sealed and *mostly* frozen (see
-   * {@linkcode TokenDocument.PreUpdateMovement}), but the objects reconstituted from the server's socket response shouldn't be by default,
-   * and a mechanism for making them such is not evident.
+   * @remarks default implementation does nothing, foundry marked `movement` as readonly
    */
   protected _onUpdateMovement(
     movement: TokenDocument.MovementOperation,
-    operation: TokenDocument.Database.OnUpdateOptions,
-    user: User.Stored,
+    operation: TokenDocument.Database.UpdateOperation,
+    user: User.Implementation,
   ): void;
 
   /**
@@ -2633,9 +1827,9 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
   /**
    * Add deprecated getters for the teleport and forced option.
    * @internal
-   * @deprecated (since v13, until v15)
+   * @deprecated since v13
    */
-  static _addTeleportAndForcedShims(operation: TokenDocument.Database.OnUpdateOperation): void;
+  protected static _addTeleportAndForcedShims(operation: TokenDocument.Database.UpdateOperation): void;
 
   /**
    * Are these changes moving the Token?
@@ -2671,24 +1865,25 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
   /**
    * Test whether the Token is inside the Region.
    * This function determines the state of {@linkcode TokenDocument.regions | TokenDocument#regions} and
-   * {@linkcode RegionDocument.tokens | RegionDocument#tokens}. The Token and the Region must be in the same Scene.
+   * {@linkcode foundry.documents.RegionDocument.tokens | foundry.documents.RegionDocument#tokens}.
+   * The Token and the Region must be in the same Scene.
    *
    * Implementations of this function are restricted in the following ways:
-   *   - If the bounds (given by {@linkcode TokenDocument.getSize | TokenDocument#getSize}) of the Token do not intersect the
+   *   - If the bounds (given by {@link TokenDocument#getSize}) of the Token do not intersect the
    *     Region, then the Token is not contained within the Region.
    *   - If the Token is inside the Region a particular elevation, then the Token is inside the Region at any elevation
    *     within the elevation range of the Region.
    *   - This function must not use prepared field values that are animated. In particular, it must use the source
    *     instead of prepared values of the following fields: `x`, `y`, `elevation`, `width`, `height`, and `shape`.
    *
-   * If this function is overridden, then
-   * {@linkcode TokenDocument.segmentizeRegionMovementPath | TokenDocument#segmentizeRegionMovementPath} must be overridden too.
+   * If this function is overridden, then {@link TokenDocument#segmentizeRegionMovementPath} must be
+   * overridden too.
    *
    * If an override of this function uses Token document fields other than `x`, `y`, `elevation`, `width`, `height`, and
-   * `shape`, {@linkcode TokenDocument._couldRegionsChange | TokenDocument#_couldRegionsChange} must be overridden to return true for
-   * changes of these fields. If an override of this function uses non-Token properties other than
-   * {@linkcode Scene.GridSchema.type | Scene#grid.type} and {@linkcode Scene.GridSchema.size | Scene#grid.size},
-   * {@linkcode Scene.updateTokenRegions | Scene#updateTokenRegions} must be called when any of those properties change.
+   * `shape`, {@link TokenDocument#_couldRegionsChange} must be overridden to return true for changes
+   * of these fields. If an override of this function uses non-Token properties other than `Scene#grid.type` and
+   * `Scene#grid.size`,
+   * {@link foundry.documents.Scene#updateTokenRegions} must be called when any of those properties change.
    * @param region - The region.
    * @param data   - The position and dimensions. Defaults to the values of the document source.
    * @returns Is inside the Region?
@@ -2723,23 +1918,119 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
     waypoints: TokenDocument.SegmentizeMovementWaypoint[],
   ): RegionDocument.MovementSegment[];
 
-  protected override _preCreateDescendantDocuments(...args: TokenDocument.PreCreateDescendantDocumentsArgs): void;
+  /**
+   * @remarks To make it possible for narrowing one parameter to jointly narrow other parameters
+   * this method must be overridden like so:
+   * ```typescript
+   * class SwadeActorDelta extends ActorDelta {
+   *   protected override _preCreateDescendantDocuments(...args: ActorDelta.PreCreateDescendantDocumentsArgs) {
+   *     super._preCreateDescendantDocuments(...args);
+   *
+   *     const [parent, collection, data, options, userId] = args;
+   *     if (collection === "items") {
+   *         options; // Will be narrowed.
+   *     }
+   *   }
+   * }
+   * ```
+   */
+  protected override _preCreateDescendantDocuments(...args: ActorDelta.PreCreateDescendantDocumentsArgs): void;
 
-  protected override _onCreateDescendantDocuments(...args: TokenDocument.OnCreateDescendantDocumentsArgs): void;
+  /**
+   * @remarks To make it possible for narrowing one parameter to jointly narrow other parameters
+   * this method must be overridden like so:
+   * ```typescript
+   * class GurpsActorDelta extends ActorDelta {
+   *   protected override _onCreateDescendantDocuments(...args: ActorDelta.OnCreateDescendantDocumentsArgs) {
+   *     super._onCreateDescendantDocuments(...args);
+   *
+   *     const [parent, collection, documents, data, options, userId] = args;
+   *     if (collection === "items") {
+   *         options; // Will be narrowed.
+   *     }
+   *   }
+   * }
+   * ```
+   */
+  protected override _onCreateDescendantDocuments(...args: ActorDelta.OnCreateDescendantDocumentsArgs): void;
 
-  protected override _preUpdateDescendantDocuments(...args: TokenDocument.PreUpdateDescendantDocumentsArgs): void;
+  /**
+   * @remarks To make it possible for narrowing one parameter to jointly narrow other parameters
+   * this method must be overridden like so:
+   * ```typescript
+   * class LancerActorDelta extends ActorDelta {
+   *   protected override _preUpdateDescendantDocuments(...args: ActorDelta.OnUpdateDescendantDocuments) {
+   *     super._preUpdateDescendantDocuments(...args);
+   *
+   *     const [parent, collection, changes, options, userId] = args;
+   *     if (collection === "tokens") {
+   *         options; // Will be narrowed.
+   *     }
+   *   }
+   * }
+   * ```
+   */
+  protected override _preUpdateDescendantDocuments(...args: ActorDelta.PreUpdateDescendantDocumentsArgs): void;
 
+  /**
+   * @remarks To make it possible for narrowing one parameter to jointly narrow other parameters
+   * this method must be overridden like so:
+   * ```typescript
+   * class Ptr2eTokenDocument extends TokenDocument {
+   *   protected override _onUpdateDescendantDocuments(...args: TokenDocument.OnUpdateDescendantDocumentsArgs) {
+   *     super._onUpdateDescendantDocuments(...args);
+   *
+   *     const [parent, collection, documents, changes, options, userId] = args;
+   *     if (collection === "items") {
+   *         options; // Will be narrowed.
+   *     }
+   *   }
+   * }
+   * ```
+   */
   protected override _onUpdateDescendantDocuments(...args: TokenDocument.OnUpdateDescendantDocumentsArgs): void;
 
+  /**
+   * @remarks To make it possible for narrowing one parameter to jointly narrow other parameters
+   * this method must be overridden like so:
+   * ```typescript
+   * class KultTokenDocument extends TokenDocument {
+   *   protected override _preDeleteDescendantDocuments(...args: TokenDocument.PreDeleteDescendantDocumentsArgs) {
+   *     super._preDeleteDescendantDocuments(...args);
+   *
+   *     const [parent, collection, ids, options, userId] = args;
+   *     if (collection === "items") {
+   *         options; // Will be narrowed.
+   *     }
+   *   }
+   * }
+   * ```
+   */
   protected override _preDeleteDescendantDocuments(...args: TokenDocument.PreDeleteDescendantDocumentsArgs): void;
 
+  /**
+   * @remarks To make it possible for narrowing one parameter to jointly narrow other parameters
+   * this method must be overridden like so:
+   * ```typescript
+   * class BladesTokenDocument extends TokenDocument {
+   *   protected override _onDeleteDescendantDocuments(...args: TokenDocument.OnUpdateDescendantDocuments) {
+   *     super._onDeleteDescendantDocuments(...args);
+   *
+   *     const [parent, collection, documents, ids, options, userId] = args;
+   *     if (collection === "tokens") {
+   *         options; // Will be narrowed.
+   *     }
+   *   }
+   * }
+   * ```
+   */
   protected override _onDeleteDescendantDocuments(...args: TokenDocument.OnDeleteDescendantDocumentsArgs): void;
 
   /**
    * When the base Actor for a TokenDocument changes, we may need to update its Actor instance
-   * @remarks After updating the synthetic actor, forwards to {@linkcode TokenDocument._onRelatedUpdate | TokenDocument#_onRelatedUpdate}.
+   * @remarks After updating the synthetic actor, forwards to {@link TokenDocument._onRelatedUpdate | `TokenDocument#_onRelatedUpdate`}
    */
-  protected _onUpdateBaseActor(update?: Actor.UpdateData, options?: TokenDocument.OnUpdateBaseActorOptions): void;
+  protected _onUpdateBaseActor(update?: Actor.UpdateData, options?: Actor.Database.OnUpdateOperation): void;
 
   /**
    * Whenever the token's actor delta changes, or the base actor changes, perform associated refreshes.
@@ -2747,19 +2038,23 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
    * @param options - The options provided to the update.
    */
   protected _onRelatedUpdate(
-    update?: TokenDocument.OnRelatedUpdateData,
-    operation?: TokenDocument.OnRelatedUpdateOperation,
+    update?: Actor.UpdateData | ActorDelta.UpdateData,
+
+    /**
+     * @privateRemarks foundry calls this field operation
+     * but it's being passed options (and then ignores them)
+     */
+    operation?: Actor.Database.OnUpdateOperation,
   ): void;
 
   /**
    * Get an Array of attribute choices which could be tracked for Actors in the Combat Tracker
    * @param data  - The object to explore for attributes, or an Actor type.
    * @param _path - (default: `[]`)
-   * @remarks `_path` should be treated as internal.
    */
   // TODO: There's some very complex handling for non-datamodel Actor system implementations if we want
   static getTrackedAttributes(
-    data?: TokenDocument.TrackedAttributesSubject,
+    data?: TokenDocument.TrackedAttributesSubject | null,
     _path?: string[],
   ): TokenDocument.TrackedAttributesDescription;
 
@@ -2777,7 +2072,7 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
    * @param schema - The schema to explore for attributes.
    */
   protected static _getTrackedAttributesFromSchema(
-    schema: fields.SchemaField.Any,
+    schema: SchemaField.Any,
     _path?: string[],
   ): TokenDocument.TrackedAttributesDescription;
 
@@ -2803,10 +2098,11 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
   /**
    * A helper function to toggle a status effect which includes an Active Effect template
    * @param effectData - The Active Effect data, including statusId
-   * @param options    - Options to configure application of the Active Effect (default: `{}`)
+   * @param options    - Options to configure application of the Active Effect
+   *                     (default: `{}`)
    * @returns Whether the Active Effect is now on or off
-   * @deprecated "`TokenDocument#toggleActiveEffect` is deprecated in favor of
-   * {@linkcode Actor.toggleStatusEffect | Actor#toggleStatusEffect}" (since v12, until v14)
+   * @deprecated since v12
+   * @remarks "`TokenDocument#toggleActiveEffect` is deprecated in favor of {@link Actor.toggleStatusEffect | `Actor#toggleStatusEffect`}"
    */
   toggleActiveEffect(effectData: CONFIG.StatusEffect, options?: Actor.ToggleStatusEffectOptions): Promise<boolean>;
 
@@ -2822,53 +2118,29 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
 
   // ClientDocument overrides
 
-  // Descendant Document operations are actually overridden above
-
-  // `context` must contain a `parent`, so is required.
+  /** @remarks `context` must contain a `pack` or `parent`. */
   static override defaultName(context: TokenDocument.DefaultNameContext): string;
 
-  // `createOptions` must contain a  `parent`, so is required.
-  static override createDialog<Options extends TokenDocument.CreateDialogOptions | undefined = undefined>(
+  /** @remarks `createOptions` must contain a `pack` or `parent`. */
+  static override createDialog(
     data: TokenDocument.CreateDialogData | undefined,
-    createOptions: TokenDocument.Database.CreateDocumentsOperation,
-    options?: Options,
-  ): Promise<TokenDocument.CreateDialogReturn<Options>>;
+    createOptions: TokenDocument.Database.DialogCreateOptions,
+    options?: TokenDocument.CreateDialogOptions,
+  ): Promise<TokenDocument.Stored | null | undefined>;
 
-  /**
-   * @deprecated "The `ClientDocument.createDialog` signature has changed. It now accepts database operation options in its second
-   * parameter, and options for {@linkcode DialogV2.prompt} in its third parameter." (since v13, until v15)
-   *
-   * @see {@linkcode TokenDocument.CreateDialogDeprecatedOptions}
-   */
-  static override createDialog<Options extends TokenDocument.CreateDialogOptions | undefined = undefined>(
-    data: TokenDocument.CreateDialogData | undefined,
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    createOptions: TokenDocument.CreateDialogDeprecatedOptions,
-    options?: Options,
-  ): Promise<TokenDocument.CreateDialogReturn<Options>>;
+  override deleteDialog(
+    options?: InexactPartial<foundry.applications.api.DialogV2.ConfirmConfig>,
+    operation?: Document.Database.DeleteOperationForName<"Token">,
+  ): Promise<this | false | null | undefined>;
 
-  override deleteDialog<Options extends DialogV2.ConfirmConfig | undefined = undefined>(
-    options?: Options,
-    operation?: TokenDocument.Database.DeleteOneDocumentOperation,
-  ): Promise<TokenDocument.DeleteDialogReturn<Options>>;
-
-  /**
-   * @deprecated "`options` is now an object containing entries supported by {@linkcode DialogV2.confirm | DialogV2.confirm}."
-   * (since v13, until v15)
-   *
-   * @see {@linkcode Document.DeleteDialogDeprecatedConfig}
-   */
-  // eslint-disable-next-line @typescript-eslint/no-deprecated
-  override deleteDialog<Options extends Document.DeleteDialogDeprecatedConfig | undefined = undefined>(
-    options?: Options,
-    operation?: TokenDocument.Database.DeleteOneDocumentOperation,
-  ): Promise<TokenDocument.DeleteDialogReturn<Options>>;
-
-  static override fromDropData(data: TokenDocument.DropData): Promise<TokenDocument.Implementation | undefined>;
+  static override fromDropData(
+    data: TokenDocument.DropData,
+    options?: TokenDocument.DropDataOptions,
+  ): Promise<TokenDocument.Implementation | undefined>;
 
   static override fromImport(
     source: TokenDocument.Source,
-    context?: Document.FromImportContext<TokenDocument.Parent>,
+    context?: Document.FromImportContext<TokenDocument.Parent> | null,
   ): Promise<TokenDocument.Implementation>;
 
   override _onClickDocumentLink(event: MouseEvent): ClientDocument.OnClickDocumentLinkReturn;
@@ -2878,4 +2150,19 @@ declare class TokenDocument extends BaseToken.Internal.CanvasDocument {
   #TokenDocument: true;
 }
 
-export default TokenDocument;
+interface SingleAttributeBar {
+  type: "value";
+  attribute: string;
+  value: number;
+  editable: boolean;
+}
+
+interface ObjectAttributeBar {
+  type: "bar";
+  attribute: string;
+  value: number;
+  max: number;
+  editable: boolean;
+}
+
+export { TokenDocument as default, SingleAttributeBar, ObjectAttributeBar };

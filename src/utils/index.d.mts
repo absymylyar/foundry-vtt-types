@@ -1,5 +1,7 @@
 import type { Document } from "../foundry/common/abstract/_module.d.mts";
 
+export {};
+
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 type ConfiguredModuleData<Name extends string> = Name extends keyof ModuleConfig ? ModuleConfig[Name] : {};
 
@@ -13,7 +15,6 @@ export type FixedInstanceType<T extends abstract new (...args: never) => any> = 
   ? R
   : never;
 
-/** @deprecated Replaced with {@linkcode foundry.packages.Module.ForName | Module.ForName}, will be removed in v14 */
 export type ConfiguredModule<Name extends string> = Name extends keyof RequiredModules
   ? ConfiguredModuleData<Name>
   :
@@ -33,15 +34,11 @@ export type LoggingLevels = "debug" | "log" | "info" | "warn" | "error";
 // - `T = never` might either distribute out or return `unknown`. The fix here is checking if `any` is assignable to it.
 // - `T = { prop?: U }` with `exactOptionalPropertyTypes` should return `U | undefined` not `U`.
 // - `T` has getters `GetKey` should still access it, this means checking `keyof T` is not helpful.
-export type GetKey<T, K extends PropertyKey, D = never> =
-  (<V>() => V extends object ? 1 : 0) extends <V>() => V extends T ? 1 : 0
-    ? D
-    : // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-      (<V>() => V extends {} ? 1 : 0) extends <V>() => V extends T ? 1 : 0
-      ? D
-      : [any] extends [T] // Handle never
-        ? _GetKey<T, K, D>
-        : D;
+export type GetKey<T, K extends PropertyKey, D = never> = [object] extends [T] // Handle `{}` and `object`
+  ? D
+  : [any] extends [T] // Handle never
+    ? _GetKey<T, K, D>
+    : D;
 
 // Note(LukeAbby): This uses `infer _V` specifically to avoid index signatures.
 // However it isn't `T extends { readonly [_ in K]?: infer V } ? V : D` as under
@@ -86,7 +83,7 @@ export type IntentionalPartial<T extends object> = Partial<T>;
  *
  * @example
  * ```ts
- * // The `const T` allows inference to be a bit more specific. This is useful for a utility type like this.
+ * // The `const T` allows inference to be a bit more specific. This is useful for a utility type like this.`
  * function takesNumber<const T>(input: OverlapsWith<T, number>): void {
  *   // This function body is an example of a method this might be useful for.
  *   // If the input isn't an number it simply returns in this case.
@@ -145,7 +142,7 @@ export type ArrayOverlaps<Arr, T> =
  * merged into an interface. When the type does not conform then `ConformTo` is
  * used instead.
  *
- * See {@linkcode MustConform} for a version that throws a compilation error when the type
+ * See `MustConform` for a version that throws a compilation error when the type
  * cannot be statically known to conform.
  */
 export type MakeConform<T, ConformTo, D extends ConformTo = ConformTo> = [T] extends [ConformTo] ? T : D;
@@ -287,10 +284,11 @@ export type MaybeEmpty<T extends AnyObject> =
 /**
  * The following uses `extends object` instead of `AnyObject` to allow `O = typeof SomeClass`
  */
-export type PropertiesOfType<O extends object, V> = {
-  // This type is not distributive to avoid `O[PropertiesOfType<O, V>]` not being assignable to `V`
-  [K in keyof O]: O[K] extends V ? K : never;
+export type PropertiesOfType<O extends object, T> = {
+  [K in keyof O]: _KeyOfType<O[K], K, T>;
 }[keyof O];
+
+type _KeyOfType<V, K, T> = V extends T ? K : never;
 
 declare class Branded<in out BrandName extends string> {
   #brand: BrandName;
@@ -676,17 +674,6 @@ type _MergePlainObject<T extends object, U extends object> = {
 
 interface _MergeComplexObject<T extends object, U extends object> extends _Override<T, _MergePlainObject<T, U>> {}
 
-// Note(LukeAbby): Patterns of the form `interface Example<T> extends T {}` don't count as using `T`.
-// From tsc's point of view when calculating variance it may as well look like `interface Example<T> {}`.
-// Fundamentally this ordinarily means `Example<T>` will always be assignable to `Example<U>` and
-// vice versa.
-//
-// Obviously this is a problem, so `Uses` exists to add an unobtrusive covariant usage of the type
-// parameter, making `Example<T>` assignable to `Example<U>` only if `T` is a subtype of `U`.
-declare class Uses<T> {
-  #t?: T;
-}
-
 /**
  * Overrides properties of `T` with properties in `U`. Be careful using this type as its internal
  * implementation is likely a bit shaky.
@@ -695,8 +682,8 @@ declare class Uses<T> {
  */
 export type Override<T extends object, U extends object> = T extends unknown ? _Override<T, U> : never;
 
-// @ts-expect-error This pattern is inherently an error.
-interface _Override<T extends object, U extends object> extends U, T, Uses<T>, Uses<U> {}
+// @ts-expect-error - This pattern is inherently an error.
+interface _Override<T extends object, U extends object> extends U, T {}
 
 /**
  * Returns whether the type is a plain object. Excludes functions, arrays, and constructors while still being friendly to interfaces.
@@ -818,9 +805,6 @@ export type AnyMutableObject = {
   [K: string]: unknown;
 };
 
-/** Very basic helper type, does what it says on the tin. */
-export type MaybeArray<T> = T | T[];
-
 /**
  * Use this type to allow any array. This allows readonly arrays which is
  * generally what you want. If you need a mutable array use the
@@ -913,7 +897,7 @@ export type AnyConcreteConstructor = new (...args: never) => unknown;
  *
  * Do not use this type or {@linkcode MaybePromise} for the return
  * type of asynchronous methods on classes. For example for
- * {@linkcode Document._preCreate | Document#_preCreate} the typing
+ * {@link foundry.abstract.Document._preCreate | `Document#_preCreate`} the typing
  * should be `Promise<void>` and not this type. In theory we could use
  * {@linkcode MaybePromise} in this context as well but this seems
  * more likely to be confusing than to be helpful.
@@ -935,7 +919,7 @@ export type MustBePromise<T> = Promise<T>;
  * `Promise<T>`.
  *
  * This should generally not be used in asynchronous methods. For example in
- * {@linkcode Document._preCreate | Document#_preCreate} the typing
+ * {@link foundry.abstract.Document._preCreate | `Document#_preCreate`} the typing
  * is `Promise<void>` because it's declared as an async method. Overriding an
  * asynchronous method with a synchronous method is more confusing than
  * helpful.
@@ -981,7 +965,7 @@ export type EmptyObject = Record<string, never>;
  * type NaiveType = { foo: number; [K: string]: boolean };
  * //                 ^ Property 'foo' of type 'number' is not assignable to 'string' index type 'boolean'.
  *
- * type NaiveIntersection = { foo: number } & { [K: string]: boolean };
+ * type NaiveIntersection = { foo: number } & { [K: string]: string };
  *
  * function usesIntersection(intersection: NaiveIntersection) { ... }
  *
@@ -1262,7 +1246,7 @@ export type DiscriminatedUnion<U extends object> = _DiscriminatedUnion<U, AllKey
 // Note(LukeAbby): The `extends object` is effectively the same as `extends unknown` but used here
 // to keep `Document.SystemOfType<Document.ModuleSubType>` from being `unknown` in dependencies.
 // Inlining `Extract<..., object>` by comparison causes issues, specifically in not counting as
-// covariant. This isn't an ideal change to make but it works.
+// covaraint. This isn't an ideal change to make but it works.
 type _DiscriminatedUnion<U extends object, AllKeys extends AllKeysOf<U>> = U extends object
   ? [Exclude<AllKeys, keyof U>] extends [never]
     ? U
@@ -1333,11 +1317,12 @@ type _DeepReadonly<T> = T extends object ? DeepReadonly<T> : T;
 
 interface DeepReadonlyComplex<T extends object> extends _DeepReadonlyComplex<T> {}
 
-// @ts-expect-error This pattern is intrinsically an error.
+// @ts-expect-error - This pattern is intrinsically an error.
 // Note(LukeAbby): The two levels here, `DeepReadonlyComplex` and `_DeepReadonlyComplex`, could just be one.
 // However it gives a better type display as two levels.
 interface _DeepReadonlyComplex<T extends object, R extends object = { readonly [K in keyof T]: _DeepReadonly<T[K]> }>
-  extends R, T, Uses<R>, Uses<T> {}
+  extends R,
+    T {}
 
 /**
  * Currently indistinguishable from `DotKeys` but will eventually avoid `readonly` keys.
@@ -1391,6 +1376,15 @@ type _GetProperty<T, K, Depth extends number[] = []> = K extends keyof T
     : never;
 
 /**
+ * @deprecated Replaced by {@linkcode Document.SheetClassFor}
+ */
+export type ConfiguredSheetClass<T extends Document.AnyConstructor> = GetKey<
+  GetKey<CONFIG, T["metadata"]["name"]>,
+  "sheetClass",
+  T
+>;
+
+/**
  * @deprecated Replaced by {@linkcode Document.ObjectClassFor}
  */
 export type ObjectClass<T extends Document.AnyConstructor> = GetKey<
@@ -1412,19 +1406,4 @@ export type LayerClass<T extends Document.AnyConstructor> = GetKey<
  * Actual document types that go in folders
  * @deprecated No replacement as this was deemed too niche.
  */
-export type FolderDocumentTypes = Exclude<CONST.FOLDER_DOCUMENT_TYPES, "Compendium">;
-
-/**
- * Handles cases where an empty object is defined somewhere and then filled in some time before the given hook.
- * See {@linkcode CONFIG.Actor.typeLabels}.
- */
-export type PartialUntilInitialized<T extends object, HookName extends InitializationHook> = InitializedOn<
-  T,
-  HookName,
-  IntentionalPartial<T>
->;
-
-/** An inverse of {@linkcode Readonly} */
-export type Mutable<T> = {
-  -readonly [K in keyof T]: T[K];
-};
+export type FolderDocumentTypes = Exclude<foundry.CONST.FOLDER_DOCUMENT_TYPES, "Compendium">;

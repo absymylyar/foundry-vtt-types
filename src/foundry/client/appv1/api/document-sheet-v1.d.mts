@@ -1,3 +1,5 @@
+import type { EditorView } from "prosemirror-view";
+import type { Editor } from "tinymce";
 import type { GetDataReturnType, MaybePromise, Identity } from "#utils";
 import type Document from "#common/abstract/document.d.mts";
 import type Application from "./application-v1.mjs";
@@ -62,7 +64,7 @@ declare abstract class DocumentSheet<
 
   override getData(
     options?: Partial<Options>,
-  ): MaybePromise<GetDataReturnType<DocumentSheet.Data<Options, ConcreteDocument>>>;
+  ): MaybePromise<GetDataReturnType<DocumentSheet.DocumentSheetData<Options, ConcreteDocument>>>;
 
   protected override _activateCoreListeners(html: JQuery<HTMLElement>): void;
 
@@ -70,7 +72,7 @@ declare abstract class DocumentSheet<
     name: string,
     options?: TextEditor.Options,
     initialContent?: string,
-  ): Promise<TextEditor.EditorInstance>;
+  ): Promise<Editor | EditorView>;
 
   protected override _render(force?: boolean, options?: Application.RenderOptions<Options>): Promise<void>;
 
@@ -85,7 +87,6 @@ declare abstract class DocumentSheet<
    * Test whether a certain User has permission to view this Document Sheet.
    * @param user - The user requesting to render the sheet
    * @returns Does the User have permission to view this sheet?
-   * @privateRemarks Only does a permission check, so temporary `User`s are allowed.
    */
   protected _canUserView(user: User.Implementation): boolean;
 
@@ -129,11 +130,10 @@ declare namespace DocumentSheet {
   interface Any extends AnyDocumentSheet {}
   interface AnyConstructor extends Identity<typeof AnyDocumentSheet> {}
 
-  interface Data<
+  interface DocumentSheetData<
     Options extends DocumentSheet.Options<ConcreteDocument>,
     ConcreteDocument extends foundry.abstract.Document.Any = foundry.abstract.Document.Any,
-  >
-    extends FormApplication.FormApplicationData {
+  > extends FormApplication.FormApplicationData {
     cssClass: string;
     editable: boolean;
     data: ReturnType<ConcreteDocument["toObject"]>;
@@ -154,14 +154,6 @@ declare namespace DocumentSheet {
     /** An array of {@linkcode HTMLSecret} configuration objects. */
     secrets: HTMLSecret.Configuration<ConcreteDocument>[];
   }
-
-  /**
-   * @deprecated Replaced with {@linkcode JournalPageSheet.Data}.
-   */
-  type DocumentSheetData<
-    Options extends DocumentSheet.Options<ConcreteDocument>,
-    ConcreteDocument extends foundry.abstract.Document.Any = foundry.abstract.Document.Any,
-  > = Data<Options, ConcreteDocument>;
 }
 
 declare abstract class AnyDocumentSheet extends DocumentSheet<

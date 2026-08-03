@@ -1,3 +1,6 @@
+// This is an issue only on Windows. It's worked around in this weird way to avoid ESLint
+// whining about an unused disable.
+
 import type { InterfaceToObject, MustConform } from "#utils";
 import * as configuration from "#configuration";
 

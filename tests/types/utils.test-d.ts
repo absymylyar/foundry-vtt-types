@@ -27,7 +27,6 @@ import type {
   // RemoveIndexSignatures,
   Titlecase,
   // Merge,
-  Override,
   // IsObject,
   // SimpleMerge,
   RequiredProps,
@@ -80,7 +79,7 @@ expectTypeOf<MakeConform<{ abc: number; def: number }, { abc: number }>>().toEqu
   def: number;
 }>();
 
-// @ts-expect-error string doesn't conform
+// @ts-expect-error - string doesn't conform
 expectTypeOf<MustConform<string, { abc: number }>>().toEqualTypeOf<{ abc: number; def: string }>();
 expectTypeOf<MustConform<{ abc: number; def: number }, { abc: number }>>().toEqualTypeOf<{
   abc: number;
@@ -114,7 +113,7 @@ expectTypeOf<ConformRecord<{ abc: { def: string; ghi: number } }, { def: string 
 // TODO: PrettifyTypeDeep
 // TODO: UnionToIntersection
 
-// @ts-expect-error Ideally an empty object should always be assignable to `DeepPartial` but currently it isn't.
+// An empty object should always be assignable to `DeepPartial`.
 function _emptyMustBeAssignable<T extends object>(_partial: DeepPartial<T> = {}): void {}
 
 expectTypeOf<DeepPartial<{ a: string }>>().toEqualTypeOf<{ a?: string }>();
@@ -157,35 +156,6 @@ expectTypeOf<Titlecase<"FOOBAR">>().toEqualTypeOf<"Foobar">();
 expectTypeOf<Titlecase<"foo bar">>().toEqualTypeOf<"Foo Bar">();
 expectTypeOf<Titlecase<"foo  bar">>().toEqualTypeOf<"Foo  Bar">();
 expectTypeOf<Titlecase<"foo bar baz">>().toEqualTypeOf<"Foo Bar Baz">();
-
-type Override1 = Override<{ foo: number; bar: string }, { foo: string }>;
-
-const _overridden1: Override1 = { foo: "foo", bar: "bar" };
-
-// @ts-expect-error - `overridden` should be essentially equivalent to `{ foo: string; bar: string }`
-const _a: Override1 = { foo: 123, bar: "bar" };
-
-type Override2 = Override<{ foo: boolean[]; bar: string }, { foo: string }>;
-
-const _overridden2: Override2 = { foo: "foo", bar: "bar" };
-
-// @ts-expect-error - In principle this should work but the variance of `Override` is overly
-// conservative. We could force `Override` to have a structural comparison but I simply don't see
-// the point right now.
-const _b: Override1 = _overridden2;
-
-// @ts-expect-error - See above.
-const _c: Override2 = _overridden1;
-
-type Override3 = Override<{ foo: 123; bar: "bar" }, { foo: "foo" }>;
-
-const _overridden3: Override3 = { foo: "foo", bar: "bar" };
-
-const _d: Override1 = _overridden3;
-
-// @ts-expect-error - `_overridden1` is wider than `_overridden3`.
-// This is essentially trying to assign `{ foo: string; bar: string }` to `{ foo: "foo"; bar: "bar" }`.
-const _e: Override3 = _overridden1;
 
 // TODO: Merge
 // TODO: IsObject

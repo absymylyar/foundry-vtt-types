@@ -1,71 +1,32 @@
 import type { Identity } from "#utils";
 import type Document from "#common/abstract/document.d.mts";
-import type { WorldCollection } from "#client/documents/abstract/_module.d.mts";
-import type { Application } from "#client/appv1/api/_module.d.mts";
-import type { DocumentSheetV2 } from "#client/applications/api/_module.d.mts";
-import type { DocumentSheetConfig } from "#client/applications/apps/_module.d.mts";
+
+import Game = foundry.Game;
 
 /**
  * The singleton collection of FogExploration documents which exist within the active World.
- * @see {@linkcode foundry.document.FogExploration} The FogExploration document
+ * @see {@linkcode FogExploration} The FogExploration document
  */
-declare class FogExplorations extends WorldCollection<"FogExploration"> {
-  static override documentName: "FogExploration";
-
-  /** @privateRemarks Fake type override */
-  static override get instance(): FogExplorations.Implementation;
+declare class FogExplorations extends foundry.documents.abstract.WorldCollection<"FogExploration", "FogExplorations"> {
+  static documentName: "FogExploration";
 
   /**
    * Activate Socket event listeners to handle for fog resets
    * @param socket - The active web socket connection
    */
-  static _activateSocketListeners(socket: io.Socket): void;
-
-  // Fake override for the purpose of typing `options`.
-  static override registerSheet(
-    scope: string,
-    sheetClass: Application.AnyConstructor | DocumentSheetV2.AnyConstructor,
-    options?: DocumentSheetConfig.RegisterSheetOptions<FogExploration.ImplementationClass>,
-  ): void;
-
-  // Fake override for the purpose of typing `options`.
-  static override unregisterSheet(
-    scope: string,
-    sheetClass: Application.AnyConstructor | DocumentSheetV2.AnyConstructor,
-    options?: DocumentSheetConfig.UnregisterSheetOptions<FogExploration.ImplementationClass>,
-  ): void;
+  static _activateSocketListeners(socket: Game["socket"]): void;
 }
 
 declare namespace FogExplorations {
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode FogExplorations.Implementation} instead. This will be removed in v15.
-   */
-  type Any = Internal.Any;
+  interface Any extends AnyFogExplorations {}
+  interface AnyConstructor extends Identity<typeof AnyFogExplorations> {}
 
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode FogExplorations.ImplementationClass} instead. This will be removed in v15.
-   */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyFogExplorations {}
-    interface AnyConstructor extends Identity<typeof AnyFogExplorations> {}
-  }
-
-  interface ImplementationClass extends Document.Internal.ConfiguredCollectionClass<"FogExploration"> {}
-  interface Implementation extends Document.Internal.ConfiguredCollection<"FogExploration"> {}
-
-  /** @deprecated Replaced by {@linkcode FogExplorations.ImplementationClass}. Will be removed in v15. */
-  type ConfiguredClass = ImplementationClass;
-
-  /** @deprecated Replaced by {@linkcode FogExplorations.Implementation}. Will be removed in v15. */
-  type Configured = Implementation;
+  interface ConfiguredClass extends Document.ConfiguredCollectionClass<"FogExploration"> {}
+  interface Configured extends Document.ConfiguredCollection<"FogExploration"> {}
 }
-
-export default FogExplorations;
 
 declare abstract class AnyFogExplorations extends FogExplorations {
   constructor(...args: never);
 }
+
+export default FogExplorations;

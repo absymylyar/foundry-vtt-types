@@ -13,9 +13,8 @@ declare class EventEmitter {
 
   /**
    * An array of event types which are valid for this class.
-   * @privateRemarks `| readonly` because {@linkcode foundry.canvas.perception.FogManager | FogManager.emittedEvents} is frozen.
    */
-  static emittedEvents: string[] | readonly string[];
+  static emittedEvents: string[];
 
   /**
    * Add a new event listener for a certain type of event.
@@ -24,6 +23,7 @@ declare class EventEmitter {
    * @param listener - The listener function called when the event occurs
    * @param options  - Options which configure the event listener
    */
+  // options: not null (destructured)
   addEventListener(
     type: string,
     listener: EventEmitterMixin.EventListener,
@@ -40,7 +40,7 @@ declare class EventEmitter {
   /**
    * Dispatch an event on this target.
    * @see {@link https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/dispatchEvent}
-   * @param event - The `Event` to dispatch
+   * @param event - The Event to dispatch
    * @returns Was default behavior for the event prevented?
    */
   dispatchEvent(event: Event): boolean;
@@ -68,15 +68,15 @@ declare namespace EventEmitterMixin {
   type BaseClass = AnyConstructor;
 
   /** @internal */
-  interface _AddListenerOptions {
+  type _AddListenerOptions = InexactPartial<{
     /**
      * Should the event only be responded to once and then removed
      * @defaultValue `false`
      */
     once: boolean;
-  }
+  }>;
 
-  interface AddListenerOptions extends InexactPartial<_AddListenerOptions> {}
+  interface AddListenerOptions extends _AddListenerOptions {}
 
   type EventListener = (event: Event) => void;
 }

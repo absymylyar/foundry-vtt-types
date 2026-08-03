@@ -1,22 +1,15 @@
 import type { Identity } from "#utils";
 import type Document from "#common/abstract/document.d.mts";
-import type { WorldCollection } from "#client/documents/abstract/_module.d.mts";
-import type { Application } from "#client/appv1/api/_module.d.mts";
-import type { DocumentSheetV2 } from "#client/applications/api/_module.d.mts";
-import type { DocumentSheetConfig } from "#client/applications/apps/_module.d.mts";
 
 /**
  * The singleton collection of RollTable documents which exist within the active World.
- * This Collection is accessible within the Game object as {@linkcode foundry.Game.tables | game.tables}.
+ * This Collection is accessible within the Game object as game.tables.
  *
- * @see {@linkcode foundry.documents.RollTable}: The RollTable document
- * @see {@linkcode foundry.applications.sidebar.tabs.RollTableDirectory}: The RollTableDirectory
+ * @see {@linkcode RollTable} The RollTable document
+ * @see {@linkcode RollTableDirectory} The RollTableDirectory sidebar directory
  */
-declare class RollTables extends WorldCollection<"RollTable"> {
-  static override documentName: "RollTable";
-
-  /** @privateRemarks Fake type override */
-  static override get instance(): RollTables.Implementation;
+declare class RollTables extends foundry.documents.abstract.WorldCollection<"RollTable", "RollTables"> {
+  static documentName: "RollTable";
 
   override get directory(): typeof ui.tables;
 
@@ -24,48 +17,14 @@ declare class RollTables extends WorldCollection<"RollTable"> {
    * Register world settings related to RollTable documents
    */
   static registerSettings(): void;
-
-  // Fake override for the purpose of typing `options`.
-  static override registerSheet(
-    scope: string,
-    sheetClass: Application.AnyConstructor | DocumentSheetV2.AnyConstructor,
-    options?: DocumentSheetConfig.RegisterSheetOptions<RollTable.ImplementationClass>,
-  ): void;
-
-  // Fake override for the purpose of typing `options`.
-  static override unregisterSheet(
-    scope: string,
-    sheetClass: Application.AnyConstructor | DocumentSheetV2.AnyConstructor,
-    options?: DocumentSheetConfig.UnregisterSheetOptions<RollTable.ImplementationClass>,
-  ): void;
 }
 
 declare namespace RollTables {
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode RollTables.Implementation} instead. This will be removed in v15.
-   */
-  type Any = Internal.Any;
+  interface Any extends AnyRollTables {}
+  interface AnyConstructor extends Identity<typeof AnyRollTables> {}
 
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode RollTables.ImplementationClass} instead. This will be removed in v15.
-   */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyRollTables {}
-    interface AnyConstructor extends Identity<typeof AnyRollTables> {}
-  }
-
-  interface ImplementationClass extends Document.Internal.ConfiguredCollectionClass<"RollTable"> {}
-  interface Implementation extends Document.Internal.ConfiguredCollection<"RollTable"> {}
-
-  /** @deprecated Replaced by {@linkcode RollTables.ImplementationClass}. Will be removed in v15. */
-  type ConfiguredClass = ImplementationClass;
-
-  /** @deprecated Replaced by {@linkcode RollTables.Implementation}. Will be removed in v15. */
-  type Configured = Implementation;
+  interface ConfiguredClass extends Document.ConfiguredCollectionClass<"RollTable"> {}
+  interface Configured extends Document.ConfiguredCollection<"RollTable"> {}
 }
 
 declare abstract class AnyRollTables extends RollTables {

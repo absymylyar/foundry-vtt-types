@@ -1,8 +1,10 @@
+import type { ConfiguredObjectClassOrDefault } from "../../config.d.mts";
 import type { FixedInstanceType, HandleEmptyObject } from "#utils";
 import type { PlaceableObject } from "#client/canvas/placeables/_module.d.mts";
-import type { RenderFlagsMixin, RenderFlags, RenderFlag } from "#client/canvas/interaction/_module.d.mts";
 import type { ControlIcon, PreciseText } from "#client/canvas/containers/_module.mjs";
-import type { Canvas } from "#client/canvas/_module.d.mts";
+import { RenderFlagsMixin, RenderFlags, RenderFlag } from "#client/canvas/interaction/_module.mjs";
+
+import Canvas = foundry.canvas.Canvas;
 
 declare module "#configuration" {
   namespace Hooks {
@@ -15,13 +17,10 @@ declare module "#configuration" {
 /**
  * A Note is an implementation of PlaceableObject which represents an annotated location within the Scene.
  * Each Note links to a JournalEntry document and represents its location on the map.
- * @see {@linkcode foundry.documents.NoteDocument}
- * @see {@linkcode foundry.canvas.layers.NotesLayer}
+ * @see {@linkcode NoteDocument}
+ * @see {@linkcode NotesLayer}
  */
 declare class Note extends PlaceableObject<NoteDocument.Implementation> {
-  // fake type override
-  static override get implementation(): Note.ImplementationClass;
-
   static override embeddedName: "Note";
 
   static override RENDER_FLAGS: Note.RENDER_FLAGS;
@@ -30,9 +29,9 @@ declare class Note extends PlaceableObject<NoteDocument.Implementation> {
   // `RENDER_FLAGS` and so it has to be adjusted here.
   renderFlags: RenderFlags<Note.RENDER_FLAGS>;
 
-  // `controlIcon` is actually defined in the class body here (unlike in super or any of its siblings, where it only comes
-  // from the constructor), but not initialized to a value. Since it's still set `null` at construction, and the Foundry
-  // comment here provides no additional info, it's been omitted as there's no change from `PlaceableObject`
+  // `controlIcon` is actually defined in the class body here (unlike in super or any of its siblings),
+  // but not initialized to a value. Since it's still set `null` at construction, and the Foundry
+  // comment here provides no additional info, it's been omitted as there's no change from PlaceableObject
 
   /**
    * The tooltip.
@@ -60,9 +59,6 @@ declare class Note extends PlaceableObject<NoteDocument.Implementation> {
    */
   get isVisible(): boolean;
 
-  // fake type override
-  override draw(options?: HandleEmptyObject<Note.DrawOptions>): Promise<this>;
-
   protected override _draw(options: HandleEmptyObject<Note.DrawOptions>): Promise<void>;
 
   /**
@@ -84,6 +80,9 @@ declare class Note extends PlaceableObject<NoteDocument.Implementation> {
    * Define a PIXI TextStyle object which is used for the tooltip displayed for this Note
    */
   protected _getTextStyle(): PIXI.TextStyle;
+
+  // fake override; super has to account for misbehaving siblings returning void
+  override clear(): this;
 
   protected override _applyRenderFlags(flags: Note.RenderFlags): void;
 
@@ -107,12 +106,10 @@ declare class Note extends PlaceableObject<NoteDocument.Implementation> {
    */
   protected _refreshElevation(): void;
 
-  protected override _onUpdate(
-    changed: NoteDocument.UpdateData,
-    options: NoteDocument.Database.OnUpdateOptions,
-    userId: string,
-  ): void;
+  // `_onUpdate` is overridden but with no signature changes.
+  // For type simplicity it is left off. These methods historically have been the source of a large amount of computation from tsc.
 
+  /** @remarks Unconditionally returns `true` */
   protected override _canHover(user: User.Implementation): boolean;
 
   protected override _canView(user: User.Implementation): boolean;
@@ -120,6 +117,7 @@ declare class Note extends PlaceableObject<NoteDocument.Implementation> {
   protected override _canConfigure(user: User.Implementation): boolean;
 
   // fake override to narrow the type from super, which had to account for this class's misbehaving siblings
+  // options: not null (destructured)
   protected override _onHoverIn(event: Canvas.Event.Pointer, options?: PlaceableObject.HoverInOptions): void;
 
   protected override _onClickLeft2(event: Canvas.Event.Pointer): void;
@@ -129,14 +127,15 @@ declare class Note extends PlaceableObject<NoteDocument.Implementation> {
 
   /**
    * The text label used to annotate this Note
-   * @deprecated "`Note#text` has been deprecated. Use {@linkcode NoteDocument.label | Note#document#label} instead." (since v12, until v14)
+   * @deprecated since v12, until v14
+   * @remarks "`Note#text` has been deprecated. Use {@link NoteDocument.label | `Note#document#label`} instead."
    */
   get text(): string;
 
   /**
    * The Map Note icon size
-   * @deprecated "`Note#size` has been deprecated. Use {@linkcode NoteDocument.iconSize | Note#document#iconSize} instead."
-   * (since v12, until v14)
+   * @deprecated since v12, until v14
+   * @remarks "`Note#size` has been deprecated. Use {@link NoteDocument.iconSize | `Note#document#iconSize`} instead."
    */
   get size(): number;
 }
@@ -158,7 +157,8 @@ declare namespace Note {
    * Not to be confused with {@linkcode NoteDocument.ImplementationClass}
    * which refers to the implementation for the note document.
    */
-  type ImplementationClass = PlaceableObject.ImplementationClassFor<"Note">;
+  // eslint-disable-next-line no-restricted-syntax
+  type ImplementationClass = ConfiguredObjectClassOrDefault<typeof Note>;
 
   interface RENDER_FLAGS extends PlaceableObject.RENDER_FLAGS {
     /** @defaultValue `{ propagate: ["refresh"] }` */

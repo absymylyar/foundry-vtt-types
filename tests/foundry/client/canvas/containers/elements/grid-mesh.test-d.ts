@@ -1,40 +1,20 @@
-import { describe, expectTypeOf, test } from "vitest";
+import { expectTypeOf } from "vitest";
+import { GridMesh } from "#client/canvas/containers/_module.mjs";
 
-import GridMesh = foundry.canvas.containers.GridMesh;
 import GridShader = foundry.canvas.rendering.shaders.GridShader;
 
-describe("GridMesh tests", () => {
-  test("Construction", () => {
-    new GridMesh();
-    new GridMesh(GridShader);
-  });
+const myGridMesh = new GridMesh(GridShader);
 
-  const myGridMesh = new GridMesh(GridShader);
+expectTypeOf(myGridMesh.data.type).toExtend<CONST.GRID_TYPES>();
 
-  const myGridMeshData = {
-    type: CONST.GRID_TYPES.HEXEVENQ,
-    width: 100,
-    height: 100,
-    size: 128,
-    thickness: 7,
-    alpha: 0.72,
-  };
+const myGridMeshData = {
+  type: CONST.GRID_TYPES.HEXEVENQ,
+  width: 100,
+  height: 100,
+  size: 128,
+  thickness: undefined,
+  alpha: 0.72,
+};
 
-  const myGridMeshDataInexact = {
-    type: undefined,
-    width: undefined,
-    height: undefined,
-    size: undefined,
-    thickness: undefined,
-    alpha: undefined,
-  };
-
-  test("Miscellaneous", () => {
-    expectTypeOf(myGridMesh.data).toEqualTypeOf<GridMesh.MeshData>();
-
-    expectTypeOf(myGridMesh.initialize(myGridMeshData)).toEqualTypeOf<typeof myGridMesh>();
-    expectTypeOf(myGridMesh.initialize(myGridMeshDataInexact)).toEqualTypeOf<typeof myGridMesh>();
-    expectTypeOf(myGridMesh["_initialize"](myGridMeshData)).toBeVoid();
-    expectTypeOf(myGridMesh["_initialize"](myGridMeshDataInexact)).toBeVoid();
-  });
-});
+expectTypeOf(myGridMesh.initialize(myGridMeshData)).toEqualTypeOf<typeof myGridMesh>();
+expectTypeOf(myGridMesh["_initialize"](myGridMeshData)).toBeVoid();

@@ -1,7 +1,6 @@
 import { expectTypeOf } from "vitest";
-
-import NotesLayer = foundry.canvas.layers.NotesLayer;
-import Note = foundry.canvas.placeables.Note;
+import { NotesLayer } from "#client/canvas/layers/_module.mjs";
+import type { Note } from "#client/canvas/placeables/_module.d.mts";
 
 expectTypeOf(NotesLayer.documentName).toEqualTypeOf<"Note">();
 expectTypeOf(NotesLayer.instance).toEqualTypeOf<NotesLayer | undefined>();
@@ -22,6 +21,8 @@ expectTypeOf(layer.interactiveChildren).toBeBoolean();
 
 expectTypeOf(layer["_draw"]({})).toEqualTypeOf<Promise<void>>();
 
+expectTypeOf(layer.hintMapNotes()).toBeVoid();
+
 declare const someNote: Note.Implementation;
 expectTypeOf(layer.panToNote(someNote)).toEqualTypeOf<Promise<void>>();
 expectTypeOf(
@@ -33,13 +34,13 @@ expectTypeOf(
 expectTypeOf(
   layer.panToNote(someNote, {
     duration: undefined,
-    scale: undefined,
+    scale: null,
   }),
 ).toEqualTypeOf<Promise<void>>();
 
 declare const pointerEvent: foundry.canvas.Canvas.Event.Pointer;
 declare const someDragEvent: DragEvent;
-expectTypeOf(layer["_onClickLeft"](pointerEvent)).toEqualTypeOf<Promise<void>>();
+expectTypeOf(layer["_onClickLeft"](pointerEvent)).toEqualTypeOf<Promise<Note.Implementation | void>>();
 
 expectTypeOf(
   layer["_onDropData"](someDragEvent, {

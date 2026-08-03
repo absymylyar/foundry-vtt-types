@@ -1,4 +1,4 @@
-import type { Identity, InexactPartial } from "#utils";
+import type { Identity, InexactPartial, NullishProps } from "#utils";
 import type {
   BufferOperationReturn,
   CopyBufferResult,
@@ -77,7 +77,7 @@ declare namespace TextureCompressor {
   interface AnyConstructor extends Identity<typeof AnyTextureCompressor> {}
 
   /** @internal */
-  interface _ConstructorOptions {
+  type _ConstructorOptions = NullishProps<{
     /**
      * Should the worker run in debug mode?
      * @defaultValue `false`
@@ -101,33 +101,33 @@ declare namespace TextureCompressor {
      * @defaultValue `false`
      */
     controlHash: boolean;
-  }
+  }>;
 
   /** Options for the {@linkcode TextureCompressor} constructor */
-  interface ConstructorOptions extends InexactPartial<_ConstructorOptions> {}
+  interface ConstructorOptions extends _ConstructorOptions {}
 
   /** @internal */
-  interface _CommonOptions {
+  type _CommonOptions = InexactPartial<{
     /** The precomputed hash. */
     hash: string;
 
     /** The debug option. */
     debug: boolean;
-  }
+  }>;
 
   /** @internal */
-  interface _Out {
+  type _Out = InexactPartial<{
     /** The output buffer to write the reduced pixels to. May be detached. */
     out: ArrayBuffer;
-  }
+  }>;
 
-  interface CompressBufferBase64Options extends InexactPartial<_CommonOptions> {}
+  interface CompressBufferBase64Options extends _CommonOptions {}
 
-  interface ExpandBufferOptions extends InexactPartial<_CommonOptions>, InexactPartial<_Out> {}
+  interface ExpandBufferOptions extends _CommonOptions, _Out {}
 
-  interface ReduceBufferOptions extends InexactPartial<_CommonOptions>, InexactPartial<_Out> {}
+  interface ReduceBufferOptions extends _CommonOptions, _Out {}
 
-  interface CopyBufferOptions extends InexactPartial<_CommonOptions>, InexactPartial<_Out> {}
+  interface CopyBufferOptions extends _CommonOptions, _Out {}
 
   /**
    * @remarks As of v13, {@linkcode TextureCompressor.compressBufferBase64 | TextureCompressor#compressBufferBase64},

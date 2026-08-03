@@ -9,7 +9,6 @@ import type {
   PhantomConstructor,
 } from "#utils";
 import type { LogCompatibilityWarningOptions } from "#common/utils/logging.d.mts";
-import type { Canvas } from "#client/canvas/_module.d.mts";
 
 declare class RenderFlagObject {
   /** @privateRemarks All mixin classes should accept anything for its constructor. */
@@ -25,9 +24,8 @@ declare class RenderFlagObject {
    * The ticker priority when RenderFlags of this class are handled.
    * Valid values are OBJECTS or PERCEPTION.
    * @defaultValue `"OBJECTS"`
-   * @remarks Must match a key of {@linkcode Canvas.pendingRenderFlags}
    */
-  static RENDER_FLAG_PRIORITY: RenderFlags.Priority;
+  static RENDER_FLAG_PRIORITY: "OBJECTS" | "PERCEPTION";
 
   /**
    * Status flags which are applied at render-time to update the PlaceableObject.
@@ -59,23 +57,27 @@ type _RenderFlag<Keys extends string> = InexactPartial<{
   reset: Keys[];
 
   /**
-   * Is this flag deprecated? The deprecation options are passed to {@linkcode foundry.utils.logCompatibilityWarning}.
-   * The deprecation message is auto-generated unless message is passed with the options.
+   * Is this flag deprecated? The deprecation options are passed to
+   * logCompatibilityWarning. The deprectation message is auto-generated
+   * unless message is passed with the options.
    * By default the message is logged only once.
    */
   deprecated: {
     message: string;
   } & LogCompatibilityWarningOptions;
 
+  /**
+   * @remarks Possibly meant to be a sub-property of deprecated,
+   * the runtime check in `RenderFlags##set` looks for this as a top level property
+   */
   alias: boolean;
 }>;
 
 // Note(LukeAbby): The usage of `ConcreteKeys` is a hazard; if tsc were to become smarter it might
 // notice that `ConcreteKeys<Flags>` is actually contravariant and reject this type. However
 // `RenderFlags` is built upon the assumption this is only used in safe ways.
-declare interface RenderFlag<out Flags extends object, Key extends keyof Flags> extends _RenderFlag<
-  Exclude<Extract<ConcreteKeys<Flags>, string>, Key>
-> {}
+declare interface RenderFlag<out Flags extends object, Key extends keyof Flags>
+  extends _RenderFlag<Exclude<Extract<ConcreteKeys<Flags>, string>, Key>> {}
 
 declare namespace RenderFlag {
   interface Any extends _RenderFlag<string> {}
@@ -92,25 +94,11 @@ declare class RenderFlags<Flags extends RenderFlags.ValidateFlags<Flags>> extend
    */
   constructor(flags: Flags, config?: RenderFlags.Config);
 
-  /** @remarks `defineProperty`'d at construction with `enumerable: false, writable: false` and the value frozen. */
-  readonly flags: Readonly<Flags>;
+  readonly flags: Flags;
 
-  /**
-   * @remarks `defineProperty`'d at construction with `enumerable: false, writable: false`
-   *
-   * `| undefined` because Foundry marks both the constructor's `config` parameter and its {@linkcode RenderFlags.Config.object | object}
-   * property as optional, but in core usage the only place this is called is in the {@linkcode RenderFlagsObject} constructor, where it's
-   * passed `object: this`
-   */
-  readonly object: RenderFlagObject | undefined;
+  readonly object: RenderFlagObject;
 
-  /**
-   * The update priority when these render flags are applied.
-   * Valid options are `"OBJECTS"` or `"PERCEPTION"`.
-   *
-   * @remarks `defineProperty`'d at construction with `enumerable: false, writable: false`
-   */
-  readonly priority: RenderFlags.Priority;
+  readonly priority: "OBJECT" | "PERCEPTION";
 
   /**
    * @returns The flags which were previously set that have been cleared.
@@ -140,18 +128,12 @@ declare namespace RenderFlags {
     object?: RenderFlagObject;
 
     /**
-     * The ticker priority at which these render flags are handled
-     * @defaultValue "OBJECTS"
-     * @remarks See {@linkcode RenderFlags.priority | RenderFlags#priority}
+     * The update priority when these render flags are applied.
+     * Valid options are OBJECTS or PERCEPTION.
+     * @defaultValue `PIXI.UPDATE_PRIORITY.OBJECTS`
      */
-    priority?: Priority | undefined;
+    priority?: typeof PIXI.UPDATE_PRIORITY.OBJECTS | typeof PIXI.UPDATE_PRIORITY.PERCEPTION;
   }
-
-  /**
-   * @remarks {@linkcode RenderFlags.set | RenderFlags#set} and {@linkcode RenderFlags.clear | RenderFlags#clear}
-   * both access {@linkcode Canvas.pendingRenderFlags | canvas.pendingRenderFlags[priority]}
-   */
-  type Priority = keyof Canvas.PendingRenderFlags;
 }
 
 /**
@@ -193,7 +175,7 @@ declare namespace RenderFlagsMixin {
   type _KeyOf<T> = keyof T;
 
   type ToBooleanFlags<RenderFlags extends object> = {
-    [K in _KeyOf<RenderFlags>]?: boolean | undefined;
+    [K in _KeyOf<RenderFlags>]?: boolean | null | undefined;
   };
 }
 

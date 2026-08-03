@@ -1,13 +1,12 @@
-import type { FixedInstanceType, HandleEmptyObject, Identity } from "#utils";
+import type { HandleEmptyObject, Identity } from "#utils";
 import type { Canvas } from "#client/canvas/_module.d.mts";
-import type { PlaceablesLayer } from "./_module.d.mts";
+import type { CanvasLayer, PlaceablesLayer } from "./_module.d.mts";
 import type { Drawing } from "#client/canvas/placeables/_module.d.mts";
-import type { SceneControls } from "#client/applications/ui/_module.d.mts";
 
 declare module "#configuration" {
   namespace Hooks {
     interface PlaceablesLayerConfig {
-      DrawingsLayer: DrawingsLayer.Implementation;
+      DrawingsLayer: DrawingsLayer.Any;
     }
   }
 }
@@ -16,15 +15,19 @@ declare module "#configuration" {
  * The DrawingsLayer subclass of PlaceablesLayer.
  */
 declare class DrawingsLayer extends PlaceablesLayer<"Drawing"> {
-  // Fake type override
+  /**
+   * @privateRemarks This is not overridden in foundry but reflects the real behavior.
+   */
   static get instance(): Canvas["drawings"];
 
-  // Fake type override
+  /**
+   * @privateRemarks This is not overridden in foundry but reflects the real behavior.
+   */
   override options: DrawingsLayer.LayerOptions;
 
   /**
    * @defaultValue
-   * ```js
+   * ```
    * mergeObject(super.layerOptions, {
    *   name: "drawings"
    *   controllableObjects: true,
@@ -40,7 +43,7 @@ declare class DrawingsLayer extends PlaceablesLayer<"Drawing"> {
   /**
    * The named game setting which persists default drawing configuration for the User
    */
-  static DEFAULT_CONFIG_SETTING: DrawingsLayer.DEFAULT_CONFIG_SETTING;
+  static DEFAULT_CONFIG_SETTING: "defaultDrawingConfig";
 
   /**
    * The collection of drawing objects which are rendered in the interface.
@@ -53,17 +56,12 @@ declare class DrawingsLayer extends PlaceablesLayer<"Drawing"> {
 
   override getSnappedPoint(point: Canvas.Point): Canvas.Point;
 
-  override _getCopyableObjects(options: PlaceablesLayer.GetCopyableObjectsOptions): Drawing.Implementation[];
-
   /**
    * Render a configuration sheet to configure the default Drawing settings
    */
   configureDefault(): void;
 
   protected override _deactivate(): void;
-
-  // fake type override
-  override draw(options?: HandleEmptyObject<DrawingsLayer.DrawOptions>): Promise<this>;
 
   protected override _draw(options: HandleEmptyObject<DrawingsLayer.DrawOptions>): Promise<void>;
 
@@ -72,10 +70,9 @@ declare class DrawingsLayer extends PlaceablesLayer<"Drawing"> {
    * Start with some global defaults, apply user default config, then apply mandatory overrides per tool.
    * @param origin - The initial coordinate
    * @returns The new drawing data
+   * @privateRemarks This isn't called externally (anymore?) but seems too useful to make protected without any indication on Foundry's side of such intent
    */
-  protected _getNewDrawingData(origin: Canvas.Point): DrawingDocument.CreateData;
-
-  static override prepareSceneControls(): SceneControls.Control;
+  _getNewDrawingData(origin: Canvas.Point): DrawingDocument.CreateData;
 
   protected override _onClickLeft(event: Canvas.Event.Pointer): void;
 
@@ -88,7 +85,11 @@ declare class DrawingsLayer extends PlaceablesLayer<"Drawing"> {
 
   protected override _onDragLeftMove(event: Canvas.Event.Pointer): void;
 
-  protected override _onDragLeftDrop(event: Canvas.Event.Pointer): void;
+  /**
+   * Handling of mouse-up events which conclude a new object creation after dragging
+   * @private
+   */
+  protected _onDragLeftDrop(event: Canvas.Event.Pointer): void;
 
   protected override _onDragLeftCancel(event: Canvas.Event.Pointer): void;
 
@@ -96,47 +97,23 @@ declare class DrawingsLayer extends PlaceablesLayer<"Drawing"> {
 
   /**
    * Use an adaptive precision depending on the size of the grid
-   * @deprecated (since v12, until v14)
+   * @deprecated since v12 until v14
    */
   get gridPrecision(): 0 | 8 | 16;
 }
 
 declare namespace DrawingsLayer {
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode Implementation} instead. This type will be removed in v15.
-   */
-  type Any = Internal.Any;
+  interface Any extends AnyDrawingsLayer {}
+  interface AnyConstructor extends Identity<typeof AnyDrawingsLayer> {}
 
-  /**
-   * @deprecated There should only be a single implementation of this class in use at one time,
-   * use {@linkcode ImplementationClass} instead. This type will be removed in v15.
-   */
-  type AnyConstructor = Internal.AnyConstructor;
-
-  namespace Internal {
-    interface Any extends AnyDrawingsLayer {}
-    interface AnyConstructor extends Identity<typeof AnyDrawingsLayer> {}
-  }
-
-  interface ImplementationClass extends Identity<typeof CONFIG.Canvas.layers.drawings.layerClass> {}
-  interface Implementation extends FixedInstanceType<ImplementationClass> {}
+  interface DrawOptions extends CanvasLayer.DrawOptions {}
 
   interface LayerOptions extends PlaceablesLayer.LayerOptions<Drawing.ImplementationClass> {
     name: "drawings";
     controllableObjects: true;
     rotatableObjects: true;
-
-    /** @defaultValue `500` */
-    zIndex: number;
+    zIndex: 500;
   }
-
-  type DEFAULT_CONFIG_SETTING = "defaultDrawingConfig";
-
-  interface DrawOptions extends PlaceablesLayer.DrawOptions {}
-
-  // `DrawingsLayer` has no `_tearDown` override, this exists for consistency.
-  interface TearDownOptions extends PlaceablesLayer.TearDownOptions {}
 }
 
 export default DrawingsLayer;

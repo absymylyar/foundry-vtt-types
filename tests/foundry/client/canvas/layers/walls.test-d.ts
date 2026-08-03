@@ -1,84 +1,90 @@
-import { describe, expectTypeOf, test } from "vitest";
+import { expectTypeOf } from "vitest";
+import type { Document } from "#common/abstract/_module.d.mts";
+import { WallsLayer } from "#client/canvas/layers/_module.mjs";
+import type { Wall } from "#client/canvas/placeables/_module.d.mts";
 
-import WallsLayer = foundry.canvas.layers.WallsLayer;
-import PlaceablesLayer = foundry.canvas.layers.PlaceablesLayer;
-import Wall = foundry.canvas.placeables.Wall;
 import Canvas = foundry.canvas.Canvas;
-// import PointSourcePolygon = foundry.canvas.geometry.PointSourcePolygon;
-// import Ray = foundry.canvas.geometry.Ray;
-// import Document = foundry.abstract.Document;
+import PointSourcePolygon = foundry.canvas.geometry.PointSourcePolygon;
+import Ray = foundry.canvas.geometry.Ray;
 
-declare const pixiPoint: PIXI.Point;
-declare const wall: Wall.Implementation;
-declare const pointerEvent: Canvas.Event.Pointer;
-declare const creationHistoryEntry: PlaceablesLayer.CreationHistoryEntry<"Wall">;
+expectTypeOf(WallsLayer.documentName).toEqualTypeOf<"Wall">();
+expectTypeOf(WallsLayer.instance).toEqualTypeOf<WallsLayer | undefined>();
+expectTypeOf(WallsLayer.layerOptions).toEqualTypeOf<WallsLayer.LayerOptions>();
+expectTypeOf(WallsLayer.layerOptions.name).toEqualTypeOf<"walls">();
+expectTypeOf(WallsLayer.layerOptions.objectClass).toEqualTypeOf<Wall.ImplementationClass>();
+declare const somePoint: PIXI.Point;
+declare const someWall: Wall.Implementation;
+expectTypeOf(WallsLayer.getClosestEndpoint(somePoint, someWall)).toEqualTypeOf<Canvas.PointTuple>();
 
-describe("WallsLayer Tests", () => {
-  test("Construction", () => {
-    new WallsLayer();
-  });
+const layer = new WallsLayer();
 
-  const layer = new WallsLayer();
+expectTypeOf(layer.options.objectClass).toEqualTypeOf<Wall.ImplementationClass>();
+expectTypeOf(layer.options).toEqualTypeOf<WallsLayer.LayerOptions>();
+expectTypeOf(layer.options.name).toEqualTypeOf<"walls">();
 
-  test("Miscellaneous", () => {
-    expectTypeOf(layer.chain).toEqualTypeOf<PIXI.Graphics | null>();
-    expectTypeOf(layer._chain).toBeBoolean();
-    expectTypeOf(layer._cloneType).toEqualTypeOf<WallDocument.Source | null>();
-    expectTypeOf(layer._last).toEqualTypeOf<WallsLayer.LastPoint>();
+expectTypeOf(layer.hookName).toEqualTypeOf<"WallsLayer">();
+expectTypeOf(layer.doors).toEqualTypeOf<Wall.Implementation[]>();
 
-    expectTypeOf(layer.doors).toEqualTypeOf<Wall.Implementation[]>();
+expectTypeOf(layer.getSnappedPoint({ x: 71, y: 59 })).toEqualTypeOf<Canvas.Point>();
 
-    expectTypeOf(layer["_draw"]({})).toEqualTypeOf<Promise<void>>();
-    expectTypeOf(layer["_deactivate"]()).toBeVoid();
+expectTypeOf(layer["_draw"]({})).toEqualTypeOf<Promise<void>>();
+expectTypeOf(layer["_deactivate"]()).toBeVoid();
 
-    expectTypeOf(layer.releaseAll()).toBeNumber();
-  });
+expectTypeOf(layer.releaseAll()).toBeNumber();
 
-  test("Necessary type overrides", () => {
-    expectTypeOf(WallsLayer.documentName).toEqualTypeOf<"Wall">();
-    expectTypeOf(WallsLayer.instance).toEqualTypeOf<WallsLayer.Implementation | undefined>();
+expectTypeOf(layer["_pasteObject"](someWall, somePoint)).toEqualTypeOf<Omit<WallDocument.Source, "_id">>();
+expectTypeOf(layer["_pasteObject"](someWall, somePoint, { hidden: true, snap: false })).toEqualTypeOf<
+  Omit<WallDocument.Source, "_id">
+>();
+expectTypeOf(layer["_pasteObject"](someWall, somePoint, { hidden: null, snap: undefined })).toEqualTypeOf<
+  Omit<WallDocument.Source, "_id">
+>();
 
-    expectTypeOf(WallsLayer.layerOptions).toEqualTypeOf<WallsLayer.LayerOptions>();
-    expectTypeOf(WallsLayer.layerOptions.name).toEqualTypeOf<"walls">();
-    expectTypeOf(WallsLayer.layerOptions.objectClass).toEqualTypeOf<Wall.ImplementationClass>();
+declare const _x: Document.ConfiguredSourceForName<"Wall">;
 
-    expectTypeOf(layer.options.objectClass).toEqualTypeOf<Wall.ImplementationClass>();
-    expectTypeOf(layer.options).toEqualTypeOf<WallsLayer.LayerOptions>();
-    expectTypeOf(layer.options.name).toEqualTypeOf<"walls">();
+expectTypeOf(layer["_getWallEndpointCoordinates"](somePoint)).toEqualTypeOf<Canvas.PointTuple>();
+expectTypeOf(layer["_getWallEndpointCoordinates"](somePoint, { snap: true })).toEqualTypeOf<Canvas.PointTuple>();
+expectTypeOf(layer["_getWallEndpointCoordinates"](somePoint, { snap: null })).toEqualTypeOf<Canvas.PointTuple>();
 
-    expectTypeOf(layer.hookName).toEqualTypeOf<"WallsLayer">();
-  });
+expectTypeOf(layer["_getWallDataFromActiveTool"]()).toEqualTypeOf<WallDocument.Source>();
+expectTypeOf(layer["_getWallDataFromActiveTool"]("ethereal")).toEqualTypeOf<WallDocument.Source>();
+// @ts-expect-error foobar is not a handled Wall tool
+expectTypeOf(layer["_getWallDataFromActiveTool"]("foobar")).toEqualTypeOf<Document.ConfiguredSourceForName<"Wall">>();
 
-  test("Coordinates", () => {
-    expectTypeOf(WallsLayer.getClosestEndpoint(pixiPoint, wall)).toEqualTypeOf<Canvas.PointTuple>();
+expectTypeOf(layer.identifyInteriorArea([someWall, someWall])).toEqualTypeOf<PIXI.Polygon[]>();
 
-    expectTypeOf(layer.getSnappedPoint({ x: 71, y: 59 })).toEqualTypeOf<Canvas.Point>();
+declare const pointerEvent: foundry.canvas.Canvas.Event.Pointer;
+expectTypeOf(layer["_onDragLeftStart"](pointerEvent)).toEqualTypeOf<Promise<Wall.Implementation>>();
+expectTypeOf(layer["_onDragLeftMove"](pointerEvent)).toBeVoid();
+expectTypeOf(layer["_onDragLeftDrop"](pointerEvent)).toBeVoid();
+expectTypeOf(layer["_onDragLeftCancel"](pointerEvent)).toBeVoid();
+expectTypeOf(layer["_onClickRight"](pointerEvent)).toBeVoid();
 
-    expectTypeOf(layer._getWallEndpointCoordinates(pixiPoint)).toEqualTypeOf<Canvas.PointTuple>();
-    expectTypeOf(layer._getWallEndpointCoordinates(pixiPoint, { snap: true })).toEqualTypeOf<Canvas.PointTuple>();
-    expectTypeOf(layer._getWallEndpointCoordinates(pixiPoint, { snap: undefined })).toEqualTypeOf<Canvas.PointTuple>();
+declare const someRay: Ray;
 
-    expectTypeOf(layer.identifyInteriorArea([wall, wall])).toEqualTypeOf<PIXI.Polygon[]>();
-  });
+// deprecated since v11 until v13
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+expectTypeOf(layer.checkCollision(someRay, { type: "move" })).toEqualTypeOf<PointSourcePolygon.TestCollision<"all">>();
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+expectTypeOf(layer.checkCollision(someRay, { type: "sight", mode: "any" })).toEqualTypeOf<
+  PointSourcePolygon.TestCollision<"any">
+>();
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+expectTypeOf(layer.checkCollision(someRay, { type: "light", mode: "closest" })).toEqualTypeOf<
+  PointSourcePolygon.TestCollision<"closest">
+>();
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+expectTypeOf(layer.checkCollision(someRay, { type: "sound", mode: "all" })).toEqualTypeOf<
+  PointSourcePolygon.TestCollision<"all">
+>();
 
-  test("Event handlers", () => {
-    expectTypeOf(layer["_onDragLeftStart"](pointerEvent)).toEqualTypeOf<Promise<Wall.Implementation>>();
-    expectTypeOf(layer["_onDragLeftMove"](pointerEvent)).toBeVoid();
-    expectTypeOf(layer["_onDragLeftDrop"](pointerEvent)).toBeVoid();
-    expectTypeOf(layer["_onDragLeftCancel"](pointerEvent)).toBeVoid();
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+expectTypeOf(layer.highlightControlledSegments()).toBeVoid();
 
-    expectTypeOf(layer["_onUndoCreate"](creationHistoryEntry)).toEqualTypeOf<Promise<WallDocument.Stored[]>>();
-
-    expectTypeOf(layer["_onClickRight"](pointerEvent)).toBeVoid();
-  });
-
-  test("Deprecated", () => {
-    // Deprecated since v12 until v14
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    expectTypeOf(layer.initialize()).toBeVoid();
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    expectTypeOf(layer.identifyInteriorWalls()).toBeVoid();
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    expectTypeOf(layer.identifyWallIntersections()).toBeVoid();
-  });
-});
+// deprecated since v12 until v14
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+expectTypeOf(layer.initialize()).toBeVoid();
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+expectTypeOf(layer.identifyInteriorWalls()).toBeVoid();
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+expectTypeOf(layer.identifyWallIntersections()).toBeVoid();

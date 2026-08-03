@@ -1,7 +1,6 @@
 import { expectTypeOf } from "vitest";
-
-import LightingLayer = foundry.canvas.layers.LightingLayer;
-import AmbientLight = foundry.canvas.placeables.AmbientLight;
+import { LightingLayer } from "#client/canvas/layers/_module.mjs";
+import type { AmbientLight } from "#client/canvas/placeables/_module.d.mts";
 
 expectTypeOf(LightingLayer.documentName).toEqualTypeOf<"AmbientLight">();
 expectTypeOf(LightingLayer.instance).toEqualTypeOf<LightingLayer | undefined>();
@@ -32,4 +31,4 @@ expectTypeOf(layer["_onDragLeftStart"](pointerEvent)).toBeVoid();
 expectTypeOf(layer["_onDragLeftMove"](pointerEvent)).toBeVoid();
 expectTypeOf(layer["_onDragLeftCancel"](pointerEvent)).toBeVoid();
 expectTypeOf(layer["_onMouseWheel"](wheelEvent)).toEqualTypeOf<Promise<AmbientLight.Implementation>>();
-expectTypeOf(layer._onDarknessChange(darknessChangeEvent)).toBeVoid();
+expectTypeOf(layer["_onDarknessChange"](darknessChangeEvent)).toBeVoid();

@@ -128,8 +128,7 @@ declare namespace VideoHelper {
 
   type VIDEO_MIME_TYPES = ValueOf<typeof CONST.VIDEO_FILE_EXTENSIONS>;
 
-  /** @internal */
-  interface _PlayOptions {
+  type _PlayOptions = InexactPartial<{
     /**
      * Should the video be playing? Otherwise, it will be paused
      * @defaultValue `true`
@@ -150,9 +149,9 @@ declare namespace VideoHelper {
      * @remarks Should be between `0` and `1`
      */
     volume: number;
-  }
+  }>;
 
-  interface PlayOptions extends InexactPartial<_PlayOptions> {}
+  interface PlayOptions extends _PlayOptions {}
 }
 
 export default VideoHelper;
