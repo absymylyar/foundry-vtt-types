@@ -1,7 +1,0 @@
-/node_modules/
-/.idea/
-tsconfig.vitest-temp.json
-tsconfig.tsbuildinfo
-.typescript-build
-.eslintcache
-*.tsbuildinfo
